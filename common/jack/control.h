@@ -310,6 +310,11 @@ jackctl_parameter_get_enum_constraint_value(
 	jackctl_parameter_t * parameter_ptr,
 	uint32_t index);
 
+const char *
+jackctl_parameter_get_enum_constraint_description(
+	jackctl_parameter_t * parameter_ptr,
+	uint32_t index);
+
 void
 jackctl_parameter_get_range_constraint(
 	jackctl_parameter_t * parameter_ptr,
