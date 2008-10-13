@@ -321,6 +321,14 @@ jackctl_parameter_get_range_constraint(
 	union jackctl_parameter_value * min_ptr,
 	union jackctl_parameter_value * max_ptr);
 
+bool
+jackctl_parameter_constraint_is_strict(
+	jackctl_parameter_t * parameter_ptr);
+
+bool
+jackctl_parameter_constraint_is_fake_value(
+	jackctl_parameter_t * parameter_ptr);
+
 /** 
  * Call this function to log an error message.
  * 
