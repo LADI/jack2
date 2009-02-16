@@ -35,8 +35,9 @@ $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 #include <sys/mman.h>
 
 #include <jack/types.h>
-#include <jack/engine.h>
-#include <sysdeps/time.h>
+//#include <jack/engine.h>
+//#include <sysdeps/time.h>
+#include "jslist.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -55,9 +56,12 @@ $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 #include "netjack.h"
 #include "netjack_packet.h"
 
+// JACK2
+#include "jack/control.h"
+
 #define MIN(x,y) ((x)<(y) ? (x) : (y))
 
-static int sync_state = TRUE;
+static int sync_state = 1;
 static jack_transport_state_t last_transport_state;
 
 static int
@@ -84,16 +88,16 @@ void netjack_wait( netjack_driver_state_t *netj )
     if( !netj->next_deadline_valid ) {
 	    if( netj->latency == 0 )
 		// for full sync mode... always wait for packet.
-		netj->next_deadline = jack_get_microseconds() + 500*netj->period_usecs;
+		netj->next_deadline = jack_get_time() + 500*netj->period_usecs;
 	    else if( netj->latency == 1 )
 		// for normal 1 period latency mode, only 1 period for dealine.
-		netj->next_deadline = jack_get_microseconds() + netj->period_usecs;
+		netj->next_deadline = jack_get_time() + netj->period_usecs;
 	    else
 		// looks like waiting 1 period always is correct.
 		// not 100% sure yet. with the improved resync, it might be better,
 		// to have more than one period headroom for high latency.
-		//netj->next_deadline = jack_get_microseconds() + 5*netj->latency*netj->period_usecs/4;
-		netj->next_deadline = jack_get_microseconds() + 2*netj->period_usecs;
+		//netj->next_deadline = jack_get_time() + 5*netj->latency*netj->period_usecs/4;
+		netj->next_deadline = jack_get_time() + 2*netj->period_usecs;
 
 	    netj->next_deadline_valid = 1;
     } else {
@@ -137,9 +141,9 @@ void netjack_wait( netjack_driver_state_t *netj )
     netj->running_free = 0;
 
     if( we_have_the_expected_frame ) {
-	netj->time_to_deadline = netj->next_deadline - jack_get_microseconds() - netj->period_usecs;
+	netj->time_to_deadline = netj->next_deadline - jack_get_time() - netj->period_usecs;
 	packet_cache_retreive_packet( global_packcache, netj->expected_framecnt, (char *) netj->rx_buf, netj->rx_bufsize , &packet_recv_time_stamp);
-	//int recv_time_offset = (int) (jack_get_microseconds() - packet_recv_time_stamp);
+	//int recv_time_offset = (int) (jack_get_time() - packet_recv_time_stamp);
 	packet_header_ntoh(pkthdr);
 	netj->deadline_goodness = (int)pkthdr->sync_state;
 	netj->packet_data_valid = 1;
@@ -359,7 +363,7 @@ void netjack_read( netjack_driver_state_t *netj, jack_nframes_t nframes )
                 if (local_trans_state == JackTransportStopped) {
                     jack_transport_start(netj->client);
                     last_transport_state = JackTransportStopped;
-                    sync_state = FALSE;
+                    sync_state = 0;
                     jack_info("locally stopped... starting...");
                 }
 
@@ -367,12 +371,12 @@ void netjack_read( netjack_driver_state_t *netj, jack_nframes_t nframes )
 		{
                     jack_transport_locate(netj->client, compensated_tranport_pos);
                     last_transport_state = JackTransportRolling;
-                    sync_state = FALSE;
+                    sync_state = 0;
                     jack_info("starting locate to %d", compensated_tranport_pos );
                 }
                 break;
             case JackTransportStopped:
-                sync_state = TRUE;
+                sync_state = 1;
                 if (local_trans_pos.frame != (pkthdr->transport_frame)) {
                     jack_transport_locate(netj->client, (pkthdr->transport_frame));
                     jack_info("transport is stopped locate to %d", pkthdr->transport_frame);
@@ -381,7 +385,7 @@ void netjack_read( netjack_driver_state_t *netj, jack_nframes_t nframes )
                     jack_transport_stop(netj->client);
                 break;
             case JackTransportRolling:
-                sync_state = TRUE;
+                sync_state = 1;
 //		    		if(local_trans_pos.frame != (pkthdr->transport_frame + (pkthdr->latency) * nframes)) {
 //				    jack_transport_locate(netj->client, (pkthdr->transport_frame + (pkthdr->latency + 2) * nframes));
 //				    jack_info("running locate to %d", pkthdr->transport_frame + (pkthdr->latency)*nframes);
@@ -573,7 +577,7 @@ void netjack_detach( netjack_driver_state_t *netj )
 
 netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		jack_client_t * client,
-                char *name,
+                const char *name,
                 unsigned int capture_ports,
                 unsigned int playback_ports,
                 unsigned int capture_ports_midi,

@@ -56,7 +56,7 @@ union jackctl_parameter_value
     int32_t i;					/**< @brief member used for ::JackParamInt */
     char c;						/**< @brief member used for ::JackParamChar */
     char str[JACK_PARAM_STRING_MAX + 1]; /**< @brief member used for ::JackParamString */
-    bool b;				/**< @brief member used for ::JackParamBool */
+    int b;				/**< @brief member used for ::JackParamBool */
 };
 
 /** opaque type for server object */
@@ -145,7 +145,7 @@ jackctl_server_get_drivers_list(
  * 
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_server_start(
     jackctl_server_t * server,
     jackctl_driver_t * driver);
@@ -157,7 +157,7 @@ jackctl_server_start(
  * 
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_server_stop(
 	jackctl_server_t * server);
 
@@ -266,7 +266,7 @@ jackctl_parameter_get_id(
  * @return true - parameter is set, false - parameter is using default
  * value.
  */
-bool
+int
 jackctl_parameter_is_set(
 	jackctl_parameter_t * parameter);
 
@@ -277,7 +277,7 @@ jackctl_parameter_is_set(
  *
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_parameter_reset(
 	jackctl_parameter_t * parameter);
 
@@ -300,7 +300,7 @@ jackctl_parameter_get_value(
  *
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_parameter_set_value(
 	jackctl_parameter_t * parameter,
 	const union jackctl_parameter_value * value_ptr);
@@ -323,7 +323,7 @@ jackctl_parameter_get_default_value(
  *
  * @return whether parameter has range constraint.
  */
-bool
+int
 jackctl_parameter_has_range_constraint(
 	jackctl_parameter_t * parameter);
 
@@ -334,7 +334,7 @@ jackctl_parameter_has_range_constraint(
  *
  * @return whether parameter has enumeration constraint.
  */
-bool
+int
 jackctl_parameter_has_enum_constraint(
 	jackctl_parameter_t * parameter);
 
@@ -396,7 +396,7 @@ jackctl_parameter_get_range_constraint(
  *
  * @return whether parameter constraint is strict.
  */
-bool
+int
 jackctl_parameter_constraint_is_strict(
 	jackctl_parameter_t * parameter);
 
@@ -409,7 +409,7 @@ jackctl_parameter_constraint_is_strict(
  *
  * @return whether parameter constraint is strict.
  */
-bool
+int
 jackctl_parameter_constraint_is_fake_value(
 	jackctl_parameter_t * parameter);
 
@@ -459,7 +459,7 @@ jackctl_internal_get_parameters(
  * 
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_server_load_internal(
     jackctl_server_t * server,
     jackctl_internal_t * internal);
@@ -472,7 +472,7 @@ jackctl_server_load_internal(
  * 
  * @return success status: true - success, false - fail
  */
-bool
+int
 jackctl_server_unload_internal(
     jackctl_server_t * server,
     jackctl_internal_t * internal);

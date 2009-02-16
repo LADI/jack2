@@ -30,16 +30,17 @@ namespace Jack
     \Brief This class describes the Net Backend
     */
 
-    class JackNetDriver : public JackAudioDriver
+    class JackNetOneDriver : public JackAudioDriver
     {
         private:
-	    struct netjack_driver_state_t netj;
+	    netjack_driver_state_t netj;
 
         public:
-            JackNetDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
+            JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
                             const char* ip, int port, int mtu, int midi_input_ports, int midi_output_ports,
-                            char* net_name, uint transport_sync, char network_master_mode );
-            ~JackNetDriver();
+                            int audio_capture_ports, int audio_playback_ports, 
+			    char* net_name, uint transport_sync, char network_master_mode );
+            ~JackNetOneDriver();
 
             int Open ( jack_nframes_t frames_per_cycle, jack_nframes_t rate, bool capturing, bool playing,
                        int inchannels, int outchannels, bool monitor, const char* capture_driver_name,
@@ -50,6 +51,8 @@ namespace Jack
 
             int Read();
             int Write();
+
+	    bool Init();
 
             // BufferSize can't be changed
             bool IsFixedBufferSize()

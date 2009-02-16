@@ -29,7 +29,8 @@
 
 #include <jack/jack.h>
 #include <jack/types.h>
-#include <jack/engine.h>
+//#include <jack/engine.h>
+#include <jack/jslist.h>
 
 #include <jack/midiport.h>
 

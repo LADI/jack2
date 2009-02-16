@@ -24,9 +24,11 @@
 #include <unistd.h>
 
 #include <jack/types.h>
-#include <jack/driver.h>
+//#include <jack/driver.h>
 #include <jack/jack.h>
 #include <jack/transport.h>
+
+#include "jack/jslist.h"
 
 #include <netinet/in.h>
 
@@ -105,7 +107,7 @@ void netjack_detach( netjack_driver_state_t *netj );
 
 netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		jack_client_t * client,
-                char *name,
+                const char *name,
                 unsigned int capture_ports,
                 unsigned int playback_ports,
                 unsigned int capture_ports_midi,

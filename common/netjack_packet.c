@@ -41,7 +41,7 @@
 #include <stdarg.h>
 
 #include <jack/types.h>
-#include <jack/engine.h>
+//#include <jack/engine.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -59,8 +59,10 @@
 #include <celt/celt.h>
 #endif
 
-#include "net_driver.h"
 #include "netjack_packet.h"
+
+// JACK2 specific.
+#include "jack/control.h"
 
 int fraggo = 0;
 
@@ -323,9 +325,9 @@ cache_packet_is_complete (cache_packet *pack)
     int i;
     for (i = 0; i < pack->num_fragments; i++)
         if (pack->fragment_array[i] == 0)
-            return FALSE;
+            return 0;
 
-    return TRUE;
+    return 1;
 }
 
 
@@ -463,9 +465,9 @@ netjack_poll (int sockfd, int timeout)
             jack_error ("Error %d: There was no space to allocate file descriptor tables", errno);
             break;
         }
-        return FALSE;
+        return 0;
     }
-    return TRUE;
+    return 1;
 }
 
 // This now reads all a socket has into the cache.
@@ -860,7 +862,7 @@ encode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, ja
 void
 render_payload_to_jack_ports_float ( void *packet_payload, jack_nframes_t net_period_down, JSList *capture_ports, JSList *capture_srcs, jack_nframes_t nframes, int dont_htonl_floats)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = capture_ports;
 #if HAVE_SAMPLERATE 
     JSList *src_node = capture_srcs;
@@ -944,7 +946,7 @@ render_payload_to_jack_ports_float ( void *packet_payload, jack_nframes_t net_pe
 void
 render_jack_ports_to_payload_float (JSList *playback_ports, JSList *playback_srcs, jack_nframes_t nframes, void *packet_payload, jack_nframes_t net_period_up, int dont_htonl_floats )
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = playback_ports;
 #if HAVE_SAMPLERATE
     JSList *src_node = playback_srcs;
@@ -1025,7 +1027,7 @@ render_jack_ports_to_payload_float (JSList *playback_ports, JSList *playback_src
 void
 render_payload_to_jack_ports_16bit (void *packet_payload, jack_nframes_t net_period_down, JSList *capture_ports, JSList *capture_srcs, jack_nframes_t nframes)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = capture_ports;
 #if HAVE_SAMPLERATE
     JSList *src_node = capture_srcs;
@@ -1100,7 +1102,7 @@ render_payload_to_jack_ports_16bit (void *packet_payload, jack_nframes_t net_per
 void
 render_jack_ports_to_payload_16bit (JSList *playback_ports, JSList *playback_srcs, jack_nframes_t nframes, void *packet_payload, jack_nframes_t net_period_up)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = playback_ports;
 #if HAVE_SAMPLERATE 
     JSList *src_node = playback_srcs;
@@ -1170,7 +1172,7 @@ render_jack_ports_to_payload_16bit (JSList *playback_ports, JSList *playback_src
 void
 render_payload_to_jack_ports_8bit (void *packet_payload, jack_nframes_t net_period_down, JSList *capture_ports, JSList *capture_srcs, jack_nframes_t nframes)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = capture_ports;
 
 #if HAVE_SAMPLERATE 
@@ -1243,7 +1245,7 @@ render_payload_to_jack_ports_8bit (void *packet_payload, jack_nframes_t net_peri
 void
 render_jack_ports_to_payload_8bit (JSList *playback_ports, JSList *playback_srcs, jack_nframes_t nframes, void *packet_payload, jack_nframes_t net_period_up)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = playback_ports;
 #if HAVE_SAMPLERATE 
     JSList *src_node = playback_srcs;
@@ -1313,7 +1315,7 @@ render_jack_ports_to_payload_8bit (JSList *playback_ports, JSList *playback_srcs
 void
 render_payload_to_jack_ports_celt (void *packet_payload, jack_nframes_t net_period_down, JSList *capture_ports, JSList *capture_srcs, jack_nframes_t nframes)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = capture_ports;
     JSList *src_node = capture_srcs;
 
@@ -1356,7 +1358,7 @@ render_payload_to_jack_ports_celt (void *packet_payload, jack_nframes_t net_peri
 void
 render_jack_ports_to_payload_celt (JSList *playback_ports, JSList *playback_srcs, jack_nframes_t nframes, void *packet_payload, jack_nframes_t net_period_up)
 {
-    channel_t chn = 0;
+    uint32_t chn = 0;
     JSList *node = playback_ports;
     JSList *src_node = playback_srcs;
 
