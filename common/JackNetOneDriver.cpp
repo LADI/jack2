@@ -31,6 +31,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "samplerate.h"
 #endif
 
+#if HAVE_CELT
+#include "celt/celt.h"
+#endif
+
 #define MIN(x,y) ((x)<(y) ? (x) : (y))
 
 using namespace std;
@@ -563,7 +567,7 @@ JackNetOneDriver::render_payload_to_jack_ports_celt (void *packet_payload, jack_
 
     while (node != NULL)
     {
-	jack_port_id_t port_id = (jack_port_id_t) node->data;
+	jack_port_id_t port_id = (jack_port_id_t) (intptr_t)node->data;
 	JackPort *port = fGraphManager->GetPort( port_id );
 
         jack_default_audio_sample_t* buf =
@@ -576,7 +580,7 @@ JackNetOneDriver::render_payload_to_jack_ports_celt (void *packet_payload, jack_
         {
             // audio port, decode celt data.
 	    
-	    CELTDecoder *decoder = src_node->data;
+	    CELTDecoder *decoder = (CELTDecoder *)src_node->data;
 	    if( !packet_payload )
 		celt_decode_float( decoder, NULL, net_period_down, buf );
 	    else
@@ -610,7 +614,7 @@ JackNetOneDriver::render_jack_ports_to_payload_celt (JSList *playback_ports, JSL
 
     while (node != NULL)
     {
-	jack_port_id_t port_id = (jack_port_id_t) node->data;
+	jack_port_id_t port_id = (jack_port_id_t) (intptr_t) node->data;
 	JackPort *port = fGraphManager->GetPort( port_id );
 
         jack_default_audio_sample_t* buf =
@@ -623,9 +627,9 @@ JackNetOneDriver::render_jack_ports_to_payload_celt (JSList *playback_ports, JSL
             // audio port, encode celt data.
     
 	    int encoded_bytes;
-	    float *floatbuf = alloca (sizeof(float) * nframes );
+	    float *floatbuf = (float *)alloca (sizeof(float) * nframes );
 	    memcpy( floatbuf, buf, nframes*sizeof(float) );
-	    CELTEncoder *encoder = src_node->data;
+	    CELTEncoder *encoder = (CELTEncoder *)src_node->data;
 	    encoded_bytes = celt_encode_float( encoder, floatbuf, NULL, packet_bufX, net_period_up );
 	    if( encoded_bytes != net_period_up )
 		printf( "something in celt changed. netjack needs to be changed to handle this.\n" );
