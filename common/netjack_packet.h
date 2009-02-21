@@ -27,6 +27,11 @@
 #ifndef __JACK_NET_PACKET_H__
 #define __JACK_NET_PACKET_H__
 
+#ifdef __cplusplus
+    extern "C"
+    {
+#endif
+
 #include <jack/jack.h>
 #include <jack/types.h>
 //#include <jack/engine.h>
@@ -147,5 +152,10 @@ int netjack_poll(int sockfd, int timeout);
 int netjack_recvfrom(int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, socklen_t *addr_size, int mtu);
 int netjack_recv(int sockfd, char *packet_buf, int pkt_size, int flags, int mtu);
 
+void decode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, jack_default_audio_sample_t* buf);
+void encode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, jack_default_audio_sample_t* buf);
+#ifdef __cplusplus
+    }
+#endif
 #endif
 
