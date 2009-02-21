@@ -122,11 +122,10 @@ def build(bld):
 #	prog.uselib = 'SNDFILE'
 #    if bld.env['IS_LINUX']:
 #	prog.uselib = 'RT SNDFILE'
-    if conf.is_defined( 'HAVE_CELT' ):
-	prog.uselib += 'CELT'
+#    if conf.is_defined( 'HAVE_CELT' ):
+    prog.uselib = 'CELT SAMPLERATE'
 
-    if conf.is_defined( 'HAVE_SAMPLERATE' ):
-	prog.uselib += 'SAMPLERATE'
+#    if conf.is_defined( 'HAVE_SAMPLERATE' ):
 
     prog.uselib_local = 'clientlib'
     prog.target = 'jack_netsource'

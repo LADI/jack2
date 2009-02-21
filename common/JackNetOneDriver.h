@@ -53,7 +53,7 @@ render_jack_ports_to_payload (int bitdepth, JSList *playback_ports, JSList *play
         public:
 	    JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
 			int port, int mtu, int capture_ports, int playback_ports, int midi_input_ports, int midi_output_ports,
-			int sample_rate, int period_size,
+			int sample_rate, int period_size, int resample_factor,
 			char* net_name, uint transport_sync, int bitdepth, int use_autoconfig,
 			int latency, int redundancy, int dont_htonl_floats );
             ~JackNetOneDriver();

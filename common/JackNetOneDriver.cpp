@@ -43,7 +43,7 @@ namespace Jack
 {
     JackNetOneDriver::JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
                                    int port, int mtu, int capture_ports, int playback_ports, int midi_input_ports, int midi_output_ports,
-				   int sample_rate, int period_size,
+				   int sample_rate, int period_size, int resample_factor, 
                                    char* net_name, uint transport_sync, int bitdepth, int use_autoconfig,
 				   int latency, int redundancy, int dont_htonl_floats )
             : JackAudioDriver ( name, alias, engine, table )
@@ -61,8 +61,8 @@ namespace Jack
                 period_size,
                 port,
                 transport_sync,
-                1,
-                1,
+                resample_factor,
+                0,
                 bitdepth,
 		use_autoconfig,
 		latency,
@@ -954,7 +954,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
                     new Jack::JackWaitThreadedDriver (
                     new Jack::JackNetOneDriver ( "system", "net_pcm", engine, table, listen_port, mtu,
                                               capture_ports_midi, playback_ports_midi, capture_ports, playback_ports,
-					      sample_rate, period_size,
+					      sample_rate, period_size, resample_factor, 
 					      "net_pcm", handle_transport_sync, bitdepth, use_autoconfig, latency, redundancy, dont_htonl_floats ) );
                 if ( driver->Open ( period_size, sample_rate, 1, 1, capture_ports, playback_ports,
                                     0, "from_master_", "to_master_", 0, 0 ) == 0 )
