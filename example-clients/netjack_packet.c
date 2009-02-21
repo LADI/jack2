@@ -132,7 +132,7 @@ packet_cache
     packet_cache *pcache = malloc (sizeof (packet_cache));
     if (pcache == NULL)
     {
-        jack_error ("could not allocate packet cache (1)\n");
+        //jack_error ("could not allocate packet cache (1)\n");
         return NULL;
     }
 
@@ -144,7 +144,7 @@ packet_cache
 
     if (pcache->packets == NULL)
     {
-        jack_error ("could not allocate packet cache (2)\n");
+        //jack_error ("could not allocate packet cache (2)\n");
         return NULL;
     }
 
@@ -159,7 +159,7 @@ packet_cache
         pcache->packets[i].packet_buf = malloc (pkt_size);
         if ((pcache->packets[i].fragment_array == NULL) || (pcache->packets[i].packet_buf == NULL))
         {
-            jack_error ("could not allocate packet cache (3)\n");
+            //jack_error ("could not allocate packet cache (3)\n");
             return NULL;
         }
     }
@@ -293,7 +293,7 @@ cache_packet_add_fragment (cache_packet *pack, char *packet_buf, int rcv_len)
 
     if (framecnt != pack->framecnt)
     {
-        jack_error ("errror. framecnts dont match\n");
+        //jack_error ("errror. framecnts dont match\n");
         return;
     }
 
@@ -313,8 +313,9 @@ cache_packet_add_fragment (cache_packet *pack, char *packet_buf, int rcv_len)
             memcpy (packet_bufX + fragment_nr * fragment_payload_size, dataX, rcv_len - sizeof (jacknet_packet_header));
             pack->fragment_array[fragment_nr] = 1;
         }
-        else
-            jack_error ("too long packet received...");
+        else {
+            //jack_error ("too long packet received...");
+	}
     }
 }
 
@@ -390,19 +391,19 @@ netjack_poll_deadline (int sockfd, jack_time_t deadline)
         switch (errno)
         {
             case EBADF:
-            jack_error ("Error %d: An invalid file descriptor was given in one of the sets", errno);
+            //jack_error ("Error %d: An invalid file descriptor was given in one of the sets", errno);
             break;
             case EFAULT:
-            jack_error ("Error %d: The array given as argument was not contained in the calling program's address space", errno);
+            //jack_error ("Error %d: The array given as argument was not contained in the calling program's address space", errno);
             break;
             case EINTR:
-            jack_error ("Error %d: A signal occurred before any requested event", errno);
+            //jack_error ("Error %d: A signal occurred before any requested event", errno);
             break;
             case EINVAL:
-            jack_error ("Error %d: The nfds value exceeds the RLIMIT_NOFILE value", errno);
+            //jack_error ("Error %d: The nfds value exceeds the RLIMIT_NOFILE value", errno);
             break;
             case ENOMEM:
-            jack_error ("Error %d: There was no space to allocate file descriptor tables", errno);
+            //jack_error ("Error %d: There was no space to allocate file descriptor tables", errno);
             break;
         }
     }
@@ -449,19 +450,19 @@ netjack_poll (int sockfd, int timeout)
         switch (errno)
         {
             case EBADF:
-            jack_error ("Error %d: An invalid file descriptor was given in one of the sets", errno);
+            //jack_error ("Error %d: An invalid file descriptor was given in one of the sets", errno);
             break;
             case EFAULT:
-            jack_error ("Error %d: The array given as argument was not contained in the calling program's address space", errno);
+            //jack_error ("Error %d: The array given as argument was not contained in the calling program's address space", errno);
             break;
             case EINTR:
-            jack_error ("Error %d: A signal occurred before any requested event", errno);
+            //jack_error ("Error %d: A signal occurred before any requested event", errno);
             break;
             case EINVAL:
-            jack_error ("Error %d: The nfds value exceeds the RLIMIT_NOFILE value", errno);
+            //jack_error ("Error %d: The nfds value exceeds the RLIMIT_NOFILE value", errno);
             break;
             case ENOMEM:
-            jack_error ("Error %d: There was no space to allocate file descriptor tables", errno);
+            //jack_error ("Error %d: There was no space to allocate file descriptor tables", errno);
             break;
         }
         return 0;
@@ -849,7 +850,7 @@ encode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, ja
         else
         {
             // buffer overflow
-            jack_error ("midi buffer overflow");
+            //jack_error ("midi buffer overflow");
             break;
         }
     }
