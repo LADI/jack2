@@ -30,8 +30,15 @@ example_libs = {
 def configure(conf):
     e = conf.check_cc(header_name='sndfile.h', define_name="HAVE_SNDFILE")
  
+    conf.check_cc(header_name='samplerate.h', define_name="HAVE_SAMPLERATE")
+   
+    if conf.is_defined('HAVE_SAMPLERATE'):
+        conf.env['LIB_SAMPLERATE'] = ['samplerate']
+
     if conf.is_defined('HAVE_SNDFILE'):
         conf.env['LIB_SNDFILE'] = ['sndfile']
+
+    conf.check_cfg(package='celt', atleast_version='0.5.0', args='--cflags --libs')
 
     e = conf.check_cc(header_name='ncurses.h', define_name="HAVE_NCURSES")
 
@@ -104,6 +111,25 @@ def build(bld):
             prog.uselib = 'RT SNDFILE'
         prog.uselib_local = 'clientlib'
         prog.target = 'jack_rec'
+
+    prog = bld.new_task_gen('cc', 'program')
+    prog.includes = os_incdir + ['../common/jack', '../common']
+    prog.source = ['netsource.c', 'netjack_packet.c']
+#    if bld.env['IS_MACOSX']:
+#	prog.env.append_value("CPPFLAGS", "-mmacosx-version-min=10.4 -arch i386 -arch ppc")
+#	#prog.env.append_value("LINKFLAGS", "-arch i386 -arch ppc")
+#	prog.env.append_value("LINKFLAGS", "")
+#	prog.uselib = 'SNDFILE'
+#    if bld.env['IS_LINUX']:
+#	prog.uselib = 'RT SNDFILE'
+    if conf.is_defined( 'HAVE_CELT' ):
+	prog.uselib += 'CELT'
+
+    if conf.is_defined( 'HAVE_SAMPLERATE' ):
+	prog.uselib += 'SAMPLERATE'
+
+    prog.uselib_local = 'clientlib'
+    prog.target = 'jack_netsource'
 
     for example_lib, example_lib_source in example_libs.items():
         lib = bld.new_task_gen('cc', 'shlib')
