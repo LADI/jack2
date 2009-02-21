@@ -51,10 +51,11 @@ void
 render_jack_ports_to_payload (int bitdepth, JSList *playback_ports, JSList *playback_srcs, jack_nframes_t nframes, void *packet_payload, jack_nframes_t net_period_up, int dont_htonl_floats);
 
         public:
-            JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
-                            const char* ip, int port, int mtu, int midi_input_ports, int midi_output_ports,
-                            int audio_capture_ports, int audio_playback_ports, 
-			    char* net_name, uint transport_sync, char network_master_mode );
+	    JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
+			int port, int mtu, int capture_ports, int playback_ports, int midi_input_ports, int midi_output_ports,
+			int sample_rate, int period_size,
+			char* net_name, uint transport_sync, int bitdepth, int use_autoconfig,
+			int latency, int redundancy, int dont_htonl_floats );
             ~JackNetOneDriver();
 
             int Open ( jack_nframes_t frames_per_cycle, jack_nframes_t rate, bool capturing, bool playing,
