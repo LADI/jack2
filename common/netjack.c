@@ -124,9 +124,6 @@ void netjack_wait( netjack_driver_state_t *netj )
     }
 
     // check if we know who to send our packets too.
-    // TODO: there is still something wrong when trying
-    // to send back to another port on localhost.
-    // need to use -r on netsource for that.
     if (!netj->srcaddress_valid)
 	if( global_packcache->master_address_valid ) {
 	    memcpy (&(netj->syncsource_address), &(global_packcache->master_address), sizeof( struct sockaddr_in ) );
@@ -476,7 +473,6 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     // might be subject to autoconfig...
     // so dont calculate anything with them...
 
-    struct sockaddr_in address;
 
     netj->sample_rate = sample_rate;
     netj->period_size = period_size;
@@ -519,29 +515,6 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     netj->resample_factor_up = resample_factor_up;
 
 
-    // Now open the socket, and wait for the first packet to arrive...
-    netj->sockfd = socket (PF_INET, SOCK_DGRAM, 0);
-    if (netj->sockfd == -1)
-    {
-        jack_info ("socket error");
-        return NULL;
-    }
-    address.sin_family = AF_INET;
-    address.sin_port = htons(netj->listen_port);
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind (netj->sockfd, (struct sockaddr *) &address, sizeof (address)) < 0)
-    {
-        jack_info("bind error");
-        return NULL;
-    }
-
-    netj->outsockfd = socket (PF_INET, SOCK_DGRAM, 0);
-    if (netj->outsockfd == -1)
-    {
-        jack_info ("socket error");
-        return NULL;
-    }
-    netj->srcaddress_valid = 0;
     return netj;
 }
 
@@ -551,12 +524,37 @@ void netjack_release( netjack_driver_state_t *netj )
     close( netj->outsockfd );
 
     packet_cache_free( global_packcache );
+    global_packcache = NULL;
 }
 
-void 
+int 
 netjack_startup( netjack_driver_state_t *netj )
 {
     int first_pack_len;
+    struct sockaddr_in address;
+    // Now open the socket, and wait for the first packet to arrive...
+    netj->sockfd = socket (PF_INET, SOCK_DGRAM, 0);
+    if (netj->sockfd == -1)
+    {
+        jack_info ("socket error");
+        return -1;
+    }
+    address.sin_family = AF_INET;
+    address.sin_port = htons(netj->listen_port);
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (bind (netj->sockfd, (struct sockaddr *) &address, sizeof (address)) < 0)
+    {
+        jack_info("bind error");
+        return -1;
+    }
+
+    netj->outsockfd = socket (PF_INET, SOCK_DGRAM, 0);
+    if (netj->outsockfd == -1)
+    {
+        jack_info ("socket error");
+        return -1;
+    }
+    netj->srcaddress_valid = 0;
     if (netj->use_autoconfig)
     {
 	jacknet_packet_header *first_packet = alloca (sizeof (jacknet_packet_header));
@@ -653,5 +651,5 @@ netjack_startup( netjack_driver_state_t *netj )
 
     netj->running_free = 0;
 
-    return;
+    return 0;
 }

@@ -22,6 +22,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackEngineControl.h"
 #include "JackGraphManager.h"
 #include "JackWaitThreadedDriver.h"
+#include "JackException.h"
 #include "driver_interface.h"
 
 #include "netjack.h"
@@ -229,10 +230,16 @@ namespace Jack
     {
         jack_log ( "JackNetOneDriver::Init()" );
 
+	if( global_packcache != NULL ) {
+	    FreePorts();
+	    netjack_release( &netj );
+	}
 
         //display some additional infos
         jack_info ( "NetOne driver started" );
-	netjack_startup( &netj );
+	if( netjack_startup( &netj ) ) {
+	    return false;
+	}
 
         //register jack ports
         if ( AllocPorts() != 0 )
@@ -262,6 +269,10 @@ namespace Jack
     int JackNetOneDriver::Read()
     {
 	netjack_wait( &netj );
+
+	if( (netj.num_lost_packets * netj.period_size / netj.sample_rate) > 10 )
+	    throw JackNetException();
+
 	//netjack_read( &netj, netj.period_size );
         JackDriver::CycleTakeBeginTime();
 
@@ -405,6 +416,7 @@ JackNetOneDriver::FreePorts ()
 	jack_slist_free_1( this_node );
 	fGraphManager->ReleasePort( fClientControl.fRefNum, port_id );
     }
+    netj.capture_ports = NULL;
 
     node = netj.playback_ports;
     while( node != NULL ) {
@@ -414,6 +426,7 @@ JackNetOneDriver::FreePorts ()
 	jack_slist_free_1( this_node );
 	fGraphManager->ReleasePort( fClientControl.fRefNum, port_id );
     }
+    netj.playback_ports = NULL;
 
     if( netj.bitdepth == 1000 ) {
 #if HAVE_CELT
@@ -425,6 +438,7 @@ JackNetOneDriver::FreePorts ()
 	    jack_slist_free_1( this_node );
 	    celt_encoder_destroy( enc );
 	}
+	netj.playback_srcs = NULL;
 
 	node = netj.capture_srcs;
 	while( node != NULL ) {
@@ -434,6 +448,7 @@ JackNetOneDriver::FreePorts ()
 	    jack_slist_free_1( this_node );
 	    celt_decoder_destroy( dec );
 	}
+	netj.capture_srcs = NULL;
 #endif
     } else {
 #if HAVE_SAMPLERATE 
@@ -445,6 +460,7 @@ JackNetOneDriver::FreePorts ()
 	    jack_slist_free_1( this_node );
 	    src_delete( state );
 	}
+	netj.playback_srcs = NULL;
 
 	node = netj.capture_srcs;
 	while( node != NULL ) {
@@ -454,6 +470,7 @@ JackNetOneDriver::FreePorts ()
 	    jack_slist_free_1( this_node );
 	    src_delete( state );
 	}
+	netj.capture_srcs = NULL;
 #endif
     }
 }

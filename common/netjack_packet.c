@@ -66,7 +66,7 @@
 
 int fraggo = 0;
 
-packet_cache *global_packcache;
+packet_cache *global_packcache = NULL;
 
 void
 packet_header_hton (jacknet_packet_header *pkthdr)
@@ -173,6 +173,8 @@ void
 packet_cache_free (packet_cache *pcache)
 {
     int i;
+    if( pcache == NULL )
+	return;
 
     for (i = 0; i < pcache->size; i++)
     {
