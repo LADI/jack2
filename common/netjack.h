@@ -127,6 +127,7 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		unsigned int redundancy,
 		int dont_htonl_floats);
 
+void netjack_release( netjack_driver_state_t *netj );
 void netjack_startup( netjack_driver_state_t *netj );
 
 #ifdef __cplusplus

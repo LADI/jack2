@@ -62,6 +62,7 @@ render_jack_ports_to_payload (int bitdepth, JSList *playback_ports, JSList *play
                        int inchannels, int outchannels, bool monitor, const char* capture_driver_name,
                        const char* playback_driver_name, jack_nframes_t capture_latency, jack_nframes_t playback_latency );
 
+	    int Close();
             int Attach();
             int Detach();
 
@@ -70,6 +71,7 @@ render_jack_ports_to_payload (int bitdepth, JSList *playback_ports, JSList *play
 
 	    bool Init();
 	    int AllocPorts();
+	    void FreePorts();
 
             // BufferSize can't be changed
             bool IsFixedBufferSize()

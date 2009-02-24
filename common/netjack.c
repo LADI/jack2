@@ -545,6 +545,14 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     return netj;
 }
 
+void netjack_release( netjack_driver_state_t *netj )
+{
+    close( netj->sockfd );
+    close( netj->outsockfd );
+
+    packet_cache_free( global_packcache );
+}
+
 void 
 netjack_startup( netjack_driver_state_t *netj )
 {

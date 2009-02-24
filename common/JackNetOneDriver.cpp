@@ -104,6 +104,13 @@ namespace Jack
         }
     }
 
+    int JackNetOneDriver::Close()
+    {
+	FreePorts();
+	netjack_release( &netj );
+        return JackDriver::Close();
+    }
+
     int JackNetOneDriver::Attach()
     {
 	return 0;
@@ -386,6 +393,70 @@ namespace Jack
 	return 0;
     }
 
+void
+JackNetOneDriver::FreePorts ()
+{
+    JSList *node = netj.capture_ports;
+
+    while( node != NULL ) {
+	JSList *this_node = node;
+	jack_port_id_t port_id = (jack_port_id_t)(intptr_t) node->data;
+	node = jack_slist_remove_link( node, this_node );
+	jack_slist_free_1( this_node );
+	fGraphManager->ReleasePort( fClientControl.fRefNum, port_id );
+    }
+
+    node = netj.playback_ports;
+    while( node != NULL ) {
+	JSList *this_node = node;
+	jack_port_id_t port_id = (jack_port_id_t)(intptr_t) node->data;
+	node = jack_slist_remove_link( node, this_node );
+	jack_slist_free_1( this_node );
+	fGraphManager->ReleasePort( fClientControl.fRefNum, port_id );
+    }
+
+    if( netj.bitdepth == 1000 ) {
+#if HAVE_CELT
+	node = netj.playback_srcs;
+	while( node != NULL ) {
+	    JSList *this_node = node;
+	    CELTEncoder *enc = (CELTEncoder *) node->data;
+	    node = jack_slist_remove_link( node, this_node );
+	    jack_slist_free_1( this_node );
+	    celt_encoder_destroy( enc );
+	}
+
+	node = netj.capture_srcs;
+	while( node != NULL ) {
+	    JSList *this_node = node;
+	    CELTDecoder *dec = (CELTDecoder *) node->data;
+	    node = jack_slist_remove_link( node, this_node );
+	    jack_slist_free_1( this_node );
+	    celt_decoder_destroy( dec );
+	}
+#endif
+    } else {
+#if HAVE_SAMPLERATE 
+	node = netj.playback_srcs;
+	while( node != NULL ) {
+	    JSList *this_node = node;
+	    SRC_STATE *state = (SRC_STATE *) node->data;
+	    node = jack_slist_remove_link( node, this_node );
+	    jack_slist_free_1( this_node );
+	    src_delete( state );
+	}
+
+	node = netj.capture_srcs;
+	while( node != NULL ) {
+	    JSList *this_node = node;
+	    SRC_STATE *state = (SRC_STATE *) node->data;
+	    node = jack_slist_remove_link( node, this_node );
+	    jack_slist_free_1( this_node );
+	    src_delete( state );
+	}
+#endif
+    }
+}
 //Render functions--------------------------------------------------------------------
 
 // render functions for float
