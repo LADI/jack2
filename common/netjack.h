@@ -96,6 +96,9 @@ struct _netjack_driver_state {
     int		   running_free;
     int		   deadline_goodness;
     jack_time_t	   time_to_deadline;
+    unsigned int   use_autoconfig;
+    unsigned int   resample_factor;
+    unsigned int   resample_factor_up;
 };
 
 void netjack_wait( netjack_driver_state_t *netj );
@@ -123,6 +126,9 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		unsigned int latency,
 		unsigned int redundancy,
 		int dont_htonl_floats);
+
+void netjack_startup( netjack_driver_state_t *netj );
+
 #ifdef __cplusplus
 }
 #endif

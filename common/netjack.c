@@ -476,7 +476,6 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     // might be subject to autoconfig...
     // so dont calculate anything with them...
 
-    int first_pack_len;
     struct sockaddr_in address;
 
     netj->sample_rate = sample_rate;
@@ -499,6 +498,10 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     netj->mtu = 1400;
     netj->latency = latency;
     netj->redundancy = redundancy;
+    netj->use_autoconfig = use_autoconfig;
+    netj->resample_factor = resample_factor;
+    netj->resample_factor_up = resample_factor_up;
+
 
 
     netj->client = client;
@@ -538,8 +541,14 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
         return NULL;
     }
     netj->srcaddress_valid = 0;
+    return netj;
+}
 
-    if (use_autoconfig)
+void 
+netjack_startup( netjack_driver_state_t *netj )
+{
+    int first_pack_len;
+    if (netj->use_autoconfig)
     {
 	jacknet_packet_header *first_packet = alloca (sizeof (jacknet_packet_header));
 	socklen_t address_size = sizeof (struct sockaddr_in);
@@ -609,11 +618,11 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     if( netj->bitdepth == 1000 ) {
 	// celt mode. 
 	// TODO: this is a hack. But i dont want to change the packet header.
-	netj->net_period_down = resample_factor;
-	netj->net_period_up = resample_factor_up;
+	netj->net_period_down = netj->resample_factor;
+	netj->net_period_up = netj->resample_factor_up;
     } else {
-	netj->net_period_down = (float) netj->period_size / (float) resample_factor;
-	netj->net_period_up = (float) netj->period_size / (float) resample_factor_up;
+	netj->net_period_down = (float) netj->period_size / (float) netj->resample_factor;
+	netj->net_period_up = (float) netj->period_size / (float) netj->resample_factor_up;
     }
 
     netj->rx_bufsize = sizeof (jacknet_packet_header) + netj->net_period_down * netj->capture_channels * get_sample_size (netj->bitdepth);
@@ -635,5 +644,5 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 
     netj->running_free = 0;
 
-    return netj;
+    return;
 }

@@ -107,7 +107,6 @@ namespace Jack
     int JackNetOneDriver::Attach()
     {
 	jack_port_id_t port_id;
-	JackPort *port;
 	char buf[32];
 	unsigned int chn;
 	int port_flags;
@@ -223,6 +222,7 @@ namespace Jack
 
         //display some additional infos
         jack_info ( "NetOne driver started" );
+	netjack_startup( &netj );
 
         //register jack ports
 //        if ( AllocPorts() != 0 )
@@ -365,7 +365,7 @@ namespace Jack
 	packet_header_hton(pkthdr);
 	if (netj.srcaddress_valid)
 	{
-	    int r;
+	    unsigned int r;
 
 #ifdef __APPLE__
 	    static const int flag = 0;
@@ -402,7 +402,7 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
 
     while (node != NULL)
     {
-        int i;
+        unsigned int i;
         int_float_t val;
 #if HAVE_SAMPLERATE 
         SRC_DATA src;
@@ -489,7 +489,7 @@ JackNetOneDriver::render_jack_ports_to_payload_float (JSList *playback_ports, JS
 #if HAVE_SAMPLERATE 
         SRC_DATA src;
 #endif
-        int i;
+        unsigned int i;
         int_float_t val;
 	jack_port_id_t port_id = (jack_port_id_t)(intptr_t) node->data;
 	JackPort *port = fGraphManager->GetPort( port_id );
@@ -633,7 +633,7 @@ JackNetOneDriver::render_jack_ports_to_payload_celt (JSList *playback_ports, JSL
 	    memcpy( floatbuf, buf, nframes*sizeof(float) );
 	    CELTEncoder *encoder = (CELTEncoder *)src_node->data;
 	    encoded_bytes = celt_encode_float( encoder, floatbuf, NULL, packet_bufX, net_period_up );
-	    if( encoded_bytes != net_period_up )
+	    if( encoded_bytes != (int)net_period_up )
 		printf( "something in celt changed. netjack needs to be changed to handle this.\n" );
 	    src_node = jack_slist_next( src_node );
         }
