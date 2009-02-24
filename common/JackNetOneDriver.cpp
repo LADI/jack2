@@ -106,6 +106,16 @@ namespace Jack
 
     int JackNetOneDriver::Attach()
     {
+	return 0;
+    }
+
+    int JackNetOneDriver::Detach()
+    {
+        return 0;
+    }
+
+    int JackNetOneDriver::AllocPorts()
+    {
 	jack_port_id_t port_id;
 	char buf[32];
 	unsigned int chn;
@@ -204,14 +214,7 @@ namespace Jack
 	    netj.playback_ports =
 		jack_slist_append (netj.playback_ports, (void *)(intptr_t)port_id);
 	}
-
-	jack_activate (netj.client);
 	return 0;
-    }
-
-    int JackNetOneDriver::Detach()
-    {
-        return 0;
     }
 
 //init and restart--------------------------------------------------------------------
@@ -225,11 +228,11 @@ namespace Jack
 	netjack_startup( &netj );
 
         //register jack ports
-//        if ( AllocPorts() != 0 )
-//        {
-//            jack_error ( "Can't allocate ports." );
-//            return false;
-//        }
+        if ( AllocPorts() != 0 )
+        {
+            jack_error ( "Can't allocate ports." );
+            return false;
+        }
 
 
         //monitor

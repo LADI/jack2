@@ -499,9 +499,6 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     netj->latency = latency;
     netj->redundancy = redundancy;
     netj->use_autoconfig = use_autoconfig;
-    netj->resample_factor = resample_factor;
-    netj->resample_factor_up = resample_factor_up;
-
 
 
     netj->client = client;
@@ -517,6 +514,10 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 
     if (resample_factor_up == 0)
         resample_factor_up = resample_factor;
+
+    netj->resample_factor = resample_factor;
+    netj->resample_factor_up = resample_factor_up;
+
 
     // Now open the socket, and wait for the first packet to arrive...
     netj->sockfd = socket (PF_INET, SOCK_DGRAM, 0);

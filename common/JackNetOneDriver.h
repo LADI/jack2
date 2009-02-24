@@ -69,6 +69,7 @@ render_jack_ports_to_payload (int bitdepth, JSList *playback_ports, JSList *play
             int Write();
 
 	    bool Init();
+	    int AllocPorts();
 
             // BufferSize can't be changed
             bool IsFixedBufferSize()
