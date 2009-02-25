@@ -28,6 +28,9 @@
 
 #include "config.h"
 
+#define _XOPEN_SOURCE 600 
+#define _BSD_SOURCE
+
 #if HAVE_PPOLL
 #define _GNU_SOURCE
 #endif
