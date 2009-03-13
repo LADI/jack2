@@ -301,56 +301,72 @@ namespace Jack
 	    netj.resync_threshold = MIN( 15, pkthdr->latency-1 );
 
 	// check whether, we should handle the transport sync stuff, or leave trnasports untouched.
-//	if (netj.handle_transport_sync) {
-#if 0
-	    int compensated_tranport_pos = (pkthdr->transport_frame + (pkthdr->latency * netj.period_size) + netj.codec_latency);
+	if (netj.handle_transport_sync) {
+#if 1
+	    unsigned int compensated_tranport_pos = (pkthdr->transport_frame + (pkthdr->latency * netj.period_size) + netj.codec_latency);
 
 	    // read local transport info....
-	    local_trans_state = jack_transport_query(netj.client, &local_trans_pos);
+	    //local_trans_state = jack_transport_query(netj.client, &local_trans_pos);
+
+            local_trans_state = fEngineControl->fTransport.Query ( &local_trans_pos );
 
 	    // Now check if we have to start or stop local transport to sync to remote...
 	    switch (pkthdr->transport_state) {
 		case JackTransportStarting:
 		    // the master transport is starting... so we set our reply to the sync_callback;
 		    if (local_trans_state == JackTransportStopped) {
-			jack_transport_start(netj.client);
-			last_transport_state = JackTransportStopped;
-			sync_state = 0;
+			fEngineControl->fTransport.SetCommand ( TransportCommandStart );
+			//jack_transport_start(netj.client);
+			//last_transport_state = JackTransportStopped;
+			netj.sync_state = 0;
 			jack_info("locally stopped... starting...");
 		    }
 
 		    if (local_trans_pos.frame != compensated_tranport_pos)
 		    {
-			jack_transport_locate(netj.client, compensated_tranport_pos);
-			last_transport_state = JackTransportRolling;
-			sync_state = 0;
+			jack_position_t new_pos = local_trans_pos;
+			new_pos.frame = compensated_tranport_pos + 2*netj.period_size;
+			new_pos.valid = (jack_position_bits_t) 0;
+
+
+			fEngineControl->fTransport.RequestNewPos ( &new_pos );
+			//jack_transport_locate(netj.client, compensated_tranport_pos);
+			//last_transport_state = JackTransportRolling;
+			netj.sync_state = 0;
 			jack_info("starting locate to %d", compensated_tranport_pos );
 		    }
 		    break;
 		case JackTransportStopped:
-		    sync_state = 1;
+		    netj.sync_state = 1;
 		    if (local_trans_pos.frame != (pkthdr->transport_frame)) {
-			jack_transport_locate(netj.client, (pkthdr->transport_frame));
+			jack_position_t new_pos = local_trans_pos;
+			new_pos.frame = pkthdr->transport_frame;
+			new_pos.valid = (jack_position_bits_t)0;
+			fEngineControl->fTransport.RequestNewPos ( &new_pos );
+			//jack_transport_locate(netj.client, (pkthdr->transport_frame));
 			jack_info("transport is stopped locate to %d", pkthdr->transport_frame);
 		    }
 		    if (local_trans_state != JackTransportStopped)
-			jack_transport_stop(netj.client);
+			//jack_transport_stop(netj.client);
+			fEngineControl->fTransport.SetCommand ( TransportCommandStop );
 		    break;
 		case JackTransportRolling:
-		    sync_state = 1;
+		    netj.sync_state = 1;
 		    //		    		if(local_trans_pos.frame != (pkthdr->transport_frame + (pkthdr->latency) * netj.period_size)) {
 		    //				    jack_transport_locate(netj.client, (pkthdr->transport_frame + (pkthdr->latency + 2) * netj.period_size));
 		    //				    jack_info("running locate to %d", pkthdr->transport_frame + (pkthdr->latency)*netj.period_size);
 		    //		    		}
 		    if (local_trans_state != JackTransportRolling)
-			jack_transport_start (netj.client);
+			//jack_transport_start (netj.client);
+			fEngineControl->fTransport.SetState ( JackTransportRolling );
+
 		    break;
 
 		case JackTransportLooping:
 		    break;
 	    }
-	}
 #endif
+	}
 
 	render_payload_to_jack_ports (netj.bitdepth, packet_bufX, netj.net_period_down, netj.capture_ports, netj.capture_srcs, netj.period_size, netj.dont_htonl_floats );
 	return 0;
@@ -358,7 +374,7 @@ namespace Jack
 
     int JackNetOneDriver::Write()
     {
-	int syncstate = 1;
+	int syncstate = netj.sync_state | ((fEngineControl->fTransport.GetState() == JackTransportNetStarting) ? 1 : 0 );
 	//netjack_write( &netj, netj.period_size, 0 );
 	uint32_t *packet_buf, *packet_bufX;
 
