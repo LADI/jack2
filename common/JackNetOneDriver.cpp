@@ -125,7 +125,7 @@ namespace Jack
     int JackNetOneDriver::AllocPorts()
     {
 	jack_port_id_t port_id;
-	char buf[32];
+	char buf[64];
 	unsigned int chn;
 	int port_flags;
 
@@ -136,7 +136,7 @@ namespace Jack
 	port_flags = JackPortIsOutput | JackPortIsPhysical | JackPortIsTerminal;
 
 	for (chn = 0; chn < netj.capture_channels_audio; chn++) {
-	    snprintf (buf, sizeof(buf) - 1, "capture_%u", chn + 1);
+	    snprintf (buf, sizeof(buf) - 1, "system:capture_%u", chn + 1);
 
             if ( ( port_id = fGraphManager->AllocatePort ( fClientControl.fRefNum, buf, JACK_DEFAULT_AUDIO_TYPE,
                              static_cast<JackPortFlags> ( port_flags ), fEngineControl->fBufferSize ) ) == NO_PORT )
@@ -166,7 +166,7 @@ namespace Jack
 	    }
 	}
 	for (chn = netj.capture_channels_audio; chn < netj.capture_channels; chn++) {
-	    snprintf (buf, sizeof(buf) - 1, "capture_%u", chn + 1);
+	    snprintf (buf, sizeof(buf) - 1, "system:capture_%u", chn + 1);
 
             if ( ( port_id = fGraphManager->AllocatePort ( fClientControl.fRefNum, buf, JACK_DEFAULT_MIDI_TYPE,
                              static_cast<JackPortFlags> ( port_flags ), fEngineControl->fBufferSize ) ) == NO_PORT )
@@ -183,7 +183,7 @@ namespace Jack
 	port_flags = JackPortIsInput | JackPortIsPhysical | JackPortIsTerminal;
 
 	for (chn = 0; chn < netj.playback_channels_audio; chn++) {
-	    snprintf (buf, sizeof(buf) - 1, "playback_%u", chn + 1);
+	    snprintf (buf, sizeof(buf) - 1, "system:playback_%u", chn + 1);
 
             if ( ( port_id = fGraphManager->AllocatePort ( fClientControl.fRefNum, buf, JACK_DEFAULT_AUDIO_TYPE,
                              static_cast<JackPortFlags> ( port_flags ), fEngineControl->fBufferSize ) ) == NO_PORT )
@@ -209,7 +209,7 @@ namespace Jack
 	    }
 	}
 	for (chn = netj.playback_channels_audio; chn < netj.playback_channels; chn++) {
-	    snprintf (buf, sizeof(buf) - 1, "playback_%u", chn + 1);
+	    snprintf (buf, sizeof(buf) - 1, "system:playback_%u", chn + 1);
 
             if ( ( port_id = fGraphManager->AllocatePort ( fClientControl.fRefNum, buf, JACK_DEFAULT_MIDI_TYPE,
                              static_cast<JackPortFlags> ( port_flags ), fEngineControl->fBufferSize ) ) == NO_PORT )
