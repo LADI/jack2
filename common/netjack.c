@@ -83,12 +83,12 @@ void netjack_wait( netjack_driver_state_t *netj )
     int we_have_the_expected_frame = 0;
     jack_nframes_t next_frame_avail;
     jack_time_t packet_recv_time_stamp;
-    jacknet_packet_header *pkthdr = (jacknet_packet_header *) netj->rx_buf;
+    jacknet_packet_header *pkthdr;
     
     if( !netj->next_deadline_valid ) {
 	    if( netj->latency == 0 )
 		// for full sync mode... always wait for packet.
-		netj->next_deadline = jack_get_time() + 500*netj->period_usecs;
+		netj->next_deadline = jack_get_time() + 50*netj->period_usecs;
 	    else if( netj->latency == 1 )
 		// for normal 1 period latency mode, only 1 period for dealine.
 		netj->next_deadline = jack_get_time() + netj->period_usecs;
@@ -97,7 +97,7 @@ void netjack_wait( netjack_driver_state_t *netj )
 		// not 100% sure yet. with the improved resync, it might be better,
 		// to have more than one period headroom for high latency.
 		//netj->next_deadline = jack_get_time() + 5*netj->latency*netj->period_usecs/4;
-		netj->next_deadline = jack_get_time() + 2*netj->period_usecs;
+		netj->next_deadline = jack_get_time() + netj->period_usecs;
 
 	    netj->next_deadline_valid = 1;
     } else {
@@ -139,8 +139,8 @@ void netjack_wait( netjack_driver_state_t *netj )
 
     if( we_have_the_expected_frame ) {
 	netj->time_to_deadline = netj->next_deadline - jack_get_time() - netj->period_usecs;
-	packet_cache_retreive_packet( global_packcache, netj->expected_framecnt, (char *) netj->rx_buf, netj->rx_bufsize , &packet_recv_time_stamp);
-	//int recv_time_offset = (int) (jack_get_time() - packet_recv_time_stamp);
+	packet_cache_retreive_packet_pointer( global_packcache, netj->expected_framecnt, (char **) &(netj->rx_buf), netj->rx_bufsize , &packet_recv_time_stamp);
+	pkthdr = (jacknet_packet_header *) netj->rx_buf;
 	packet_header_ntoh(pkthdr);
 	netj->deadline_goodness = (int)pkthdr->sync_state;
 	netj->packet_data_valid = 1;
@@ -201,7 +201,8 @@ void netjack_wait( netjack_driver_state_t *netj )
 		// the diff is too high. but we have a packet in the future.
 		// lets resync.
 		netj->expected_framecnt = next_frame_avail;
-		packet_cache_retreive_packet( global_packcache, netj->expected_framecnt, (char *) netj->rx_buf, netj->rx_bufsize, NULL );
+		packet_cache_retreive_packet_pointer( global_packcache, netj->expected_framecnt, (char **) &(netj->rx_buf), netj->rx_bufsize, NULL );
+		pkthdr = (jacknet_packet_header *) netj->rx_buf;
 		packet_header_ntoh(pkthdr);
 		//netj->deadline_goodness = 0;
 		netj->deadline_goodness = (int)pkthdr->sync_state - (int)netj->period_usecs * offset;
@@ -250,7 +251,8 @@ void netjack_wait( netjack_driver_state_t *netj )
 		//
 		if( packet_cache_get_highest_available_framecnt( global_packcache, &next_frame_avail) ) {
 		    netj->expected_framecnt = next_frame_avail;
-		    packet_cache_retreive_packet( global_packcache, netj->expected_framecnt, (char *) netj->rx_buf, netj->rx_bufsize, NULL );
+		    packet_cache_retreive_packet_pointer( global_packcache, netj->expected_framecnt, (char **) &(netj->rx_buf), netj->rx_bufsize, NULL );
+		    pkthdr = (jacknet_packet_header *) netj->rx_buf;
 		    packet_header_ntoh(pkthdr);
 		    netj->deadline_goodness = pkthdr->sync_state;
 		    netj->next_deadline_valid = 0;
@@ -633,7 +635,7 @@ netjack_startup( netjack_driver_state_t *netj )
     }
 
     netj->rx_bufsize = sizeof (jacknet_packet_header) + netj->net_period_down * netj->capture_channels * get_sample_size (netj->bitdepth);
-    netj->rx_buf = malloc (netj->rx_bufsize);
+    //netj->rx_buf = malloc (netj->rx_bufsize);
     netj->pkt_buf = malloc (netj->rx_bufsize);
     global_packcache = packet_cache_new (netj->latency + 5, netj->rx_bufsize, netj->mtu);
 

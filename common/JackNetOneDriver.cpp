@@ -369,6 +369,7 @@ namespace Jack
 	}
 
 	render_payload_to_jack_ports (netj.bitdepth, packet_bufX, netj.net_period_down, netj.capture_ports, netj.capture_srcs, netj.period_size, netj.dont_htonl_floats );
+	packet_cache_release_packet(global_packcache, netj.expected_framecnt );
 	return 0;
     }
 

@@ -236,6 +236,7 @@ process (jack_nframes_t nframes, void *arg)
     jack_position_t local_trans_pos;
 
     uint32_t *packet_buf, *packet_bufX;
+    uint32_t *rx_packet_ptr;
     jack_time_t packet_recv_timestamp;
 
     if( bitdepth == 1000 )
@@ -288,7 +289,7 @@ process (jack_nframes_t nframes, void *arg)
     if (cont_miss < 3*latency+5) {
 	int r;
 	for( r=0; r<redundancy; r++ )
-	    netjack_sendto (outsockfd, (char *) packet_buf, tx_bufsize, 0, &destaddr, sizeof (destaddr), mtu);
+	    netjack_sendto (outsockfd, (char *) packet_buf, tx_bufsize, MSG_DONTWAIT, &destaddr, sizeof (destaddr), mtu);
     }
     else if (cont_miss > 50+5*latency)
     {
@@ -330,11 +331,14 @@ process (jack_nframes_t nframes, void *arg)
 	packet_cache_drain_socket(global_packcache, input_fd);
     }
 
-    size = packet_cache_retreive_packet( global_packcache, framecnt - latency, (char *)packet_buf, rx_bufsize, &packet_recv_timestamp ); 
+    size = packet_cache_retreive_packet_pointer( global_packcache, framecnt - latency, (char **)&rx_packet_ptr, rx_bufsize, &packet_recv_timestamp ); 
     /* First alternative : we received what we expected. Render the data
      * to the JACK ports so it can be played. */
     if (size == rx_bufsize)
     {
+	packet_buf = rx_packet_ptr;
+	pkthdr = (jacknet_packet_header *) packet_buf;
+	packet_bufX = packet_buf + sizeof (jacknet_packet_header) / sizeof (jack_default_audio_sample_t);
 	// calculate how much time there would have been, if this packet was sent at the deadline.
 
 	int recv_time_offset = (int) (jack_get_time() - packet_recv_timestamp);
@@ -354,6 +358,7 @@ process (jack_nframes_t nframes, void *arg)
 	state_recv_packet_queue_time = recv_time_offset;
 	state_connected = 1;
         sync_state = pkthdr->sync_state;
+	packet_cache_release_packet( global_packcache, framecnt - latency ); 
     }
     /* Second alternative : we've received something that's not
      * as big as expected or we missed a packet. We render silence

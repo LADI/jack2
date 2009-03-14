@@ -541,7 +541,7 @@ packet_cache_clear_old_packets (packet_cache *pcache, jack_nframes_t framecnt )
 }
 
 int
-packet_cache_retreive_packet( packet_cache *pcache, jack_nframes_t framecnt, char *packet_buf, int pkt_size, jack_time_t *timestamp )
+packet_cache_retreive_packet_pointer( packet_cache *pcache, jack_nframes_t framecnt, char **packet_buf, int pkt_size, jack_time_t *timestamp )
 {
     int i;
     cache_packet *cpack = NULL;
@@ -564,19 +564,44 @@ packet_cache_retreive_packet( packet_cache *pcache, jack_nframes_t framecnt, cha
     }
 
     // ok. cpack is the one we want and its complete.
-    memcpy (packet_buf, cpack->packet_buf, pkt_size);
+    *packet_buf = cpack->packet_buf;
     if( timestamp )
 	*timestamp = cpack->recv_timestamp;
 
     pcache->last_framecnt_retreived_valid = 1;
     pcache->last_framecnt_retreived = framecnt;
 
-    cache_packet_reset (cpack);
-    packet_cache_clear_old_packets( pcache, framecnt );
-    
     return pkt_size;
 }
 
+int
+packet_cache_release_packet( packet_cache *pcache, jack_nframes_t framecnt )
+{
+    int i;
+    cache_packet *cpack = NULL;
+
+
+    for (i = 0; i < pcache->size; i++) {
+        if (pcache->packets[i].valid && (pcache->packets[i].framecnt == framecnt)) {
+	    cpack = &(pcache->packets[i]);
+            break;
+	}
+    }
+
+    if( cpack == NULL ) {
+	//printf( "retreive packet: %d....not found\n", framecnt );
+	return -1;
+    }
+
+    if( !cache_packet_is_complete( cpack ) ) {
+	return -1;
+    }
+
+    cache_packet_reset (cpack);
+    packet_cache_clear_old_packets( pcache, framecnt );
+    
+    return 0;
+}
 float
 packet_cache_get_fill( packet_cache *pcache, jack_nframes_t expected_framecnt )
 {
