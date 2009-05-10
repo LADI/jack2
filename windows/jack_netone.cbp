@@ -37,9 +37,11 @@
 					<Add directory="..\common" />
 					<Add directory="..\common\jack" />
 					<Add directory="..\windows" />
+					<Add directory="Release" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-enable-auto-import" />
 					<Add library="user32" />
 					<Add directory="Release\bin" />
 				</Linker>
@@ -49,6 +51,7 @@
 			<Add library="kernel32" />
 			<Add library="ws2_32" />
 			<Add library="libjackserver" />
+			<Add library="libcelt" />
 		</Linker>
 		<Unit filename="..\common\JackNetOneDriver.cpp" />
 		<Unit filename="..\common\netjack.c">
