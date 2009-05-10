@@ -26,9 +26,9 @@
  *
  */
 
-#include "config.h"
+//#include "config.h"
 
-#define _XOPEN_SOURCE 600 
+#define _XOPEN_SOURCE 600
 #define _BSD_SOURCE
 
 #if HAVE_PPOLL
@@ -47,9 +47,15 @@
 //#include <jack/engine.h>
 
 #include <sys/types.h>
+
+#ifdef WIN32
+#include <winsock2.h>
+#include <malloc.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
+#endif
 
 #include <errno.h>
 #include <signal.h>
@@ -132,7 +138,7 @@ packet_cache
 	    fragment_number = 1;
     else
 	    fragment_number = (pkt_size - sizeof (jacknet_packet_header) - 1) / fragment_payload_size + 1;
-    
+
     packet_cache *pcache = malloc (sizeof (packet_cache));
     if (pcache == NULL)
     {
@@ -335,7 +341,7 @@ cache_packet_is_complete (cache_packet *pack)
     return 1;
 }
 
-
+#ifndef WIN32
 // new poll using nanoseconds resolution and
 // not waiting forever.
 int
@@ -346,7 +352,7 @@ netjack_poll_deadline (int sockfd, jack_time_t deadline)
     sigset_t sigmask;
     struct sigaction action;
 #if HAVE_PPOLL
-    struct timespec timeout_spec = { 0, 0 }; 
+    struct timespec timeout_spec = { 0, 0 };
 #else
     sigset_t rsigmask;
     int timeout;
@@ -371,7 +377,7 @@ netjack_poll_deadline (int sockfd, jack_time_t deadline)
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGUSR1);
 	sigaddset(&sigmask, SIGUSR2);
-	
+
 	action.sa_handler = SIG_DFL;
 	action.sa_mask = sigmask;
 	action.sa_flags = SA_RESTART;
@@ -431,7 +437,7 @@ netjack_poll (int sockfd, int timeout)
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGUSR1);
 	sigaddset(&sigmask, SIGUSR2);
-	
+
 	action.sa_handler = SIG_DFL;
 	action.sa_mask = sigmask;
 	action.sa_flags = SA_RESTART;
@@ -475,6 +481,35 @@ netjack_poll (int sockfd, int timeout)
     return 1;
 }
 
+#else
+int
+netjack_poll (int sockfd, int timeout)
+{
+    printf( "netjack_poll not implemented\n" );
+    return 0;
+}
+int
+netjack_poll_deadline (int sockfd, jack_time_t deadline)
+{
+    printf( "waiting... \n" );
+    fd_set fds;
+    FD_ZERO( &fds );
+    FD_SET( sockfd, &fds );
+
+    struct timeval timeout;
+
+    jack_time_t now = jack_get_time();
+    if( now >= deadline )
+        return 0;
+
+    int timeout_usecs = (deadline - now);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = timeout_usecs;
+
+    int poll_err = select (0, &fds, NULL, NULL, &timeout);
+    return poll_err;
+}
+#endif
 // This now reads all a socket has into the cache.
 // replacing netjack_recv functions.
 
@@ -487,11 +522,14 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
     jack_nframes_t framecnt;
     cache_packet *cpack;
     struct sockaddr_in sender_address;
+#ifdef WIN32
+    size_t senderlen = sizeof( struct sockaddr_in );
+#else
     socklen_t senderlen = sizeof( struct sockaddr_in );
-
+#endif
     while (1)
     {
-        rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, MSG_DONTWAIT,
+        rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, 0,
 			    (struct sockaddr*) &sender_address, &senderlen);
         if (rcv_len < 0)
             return;
@@ -503,7 +541,7 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 	} else {
 	    // Setup this one as master
 	    //printf( "setup master...\n" );
-	    memcpy ( &(pcache->master_address), &sender_address, senderlen ); 
+	    memcpy ( &(pcache->master_address), &sender_address, senderlen );
 	    pcache->master_address_valid = 1;
 	}
 
@@ -518,7 +556,7 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
     }
 }
 
-void 
+void
 packet_cache_reset_master_address( packet_cache *pcache )
 {
     pcache->master_address_valid = 0;
@@ -599,7 +637,7 @@ packet_cache_release_packet( packet_cache *pcache, jack_nframes_t framecnt )
 
     cache_packet_reset (cpack);
     packet_cache_clear_old_packets( pcache, framecnt );
-    
+
     return 0;
 }
 float
@@ -641,7 +679,7 @@ packet_cache_get_next_available_framecnt( packet_cache *pcache, jack_nframes_t e
 	    continue;
 	}
 
-	best_offset = cpack->framecnt - expected_framecnt;	
+	best_offset = cpack->framecnt - expected_framecnt;
 	retval = 1;
 
 	if( best_offset == 0 )
@@ -674,7 +712,7 @@ packet_cache_get_highest_available_framecnt( packet_cache *pcache, jack_nframes_
 	    continue;
 	}
 
-	best_value = cpack->framecnt;	
+	best_value = cpack->framecnt;
 	retval = 1;
 
     }
@@ -706,7 +744,7 @@ packet_cache_find_latency( packet_cache *pcache, jack_nframes_t expected_framecn
 	    continue;
 	}
 
-	best_offset = cpack->framecnt - expected_framecnt;	
+	best_offset = cpack->framecnt - expected_framecnt;
 	retval = 1;
 
 	if( best_offset == 0 )
@@ -719,7 +757,7 @@ packet_cache_find_latency( packet_cache *pcache, jack_nframes_t expected_framecn
 }
 // fragmented packet IO
 int
-netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, socklen_t *addr_size, int mtu)
+netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, size_t *addr_size, int mtu)
 {
     if (pkt_size <= mtu)
         return recvfrom (sockfd, packet_buf, pkt_size, flags, addr, addr_size);

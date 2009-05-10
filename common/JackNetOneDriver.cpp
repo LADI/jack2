@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#ifdef WIN32
+#include <malloc.h>
+#endif
 
 #include "JackNetOneDriver.h"
 #include "JackEngineControl.h"
@@ -44,12 +47,16 @@ namespace Jack
 {
     JackNetOneDriver::JackNetOneDriver ( const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
                                    int port, int mtu, int capture_ports, int playback_ports, int midi_input_ports, int midi_output_ports,
-				   int sample_rate, int period_size, int resample_factor, 
+				   int sample_rate, int period_size, int resample_factor,
                                    char* net_name, uint transport_sync, int bitdepth, int use_autoconfig,
 				   int latency, int redundancy, int dont_htonl_floats )
             : JackAudioDriver ( name, alias, engine, table )
     {
         jack_log ( "JackNetOneDriver::JackNetOneDriver port %d", port );
+
+    WSADATA wsa;
+    int rc = WSAStartup(MAKEWORD(2,0),&wsa);
+    printf( "hi... rc=%d\n", rc );
 
 	netjack_init( & (this->netj),
 		NULL, // client
@@ -73,6 +80,7 @@ namespace Jack
 
     JackNetOneDriver::~JackNetOneDriver()
     {
+        printf( "destroy\n" );
 	// No destructor yet.
     }
 
@@ -94,6 +102,7 @@ namespace Jack
                                      capture_latency,
                                      playback_latency ) == 0 )
         {
+            printf( "open succeed\n" );
             fEngineControl->fPeriod = 0;
             fEngineControl->fComputation = 500 * 1000;
             fEngineControl->fConstraint = 500 * 1000;
@@ -101,6 +110,7 @@ namespace Jack
         }
         else
         {
+            printf( "open fail\n" );
             return -1;
         }
     }
@@ -114,6 +124,7 @@ namespace Jack
 
     int JackNetOneDriver::Attach()
     {
+        printf( "Attach\n" );
 	return 0;
     }
 
@@ -160,7 +171,7 @@ namespace Jack
 		netj.capture_srcs = jack_slist_append(netj.capture_srcs, (void *)celt_decoder_create( celt_mode ) );
 #endif
 	    } else {
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
 		netj.capture_srcs = jack_slist_append(netj.capture_srcs, (void *)src_new(SRC_LINEAR, 1, NULL));
 #endif
 	    }
@@ -268,6 +279,8 @@ namespace Jack
 //driver processes--------------------------------------------------------------------
     int JackNetOneDriver::Read()
     {
+        printf( "yo... man... read...\n" );
+
 	netjack_wait( &netj );
 
 	if( (netj.num_lost_packets * netj.period_size / netj.sample_rate) > 10 )
@@ -380,7 +393,7 @@ namespace Jack
 	uint32_t *packet_buf, *packet_bufX;
 
 	int packet_size = get_sample_size(netj.bitdepth) * netj.playback_channels * netj.net_period_up + sizeof(jacknet_packet_header);
-	jacknet_packet_header *pkthdr; 
+	jacknet_packet_header *pkthdr;
 
 	packet_buf = (uint32_t *) alloca(packet_size);
 	pkthdr = (jacknet_packet_header *)packet_buf;
@@ -408,7 +421,7 @@ namespace Jack
 #ifdef __APPLE__
 	    static const int flag = 0;
 #else
-	    static const int flag = MSG_CONFIRM;
+	    static const int flag = 0;
 #endif
 
 	    if (netj.reply_port)
@@ -468,7 +481,7 @@ JackNetOneDriver::FreePorts ()
 	netj.capture_srcs = NULL;
 #endif
     } else {
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
 	node = netj.playback_srcs;
 	while( node != NULL ) {
 	    JSList *this_node = node;
@@ -499,7 +512,7 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
 {
     uint32_t chn = 0;
     JSList *node = capture_ports;
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
     JSList *src_node = capture_srcs;
 #endif
 
@@ -512,7 +525,7 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
     {
         unsigned int i;
         int_float_t val;
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
         SRC_DATA src;
 #endif
 
@@ -526,7 +539,7 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
 
         if (strncmp (porttype, JACK_DEFAULT_AUDIO_TYPE, jack_port_type_size()) == 0)
         {
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
             // audio port, resample if necessary
             if (net_period_down != nframes)
             {
@@ -535,16 +548,16 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
                 {
                     packet_bufX[i] = ntohl (packet_bufX[i]);
                 }
-    
+
                 src.data_in = (float *) packet_bufX;
                 src.input_frames = net_period_down;
-    
+
                 src.data_out = buf;
                 src.output_frames = nframes;
-    
+
                 src.src_ratio = (float) nframes / (float) net_period_down;
                 src.end_of_input = 0;
-    
+
                 src_set_ratio (src_state, src.src_ratio);
                 src_process (src_state, &src);
                 src_node = jack_slist_next (src_node);
@@ -552,7 +565,7 @@ JackNetOneDriver::render_payload_to_jack_ports_float ( void *packet_payload, jac
             else
 #endif
             {
-		if( dont_htonl_floats ) 
+		if( dont_htonl_floats )
 		{
 		    memcpy( buf, packet_bufX, net_period_down*sizeof(jack_default_audio_sample_t));
 		}
@@ -594,7 +607,7 @@ JackNetOneDriver::render_jack_ports_to_payload_float (JSList *playback_ports, JS
 
     while (node != NULL)
     {
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
         SRC_DATA src;
 #endif
         unsigned int i;
@@ -610,22 +623,22 @@ JackNetOneDriver::render_jack_ports_to_payload_float (JSList *playback_ports, JS
         if (strncmp (porttype, JACK_DEFAULT_AUDIO_TYPE, jack_port_type_size()) == 0)
         {
             // audio port, resample if necessary
-    
-#if HAVE_SAMPLERATE 
+
+#if HAVE_SAMPLERATE
             if (net_period_up != nframes) {
                 SRC_STATE *src_state = (SRC_STATE *) src_node->data;
                 src.data_in = buf;
                 src.input_frames = nframes;
-    
+
                 src.data_out = (float *) packet_bufX;
                 src.output_frames = net_period_up;
-    
+
                 src.src_ratio = (float) net_period_up / (float) nframes;
                 src.end_of_input = 0;
-    
+
                 src_set_ratio (src_state, src.src_ratio);
                 src_process (src_state, &src);
-    
+
                 for (i = 0; i < net_period_up; i++)
                 {
                     packet_bufX[i] = htonl (packet_bufX[i]);
@@ -689,7 +702,7 @@ JackNetOneDriver::render_payload_to_jack_ports_celt (void *packet_payload, jack_
         if (strncmp(portname, JACK_DEFAULT_AUDIO_TYPE, jack_port_type_size()) == 0)
         {
             // audio port, decode celt data.
-	    
+
 	    CELTDecoder *decoder = (CELTDecoder *)src_node->data;
 	    if( !packet_payload )
 		celt_decode_float( decoder, NULL, net_period_down, buf );
@@ -735,7 +748,7 @@ JackNetOneDriver::render_jack_ports_to_payload_celt (JSList *playback_ports, JSL
         if (strncmp (portname, JACK_DEFAULT_AUDIO_TYPE, jack_port_type_size()) == 0)
         {
             // audio port, encode celt data.
-    
+
 	    int encoded_bytes;
 	    float *floatbuf = (float *)alloca (sizeof(float) * nframes );
 	    memcpy( floatbuf, buf, nframes*sizeof(float) );
@@ -1062,7 +1075,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
                     new Jack::JackWaitThreadedDriver (
                     new Jack::JackNetOneDriver ( "system", "net_pcm", engine, table, listen_port, mtu,
                                               capture_ports_midi, playback_ports_midi, capture_ports, playback_ports,
-					      sample_rate, period_size, resample_factor, 
+					      sample_rate, period_size, resample_factor,
 					      "net_pcm", handle_transport_sync, bitdepth, use_autoconfig, latency, redundancy, dont_htonl_floats ) );
                 if ( driver->Open ( period_size, sample_rate, 1, 1, capture_ports, playback_ports,
                                     0, "from_master_", "to_master_", 0, 0 ) == 0 )

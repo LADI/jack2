@@ -30,7 +30,7 @@
 
 #include "jack/jslist.h"
 
-#include <netinet/in.h>
+//#include <netinet/in.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -67,8 +67,8 @@ struct _netjack_driver_state {
 
     jack_client_t   *client;
 
-    int		    sockfd;
-    int		    outsockfd;
+    SOCKET		    sockfd;
+    SOCKET		    outsockfd;
 
     struct sockaddr_in syncsource_address;
 

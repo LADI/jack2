@@ -39,6 +39,7 @@ bool JackWaitThreadedDriver::Execute()
     try {
         // Process a null cycle until NetDriver has started
         while (!fStarter.fRunning && fThread.GetStatus() == JackThread::kRunning) {
+            jack_log( "blabla.... omg\n" );
             fDriver->ProcessNull();
         }
 
@@ -54,9 +55,10 @@ bool JackWaitThreadedDriver::Execute()
                 set_threaded_log_function();
             }
         }
-
+        jack_log( "hi... \n" );
         // Switch to keep running even in case of error
         while (fThread.GetStatus() == JackThread::kRunning) {
+            jack_log( "im in your loop\n" );
             fDriver->Process();
         }
         return false;

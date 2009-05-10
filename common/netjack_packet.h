@@ -39,7 +39,7 @@
 
 #include <jack/midiport.h>
 
-#include <netinet/in.h>
+//#include <netinet/in.h>
 // The Packet Header.
 
 typedef struct _jacknet_packet_header jacknet_packet_header;
@@ -150,8 +150,8 @@ void render_jack_ports_to_payload(int bitdepth, JSList *playback_ports, JSList *
 int netjack_poll(int sockfd, int timeout);
 
 // TODO: these are deprecated.
-int netjack_recvfrom(int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, socklen_t *addr_size, int mtu);
-int netjack_recv(int sockfd, char *packet_buf, int pkt_size, int flags, int mtu);
+//int netjack_recvfrom(int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, socklen_t *addr_size, int mtu);
+//int netjack_recv(int sockfd, char *packet_buf, int pkt_size, int flags, int mtu);
 
 void decode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, jack_default_audio_sample_t* buf);
 void encode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, jack_default_audio_sample_t* buf);

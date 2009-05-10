@@ -32,19 +32,26 @@ $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 #include <stdlib.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <sys/mman.h>
+//#include <sys/mman.h>
 
 #include <jack/types.h>
 //#include <jack/engine.h>
 //#include <sysdeps/time.h>
-#include "jslist.h"
+#include "jack/jslist.h"
 
 #include <sys/types.h>
+
+#ifdef WIN32
+#include <winsock.h>
+#include <malloc.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#endif
+
 #include "netjack.h"
 
-#include "config.h"
+//#include "config.h"
 #if HAVE_SAMPLERATE
 #include <samplerate.h>
 #endif
@@ -72,7 +79,7 @@ net_driver_sync_cb(jack_transport_state_t state, jack_position_t *pos, void *dat
     if (state == JackTransportStarting && last_transport_state != JackTransportStarting) {
         retval = 0;
     }
-//    if (state == JackTransportStarting) 
+//    if (state == JackTransportStarting)
 //		jack_info("Starting sync_state = %d", sync_state);
     last_transport_state = state;
     return retval;
@@ -84,7 +91,8 @@ void netjack_wait( netjack_driver_state_t *netj )
     jack_nframes_t next_frame_avail;
     jack_time_t packet_recv_time_stamp;
     jacknet_packet_header *pkthdr;
-    
+
+printf( "wait called...\n" );
     if( !netj->next_deadline_valid ) {
 	    if( netj->latency == 0 )
 		// for full sync mode... always wait for packet.
@@ -144,7 +152,7 @@ void netjack_wait( netjack_driver_state_t *netj )
 	packet_header_ntoh(pkthdr);
 	netj->deadline_goodness = (int)pkthdr->sync_state;
 	netj->packet_data_valid = 1;
-	
+
 	// TODO: Queue state could be taken into account.
 	//       But needs more processing, cause, when we are running as
 	//       fast as we can, recv_time_offset can be zero, which is
@@ -167,22 +175,22 @@ void netjack_wait( netjack_driver_state_t *netj )
     } else {
 	netj->time_to_deadline = 0;
 	// bah... the packet is not there.
-	// either 
+	// either
 	// - it got lost.
 	// - its late
 	// - sync source is not sending anymore.
-	
+
 	// lets check if we have the next packets, we will just run a cycle without data.
 	// in that case.
-	
-	if( packet_cache_get_next_available_framecnt( global_packcache, netj->expected_framecnt, &next_frame_avail) ) 
+
+	if( packet_cache_get_next_available_framecnt( global_packcache, netj->expected_framecnt, &next_frame_avail) )
 	{
 	    jack_nframes_t offset = next_frame_avail - netj->expected_framecnt;
 
 	    //XXX: hmm... i need to remember why resync_threshold wasnt right.
 	    //if( offset < netj->resync_threshold )
 	    if( offset < 10 ) {
-		// ok. dont do nothing. we will run without data. 
+		// ok. dont do nothing. we will run without data.
 		// this seems to be one or 2 lost packets.
 		//
 		// this can also be reordered packet jitter.
@@ -196,7 +204,7 @@ void netjack_wait( netjack_driver_state_t *netj )
 		if( packet_cache_get_fill( global_packcache, netj->expected_framecnt ) > 80.0 )
 		    netj->next_deadline -= netj->period_usecs/2;
 
-		
+
 	    } else {
 		// the diff is too high. but we have a packet in the future.
 		// lets resync.
@@ -209,12 +217,12 @@ void netjack_wait( netjack_driver_state_t *netj )
 		netj->next_deadline_valid = 0;
 		netj->packet_data_valid = 1;
 	    }
-	    
+
 	} else {
 	    // no packets in buffer.
 	    netj->packet_data_valid = 0;
-	    
-	    //printf( "frame %d No Packet in queue. num_lost_packets = %d \n", netj->expected_framecnt, netj->num_lost_packets ); 
+
+	    //printf( "frame %d No Packet in queue. num_lost_packets = %d \n", netj->expected_framecnt, netj->num_lost_packets );
 	    if( netj->num_lost_packets < 5 ) {
 		// ok. No Packet in queue. The packet was either lost,
 		// or we are running too fast.
@@ -233,20 +241,20 @@ void netjack_wait( netjack_driver_state_t *netj )
 		    if( next_frame_avail == (netj->expected_framecnt - 1) ) {
 			// Ok. the last packet is there now.
 			// and it had not been retrieved.
-			// 
+			//
 			// TODO: We are still dropping 2 packets.
 			//       perhaps we can adjust the deadline
 			//       when (num_packets lost == 0)
-			
+
 			// This might still be too much.
 			netj->next_deadline += netj->period_usecs/8;
 		    }
 		}
-	    } else if( (netj->num_lost_packets <= 10) ) { 
+	    } else if( (netj->num_lost_packets <= 10) ) {
 		// lets try adjusting the deadline harder, for some packets, we might have just ran 2 fast.
 		//netj->next_deadline += netj->period_usecs*netj->latency/8;
 	    } else {
-		
+
 		// But now we can check for any new frame available.
 		//
 		if( packet_cache_get_highest_available_framecnt( global_packcache, &next_frame_avail) ) {
@@ -261,7 +269,7 @@ void netjack_wait( netjack_driver_state_t *netj )
 		    printf( "resync after freerun... %d\n", netj->expected_framecnt );
 		} else {
 		    // give up. lets run freely.
-		    // XXX: hmm... 
+		    // XXX: hmm...
 
 		    netj->running_free = 1;
 
@@ -362,7 +370,7 @@ void netjack_attach( netjack_driver_state_t *netj )
 	    netj->capture_srcs = jack_slist_append(netj->capture_srcs, celt_decoder_create( celt_mode ) );
 #endif
 	} else {
-#if HAVE_SAMPLERATE 
+#if HAVE_SAMPLERATE
 	    netj->capture_srcs = jack_slist_append(netj->capture_srcs, src_new(SRC_LINEAR, 1, NULL));
 #endif
 	}
@@ -529,14 +537,14 @@ void netjack_release( netjack_driver_state_t *netj )
     global_packcache = NULL;
 }
 
-int 
+int
 netjack_startup( netjack_driver_state_t *netj )
 {
     int first_pack_len;
     struct sockaddr_in address;
     // Now open the socket, and wait for the first packet to arrive...
-    netj->sockfd = socket (PF_INET, SOCK_DGRAM, 0);
-    if (netj->sockfd == -1)
+    netj->sockfd = socket (AF_INET, SOCK_DGRAM, 0);
+    if (netj->sockfd == INVALID_SOCKET)
     {
         jack_info ("socket error");
         return -1;
@@ -550,8 +558,8 @@ netjack_startup( netjack_driver_state_t *netj )
         return -1;
     }
 
-    netj->outsockfd = socket (PF_INET, SOCK_DGRAM, 0);
-    if (netj->outsockfd == -1)
+    netj->outsockfd = socket (AF_INET, SOCK_DGRAM, 0);
+    if (netj->outsockfd == INVALID_SOCKET)
     {
         jack_info ("socket error");
         return -1;
@@ -560,18 +568,26 @@ netjack_startup( netjack_driver_state_t *netj )
     if (netj->use_autoconfig)
     {
 	jacknet_packet_header *first_packet = alloca (sizeof (jacknet_packet_header));
+#ifdef WIN32
+    int address_size = sizeof( struct sockaddr_in );
+#else
 	socklen_t address_size = sizeof (struct sockaddr_in);
-
+#endif
 	jack_info ("Waiting for an incoming packet !!!");
 	jack_info ("*** IMPORTANT *** Dont connect a client to jackd until the driver is attached to a clock source !!!");
 
-	// XXX: netjack_poll polls forever.
-	//      thats ok here.
-	if (netjack_poll (netj->sockfd, 500))
-	    first_pack_len = recvfrom (netj->sockfd, first_packet, sizeof (jacknet_packet_header), 0, (struct sockaddr*) & netj->syncsource_address, &address_size);
-	else
-	    first_pack_len = 0;
-
+    while(1) {
+    first_pack_len = recvfrom (netj->sockfd, (char *)first_packet, sizeof (jacknet_packet_header), 0, (struct sockaddr*) & netj->syncsource_address, &address_size);
+#ifdef WIN32
+        if( first_pack_len == -1 ) {
+            first_pack_len = sizeof(jacknet_packet_header);
+            break;
+        }
+#else
+        if (first_pack_len == sizeof (jacknet_packet_header))
+            break;
+#endif
+    }
 	netj->srcaddress_valid = 1;
 
 	if (first_pack_len == sizeof (jacknet_packet_header))
@@ -625,7 +641,7 @@ netjack_startup( netjack_driver_state_t *netj )
                              * 1000000.0f);
 
     if( netj->bitdepth == 1000 ) {
-	// celt mode. 
+	// celt mode.
 	// TODO: this is a hack. But i dont want to change the packet header.
 	netj->net_period_down = netj->resample_factor;
 	netj->net_period_up = netj->resample_factor_up;
