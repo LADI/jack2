@@ -39,13 +39,11 @@ bool JackWaitThreadedDriver::Execute()
     try {
         // Process a null cycle until NetDriver has started
         while (!fStarter.fRunning && fThread.GetStatus() == JackThread::kRunning) {
-            jack_log( "blabla.... omg\n" );
             fDriver->ProcessNull();
         }
 
         // Set RT
         if (fDriver->IsRealTime()) {
-            jack_log("JackWaitThreadedDriver::Init IsRealTime");
             // Will do "something" on OSX only...
             GetEngineControl()->fPeriod = GetEngineControl()->fConstraint = GetEngineControl()->fPeriodUsecs * 1000;
             fThread.SetParams(GetEngineControl()->fPeriod, GetEngineControl()->fComputation, GetEngineControl()->fConstraint);
@@ -55,10 +53,8 @@ bool JackWaitThreadedDriver::Execute()
                 set_threaded_log_function();
             }
         }
-        jack_log( "hi... \n" );
         // Switch to keep running even in case of error
         while (fThread.GetStatus() == JackThread::kRunning) {
-            jack_log( "im in your loop\n" );
             fDriver->Process();
         }
         return false;

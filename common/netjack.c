@@ -25,6 +25,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 */
 
+#define HAVE_CELT 1
+
+
 #include <math.h>
 #include <stdio.h>
 #include <memory.h>
@@ -92,7 +95,6 @@ void netjack_wait( netjack_driver_state_t *netj )
     jack_time_t packet_recv_time_stamp;
     jacknet_packet_header *pkthdr;
 
-printf( "wait called...\n" );
     if( !netj->next_deadline_valid ) {
 	    if( netj->latency == 0 )
 		// for full sync mode... always wait for packet.
@@ -105,7 +107,7 @@ printf( "wait called...\n" );
 		// not 100% sure yet. with the improved resync, it might be better,
 		// to have more than one period headroom for high latency.
 		//netj->next_deadline = jack_get_time() + 5*netj->latency*netj->period_usecs/4;
-		netj->next_deadline = jack_get_time() + netj->period_usecs;
+		netj->next_deadline = jack_get_time() + 10*netj->latency*netj->period_usecs/100;
 
 	    netj->next_deadline_valid = 1;
     } else {
@@ -113,8 +115,10 @@ printf( "wait called...\n" );
     }
 
     // Increment expected frame here.
+
     netj->expected_framecnt += 1;
 
+    //jack_log( "expect %d", netj->expected_framecnt );
     // Now check if required packet is already in the cache.
     // then poll (have deadline calculated)
     // then drain socket, rinse and repeat.
@@ -122,11 +126,12 @@ printf( "wait called...\n" );
 	if( packet_cache_get_next_available_framecnt( global_packcache, netj->expected_framecnt, &next_frame_avail) ) {
 	    if( next_frame_avail == netj->expected_framecnt ) {
 		we_have_the_expected_frame = 1;
-		break;
+		//break;
 	    }
 	}
-	if( ! netjack_poll_deadline( netj->sockfd, netj->next_deadline ) )
+	if( ! netjack_poll_deadline( netj->sockfd, netj->next_deadline ) ) {
 	    break;
+	}
 
 	packet_cache_drain_socket( global_packcache, netj->sockfd );
     }
@@ -144,6 +149,9 @@ printf( "wait called...\n" );
     //      well... this is the first packet we see. hmm.... dunno ;S
     //      it works... so...
     netj->running_free = 0;
+
+    if( !we_have_the_expected_frame )
+        jack_log( "xrun... %d", netj->expected_framecnt );
 
     if( we_have_the_expected_frame ) {
 	netj->time_to_deadline = netj->next_deadline - jack_get_time() - netj->period_usecs;
@@ -164,13 +172,13 @@ printf( "wait called...\n" );
 	    netj->next_deadline += netj->period_usecs/1000;
 	    */
 
-	if( netj->deadline_goodness < 10*(int)netj->period_usecs/100*netj->latency ) {
+	if( netj->deadline_goodness < 10*(int)netj->period_usecs*netj->latency/100) {
 	    netj->next_deadline -= netj->period_usecs/1000;
-	    //printf( "goodness: %d, Adjust deadline: --- %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
+	    //jack_log( "goodness: %d, Adjust deadline: --- %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
 	}
-	if( netj->deadline_goodness > 10*(int)netj->period_usecs/100*netj->latency ) {
+	if( netj->deadline_goodness > 10*(int)netj->period_usecs*netj->latency/100 ) {
 	    netj->next_deadline += netj->period_usecs/1000;
-	    //printf( "goodness: %d, Adjust deadline: +++ %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
+	    //jack_log( "goodness: %d, Adjust deadline: +++ %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
 	}
     } else {
 	netj->time_to_deadline = 0;
@@ -247,12 +255,12 @@ printf( "wait called...\n" );
 			//       when (num_packets lost == 0)
 
 			// This might still be too much.
-			netj->next_deadline += netj->period_usecs/8;
+			netj->next_deadline += netj->period_usecs;
 		    }
 		}
-	    } else if( (netj->num_lost_packets <= 10) ) {
+	    } else if( (netj->num_lost_packets <= 100) ) {
 		// lets try adjusting the deadline harder, for some packets, we might have just ran 2 fast.
-		//netj->next_deadline += netj->period_usecs*netj->latency/8;
+		netj->next_deadline += netj->period_usecs*netj->latency/8;
 	    } else {
 
 		// But now we can check for any new frame available.
@@ -266,7 +274,7 @@ printf( "wait called...\n" );
 		    netj->next_deadline_valid = 0;
 		    netj->packet_data_valid = 1;
 		    netj->running_free = 0;
-		    printf( "resync after freerun... %d\n", netj->expected_framecnt );
+		    jack_error( "resync after freerun... %d\n", netj->expected_framecnt );
 		} else {
 		    // give up. lets run freely.
 		    // XXX: hmm...
@@ -653,7 +661,7 @@ netjack_startup( netjack_driver_state_t *netj )
     netj->rx_bufsize = sizeof (jacknet_packet_header) + netj->net_period_down * netj->capture_channels * get_sample_size (netj->bitdepth);
     //netj->rx_buf = malloc (netj->rx_bufsize);
     netj->pkt_buf = malloc (netj->rx_bufsize);
-    global_packcache = packet_cache_new (netj->latency + 5, netj->rx_bufsize, netj->mtu);
+    global_packcache = packet_cache_new (netj->latency + 50, netj->rx_bufsize, netj->mtu);
 
     netj->expected_framecnt_valid = 0;
     netj->num_lost_packets = 0;

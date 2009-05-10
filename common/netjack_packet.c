@@ -28,6 +28,8 @@
 
 //#include "config.h"
 
+#define HAVE_CELT 1
+
 #define _XOPEN_SOURCE 600
 #define _BSD_SOURCE
 
@@ -485,29 +487,33 @@ netjack_poll (int sockfd, int timeout)
 int
 netjack_poll (int sockfd, int timeout)
 {
-    printf( "netjack_poll not implemented\n" );
+    jack_error( "netjack_poll not implemented\n" );
     return 0;
 }
 int
 netjack_poll_deadline (int sockfd, jack_time_t deadline)
 {
-    printf( "waiting... \n" );
     fd_set fds;
     FD_ZERO( &fds );
     FD_SET( sockfd, &fds );
 
     struct timeval timeout;
+    while( 1 ) {
+        jack_time_t now = jack_get_time();
+        if( now >= deadline )
+                return 0;
 
-    jack_time_t now = jack_get_time();
-    if( now >= deadline )
-        return 0;
+        int timeout_usecs = (deadline - now);
+    //jack_error( "timeout = %d", timeout_usecs );
+        timeout.tv_sec = 0;
+        timeout.tv_usec = (timeout_usecs < 500) ? 500 : timeout_usecs;
 
-    int timeout_usecs = (deadline - now);
-    timeout.tv_sec = 0;
-    timeout.tv_usec = timeout_usecs;
+        int poll_err = select (0, &fds, NULL, NULL, &timeout);
+        if( poll_err != 0 )
+            return poll_err;
+    }
 
-    int poll_err = select (0, &fds, NULL, NULL, &timeout);
-    return poll_err;
+    return 0;
 }
 #endif
 // This now reads all a socket has into the cache.
@@ -524,9 +530,12 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
     struct sockaddr_in sender_address;
 #ifdef WIN32
     size_t senderlen = sizeof( struct sockaddr_in );
+    u_long parm = 1;
+    ioctlsocket( sockfd, FIONBIO, &parm );
 #else
     socklen_t senderlen = sizeof( struct sockaddr_in );
 #endif
+    jack_log( "drain...." );
     while (1)
     {
         rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, 0,
@@ -549,7 +558,7 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 	if( pcache->last_framecnt_retreived_valid && (framecnt <= pcache->last_framecnt_retreived ))
 	    continue;
 
-	//printf( "Got Packet %d\n", framecnt );
+	jack_log( "Got Packet %d\n", framecnt );
         cpack = packet_cache_get_packet (global_packcache, framecnt);
         cache_packet_add_fragment (cpack, rx_packet, rcv_len);
 	cpack->recv_timestamp = jack_get_time();

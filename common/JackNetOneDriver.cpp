@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#define HAVE_CELT 1
+
 #ifdef WIN32
 #include <malloc.h>
 #endif
@@ -279,8 +281,6 @@ namespace Jack
 //driver processes--------------------------------------------------------------------
     int JackNetOneDriver::Read()
     {
-        printf( "yo... man... read...\n" );
-
 	netjack_wait( &netj );
 
 	if( (netj.num_lost_packets * netj.period_size / netj.sample_rate) > 10 )
@@ -295,6 +295,7 @@ namespace Jack
 	unsigned int *packet_buf, *packet_bufX;
 
 	if( ! netj.packet_data_valid ) {
+            jack_log( "data not valid" );
 	    render_payload_to_jack_ports (netj.bitdepth, NULL, netj.net_period_down, netj.capture_ports, netj.capture_srcs, netj.period_size, netj.dont_htonl_floats );
 	    return 0;
 	}
