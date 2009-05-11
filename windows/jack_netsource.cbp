@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="jack_netsource" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin\Debug\jack_netsource" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj\Debug\" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add directory="..\common" />
+					<Add directory="Release" />
+				</Compiler>
+				<Linker>
+					<Add library="libjack" />
+					<Add library="ws2_32" />
+					<Add library="libcelt" />
+					<Add library="kernel32" />
+					<Add directory="Release\bin" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="Release\bin\jack_netsource" prefix_auto="1" extension_auto="1" />
+				<Option object_output="Release\" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add directory="..\common" />
+					<Add directory="Release" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="libjack" />
+					<Add library="ws2_32" />
+					<Add library="libcelt" />
+					<Add directory="Release\bin" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="..\common\netjack_packet.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="..\example-clients\netsource.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="getopt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="getopt1.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
