@@ -20,6 +20,7 @@ example_programs = {
     'jack_monitor_client' : 'monitor_client.c',
     'jack_thru' : 'thru_client.c',
     'jack_cpu_load' : 'cpu_load.c',
+    'jack_trans2midi' : 'trans2midi.c',
     'jack_server_control' : 'server_control.cpp',
     }
 
