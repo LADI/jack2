@@ -21,7 +21,7 @@
 #ifndef __JackDriver__
 #define __JackDriver__
 
-#include "jack/types.h"
+#include "types.h"
 #include "JackClientInterface.h"
 #include "JackConstants.h"
 #include "JackPlatformPlug.h"
