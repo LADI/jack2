@@ -114,7 +114,8 @@ def build(bld):
 
     prog = bld.new_task_gen('cc', 'program')
     prog.includes = os_incdir + ['../common/jack', '../common']
-    prog.source = ['netsource.c', 'netjack_packet.c']
+    prog.source = ['netsource.c', '../common/netjack_packet.c']
+    prog.env.append_value("CCFLAGS", "-DNO_JACK_ERROR")
 #    if bld.env['IS_MACOSX']:
 #	prog.env.append_value("CPPFLAGS", "-mmacosx-version-min=10.4 -arch i386 -arch ppc")
 #	#prog.env.append_value("LINKFLAGS", "-arch i386 -arch ppc")

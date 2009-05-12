@@ -56,9 +56,10 @@ namespace Jack
     {
         jack_log ( "JackNetOneDriver::JackNetOneDriver port %d", port );
 
+#ifdef WIN32
     WSADATA wsa;
     int rc = WSAStartup(MAKEWORD(2,0),&wsa);
-    printf( "hi... rc=%d\n", rc );
+#endif
 
 	netjack_init( & (this->netj),
 		NULL, // client

@@ -67,8 +67,13 @@ struct _netjack_driver_state {
 
     jack_client_t   *client;
 
-    SOCKET		    sockfd;
-    SOCKET		    outsockfd;
+#ifdef WIN32
+    SOCKET	    sockfd;
+    SOCKET	    outsockfd;
+#else
+    int		    sockfd;
+    int		    outsockfd;
+#endif
 
     struct sockaddr_in syncsource_address;
 

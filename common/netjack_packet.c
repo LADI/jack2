@@ -75,6 +75,10 @@
 // JACK2 specific.
 #include "jack/control.h"
 
+#ifdef NO_JACK_ERROR
+#define jack_error printf
+#endif
+
 int fraggo = 0;
 
 packet_cache *global_packcache = NULL;
@@ -854,7 +858,7 @@ netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct so
         int last_payload_size = packet_buf + pkt_size - packet_bufX;
         memcpy (dataX, packet_bufX, last_payload_size);
         pkthdr->fragment_nr = htonl (frag_cnt);
-        //jack_error("last fragment_count = %d, payload_size = %d\n", fragment_count, last_payload_size);
+        //jack_log("last fragment_count = %d, payload_size = %d\n", fragment_count, last_payload_size);
 
         // sendto(last_pack_size);
         err = sendto(sockfd, tx_packet, last_payload_size + sizeof(jacknet_packet_header), flags, addr, addr_size);

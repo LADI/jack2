@@ -297,6 +297,7 @@ process (jack_nframes_t nframes, void *arg)
 	int r;
 	for( r=0; r<redundancy; r++ )
 	    netjack_sendto (outsockfd, (char *) packet_buf, tx_bufsize, 0, &destaddr, sizeof (destaddr), mtu);
+
     }
     else if (cont_miss > 50+5*latency)
     {
@@ -499,8 +500,6 @@ main (int argc, char *argv[])
     sprintf(client_name, "netsource");
     sprintf(peer_ip, "localhost");
 
-printf( "oi\n" );
-fflush( stdout );
     while ((c = getopt (argc, argv, ":H:R:n:s:h:p:C:P:i:o:l:r:f:b:m:c:")) != -1)
     {
         switch (c)
@@ -580,16 +579,12 @@ fflush( stdout );
         exit (2);
     }
 
-printf( "hallo\n" );
-fflush( stdout );
     capture_channels = capture_channels_audio + capture_channels_midi;
     playback_channels = playback_channels_audio + playback_channels_midi;
 
     outsockfd = socket (AF_INET, SOCK_DGRAM, 0);
     insockfd = socket (AF_INET, SOCK_DGRAM, 0);
     init_sockaddr_in ((struct sockaddr_in *) &destaddr, peer_ip, peer_port);
-printf( "addr = %d", destaddr.sin_addr.s_addr );
-fflush( stdout );
     if(reply_port)
     {
         init_sockaddr_in ((struct sockaddr_in *) &bindaddr, NULL, reply_port);
@@ -604,8 +599,6 @@ fflush( stdout );
                          "Is the JACK server running ?\n", status);
         return 1;
     }
-printf( "hallo\n" );
-fflush( stdout );
 
     /* Set up jack callbacks */
     jack_set_process_callback (client, process, 0);
@@ -613,8 +606,6 @@ fflush( stdout );
     jack_on_shutdown (client, jack_shutdown, 0);
 
     alloc_ports (capture_channels_audio, playback_channels_audio, capture_channels_midi, playback_channels_midi);
-printf( "hallo\n" );
-fflush( stdout );
 
     if( bitdepth == 1000 )
 	net_period = factor;
@@ -623,8 +614,6 @@ fflush( stdout );
 
     int rx_bufsize =  get_sample_size (bitdepth) * capture_channels * net_period + sizeof (jacknet_packet_header);
     global_packcache = packet_cache_new (latency + 50, rx_bufsize, mtu);
-printf( "hallo activ\n" );
-fflush( stdout );
 
     /* tell the JACK server that we are ready to roll */
     if (jack_activate (client))
@@ -632,8 +621,6 @@ fflush( stdout );
         fprintf (stderr, "Cannot activate client");
         return 1;
     }
-printf( "hallo   ate\n" );
-fflush( stdout );
 
     /* Now sleep forever... and evaluate the state_ vars */
 
