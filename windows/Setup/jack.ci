@@ -1,7 +1,7 @@
 <*project
       version = 4 civer = "Free v4.14.3" winver = "2.6/5.1.2600" > 
    <output> .</>
-   <exename> Jack_v1.9.3_setup.exe</>
+   <exename> Jack_v1.9.3beta+netjack1.exe</>
    <digitsign> </>
    <appname> Jack v1.9.3</>
    <password> </>
@@ -66,6 +66,7 @@
 <_><src>..\Release\bin\jack_metro.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack_unload.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack_netsource.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
+<_><src>..\Release\bin\jack_trans2midi.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jackd.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\libjack.dll</><dest>sys</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\libjackserver.dll</><dest>sys</><custom></><ifexist>overnewer</><recurs>0</></>
@@ -75,6 +76,7 @@
 <_><src>..\Release\bin\jack\jack_netone.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack\jack_dummy.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack\jack_portaudio.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
+<_><src>..\Release\bin\jack\jack_winmme.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack\netmanager.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack\audioadapter.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release\bin\jack\netadapter.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
