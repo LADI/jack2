@@ -535,7 +535,6 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 #else
     socklen_t senderlen = sizeof( struct sockaddr_in );
 #endif
-    jack_log( "drain...." );
     while (1)
     {
         rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, 0,
@@ -558,7 +557,6 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 	if( pcache->last_framecnt_retreived_valid && (framecnt <= pcache->last_framecnt_retreived ))
 	    continue;
 
-	jack_log( "Got Packet %d\n", framecnt );
         cpack = packet_cache_get_packet (global_packcache, framecnt);
         cache_packet_add_fragment (cpack, rx_packet, rcv_len);
 	cpack->recv_timestamp = jack_get_time();
