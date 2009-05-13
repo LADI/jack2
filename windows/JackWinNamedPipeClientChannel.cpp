@@ -329,6 +329,8 @@ bool JackWinNamedPipeClientChannel::Execute()
 
 error:
     fClient->ShutDown();
+    // close the pipes. server wont be able to create them otherwise.
+    fRequestPipe.Close();
     return false;
 }
 
