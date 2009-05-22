@@ -44,6 +44,7 @@ typedef struct {
     size_t	size;
     size_t	size_mask;
     int	mlocked;
+    volatile int xrun;
 }
 jack_adapterpipe_t ;
 
@@ -65,11 +66,12 @@ EXPORT size_t jack_adapterpipe_write(jack_adapterpipe_t *rb, const char *src,
                                  size_t cnt);
 EXPORT size_t jack_adapterpipe_write_no_fail(jack_adapterpipe_t *rb, const char *src,
                                  size_t cnt);
-void jack_adapterpipe_write_advance(jack_adapterpipe_t *rb, size_t cnt);
-size_t jack_adapterpipe_write_space(const jack_adapterpipe_t *rb);
+EXPORT void jack_adapterpipe_write_advance(jack_adapterpipe_t *rb, size_t cnt);
+EXPORT size_t jack_adapterpipe_write_space(const jack_adapterpipe_t *rb);
 
 /* Create a new adapterpipe to hold at least `sz' bytes of data. The
    actual buffer size is rounded up to the next power of two.  */
+
 
 EXPORT jack_adapterpipe_t *
 jack_adapterpipe_create (size_t sz)
@@ -89,6 +91,7 @@ jack_adapterpipe_create (size_t sz)
   rb->buf = (char*)malloc (rb->size);
   memset(rb->buf, 0, rb->size);
   rb->mlocked = 0;
+  rb->xrun = 0;
 
   return rb;
 }
@@ -188,6 +191,9 @@ EXPORT void
 jack_adapterpipe_set_write_space( jack_adapterpipe_t *rb, int space )
 {
   size_t w, r;
+
+  rb->xrun = 0;
+
   r = rb->read_ptr;
   w = (r + space) & rb->size_mask;
   rb->write_ptr = w;
@@ -197,6 +203,8 @@ EXPORT void
 jack_adapterpipe_set_read_space( jack_adapterpipe_t *rb, int space )
 {
   size_t w, r;
+
+  rb->xrun = 0;
 
   w = rb->write_ptr;
   r = (w - space) & rb->size_mask;
@@ -244,10 +252,12 @@ jack_adapterpipe_read (jack_adapterpipe_t * rb, char *dest, size_t cnt)
 EXPORT size_t
 jack_adapterpipe_read_no_fail (jack_adapterpipe_t * rb, char *dest, size_t cnt)
 {
-  size_t free_cnt;
   size_t cnt2;
   size_t to_read;
   size_t n1, n2;
+
+  if( cnt > jack_adapterpipe_read_space( rb ) )
+	  rb->xrun = 1;
 
   to_read = cnt;
 
@@ -354,11 +364,12 @@ jack_adapterpipe_write (jack_adapterpipe_t * rb, const char *src, size_t cnt)
 EXPORT size_t
 jack_adapterpipe_write_no_fail (jack_adapterpipe_t * rb, const char *src, size_t cnt)
 {
-  size_t free_cnt;
   size_t cnt2;
   size_t to_write;
   size_t n1, n2;
 
+  if( cnt > jack_adapterpipe_write_space( rb ) )
+	  rb->xrun = 1;
 
   to_write = cnt;
 

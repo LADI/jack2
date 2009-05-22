@@ -84,7 +84,8 @@ namespace Jack
         jack_nframes_t fAdaptedSampleRate;
 
         //PI controler
-        JackPIControler fPIControler;
+        JackPIControler fPIControler_Capture;
+        JackPIControler fPIControler_Playback;
 
         JackResampler** fCaptureRingBuffer;
         JackResampler** fPlaybackRingBuffer;
@@ -93,7 +94,7 @@ namespace Jack
         unsigned int fRingbufferCurSize;
         jack_time_t fPullAndPushTime;
   
-        bool fRunning;
+        volatile bool fRunning;
         bool fAdaptative;
         
         void ResetRingBuffers();
@@ -109,7 +110,8 @@ namespace Jack
             fHostSampleRate ( sample_rate ),
             fAdaptedBufferSize ( buffer_size),
             fAdaptedSampleRate ( sample_rate ),
-            fPIControler(sample_rate / sample_rate, 32),
+            fPIControler_Capture(sample_rate / sample_rate, 32),
+            fPIControler_Playback(sample_rate / sample_rate, 32),
             fCaptureRingBuffer(NULL), fPlaybackRingBuffer(NULL),
             fQuality(0),
             fRingbufferCurSize(DEFAULT_ADAPTATIVE_SIZE),
@@ -162,14 +164,16 @@ namespace Jack
         virtual int SetHostSampleRate ( jack_nframes_t sample_rate )
         {
             fHostSampleRate = sample_rate;
-            fPIControler.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
+            fPIControler_Capture.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
+            fPIControler_Playback.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
             return 0;
         }
 
         virtual int SetAdaptedSampleRate ( jack_nframes_t sample_rate )
         {
             fAdaptedSampleRate = sample_rate;
-            fPIControler.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
+            fPIControler_Capture.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
+            fPIControler_Playback.Init(double(fHostSampleRate) / double(fAdaptedSampleRate));
             return 0;
         }
 

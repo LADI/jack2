@@ -55,6 +55,7 @@ typedef struct {
     size_t	size;
     size_t	size_mask;
     int	mlocked;
+    volatile int xrun;
 }
 jack_adapterpipe_t ;
 

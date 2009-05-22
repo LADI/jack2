@@ -65,6 +65,10 @@ void JackResampler::HardAdjustRead( int adjust )
     jack_adapterpipe_set_read_space( fRingBuffer, sizeof(float) * adjust ) ;
 }
 
+int JackResampler::HasXRun()
+{
+    return fRingBuffer->xrun;
+}
 unsigned int JackResampler::Read(float* buffer, unsigned int frames)
 {
     jack_adapterpipe_read_no_fail(fRingBuffer, (char*)buffer, frames * sizeof(float));
