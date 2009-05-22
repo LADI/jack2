@@ -22,16 +22,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 namespace Jack
 {
 
-JackLibSampleRateResampler::JackLibSampleRateResampler()
-    :JackResampler()
-{
-    int error;
-    fResampler = src_new(SRC_LINEAR, 1, &error);
-    if (error != 0) 
-        jack_error("JackLibSampleRateResampler::JackLibSampleRateResampler err = %s", src_strerror(error));
-}
-
-JackLibSampleRateResampler::JackLibSampleRateResampler(unsigned int quality)
+JackLibSampleRateResampler::JackLibSampleRateResampler(unsigned int quality, int period_size )
     :JackResampler()
 {
      switch (quality) {
@@ -73,17 +64,18 @@ void JackLibSampleRateResampler::Reset(unsigned int new_size)
     src_reset(fResampler);
 }
 
+
 unsigned int JackLibSampleRateResampler::ReadResample(float* buffer, unsigned int frames)
 {
-    jack_ringbuffer_data_t ring_buffer_data[2];
+    jack_adapterpipe_data_t ring_buffer_data[2];
     SRC_DATA src_data;
     unsigned int frames_to_write = frames;
     unsigned int written_frames = 0;
     int res;
     
-    jack_ringbuffer_get_read_vector(fRingBuffer, ring_buffer_data);
+    jack_adapterpipe_get_read_vector(fRingBuffer, ring_buffer_data);
     unsigned int available_frames = (ring_buffer_data[0].len + ring_buffer_data[1].len) / sizeof(float);
-    jack_log("Output available = %ld", available_frames);
+    jack_log("ReadReasample: ring available = %ld", available_frames);
       
     for (int j = 0; j < 2; j++) {
     
@@ -111,7 +103,7 @@ unsigned int JackLibSampleRateResampler::ReadResample(float* buffer, unsigned in
             }
             
             jack_log("Output : j = %d input_frames_used = %ld output_frames_gen = %ld", j, src_data.input_frames_used, src_data.output_frames_gen);
-            jack_ringbuffer_read_advance(fRingBuffer, src_data.input_frames_used * sizeof(float));
+            jack_adapterpipe_read_advance(fRingBuffer, src_data.input_frames_used * sizeof(float));
         }
     }
     
@@ -125,15 +117,15 @@ unsigned int JackLibSampleRateResampler::ReadResample(float* buffer, unsigned in
 
 unsigned int JackLibSampleRateResampler::WriteResample(float* buffer, unsigned int frames)
 {
-    jack_ringbuffer_data_t ring_buffer_data[2];
+    jack_adapterpipe_data_t ring_buffer_data[2];
     SRC_DATA src_data;
     unsigned int frames_to_read = frames;
     unsigned int read_frames = 0;
     int res;
     
-    jack_ringbuffer_get_write_vector(fRingBuffer, ring_buffer_data);
+    jack_adapterpipe_get_write_vector(fRingBuffer, ring_buffer_data);
     unsigned int available_frames = (ring_buffer_data[0].len + ring_buffer_data[1].len) / sizeof(float);
-    jack_log("Input available = %ld", available_frames);
+    jack_log("WriteResample: ring available = %ld", available_frames);
     
     for (int j = 0; j < 2; j++) {
             
@@ -148,7 +140,7 @@ unsigned int JackLibSampleRateResampler::WriteResample(float* buffer, unsigned i
          
             res = src_process(fResampler, &src_data);
             if (res != 0) {
-                jack_error("JackLibSampleRateResampler::ReadResample ratio = %f err = %s", fRatio, src_strerror(res));
+                jack_error("JackLibSampleRateResampler::WritResample ratio = %f err = %s", fRatio, src_strerror(res));
                 return 0;
             }
                 
@@ -161,13 +153,13 @@ unsigned int JackLibSampleRateResampler::WriteResample(float* buffer, unsigned i
             }
         
             jack_log("Input : j = %d input_frames_used = %ld output_frames_gen = %ld", j, src_data.input_frames_used, src_data.output_frames_gen);
-            jack_ringbuffer_write_advance(fRingBuffer, src_data.output_frames_gen * sizeof(float));
+            jack_adapterpipe_write_advance(fRingBuffer, src_data.output_frames_gen * sizeof(float));
         }
     }
     
     if (read_frames < frames) {
-        jack_error("Input available = %ld", available_frames);
-        jack_error("JackLibSampleRateResampler::ReadResample error read_frames = %ld", read_frames);
+        jack_error("Write space available = %ld", available_frames);
+        jack_error("JackLibSampleRateResampler::WriteResample error read_frames = %ld", read_frames);
     }
         
     return read_frames;

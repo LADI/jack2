@@ -109,7 +109,7 @@ namespace Jack
             fHostSampleRate ( sample_rate ),
             fAdaptedBufferSize ( buffer_size),
             fAdaptedSampleRate ( sample_rate ),
-            fPIControler(sample_rate / sample_rate, 256),
+            fPIControler(sample_rate / sample_rate, 32),
             fCaptureRingBuffer(NULL), fPlaybackRingBuffer(NULL),
             fQuality(0),
             fRingbufferCurSize(DEFAULT_ADAPTATIVE_SIZE),

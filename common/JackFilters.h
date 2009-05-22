@@ -263,7 +263,6 @@ namespace Jack
             static_resample_factor = resample_factor;
         }
         
-        /*
         double GetRatio(int fill_level)
         {
             double offset = fill_level;
@@ -295,13 +294,13 @@ namespace Jack
             // Now quantize this value around resample_mean, so that the noise which is in the integral component doesnt hurt.
             current_resample_factor = floor((current_resample_factor - resample_mean) * controlquant + 0.5) / controlquant + resample_mean;
 
+
             // Calculate resample_mean so we can init ourselves to saner values.
             resample_mean = 0.9999 * resample_mean + 0.0001 * current_resample_factor;
             return current_resample_factor;
         }
-        */
 
-        
+       /* 
         double GetRatio(int error)
         {
             double smooth_offset = error;
@@ -314,8 +313,9 @@ namespace Jack
             // Kp = 1/catch_factor and T = catch_factor2 Ki = Kp/T 
             return static_resample_factor - smooth_offset/catch_factor - offset_integral/catch_factor/catch_factor2;
         }
+	*/
         
-        void OurOfBounds()
+        void OutOfBounds()
         {
             int i;
             // Set the resample_rate... we need to adjust the offset integral, to do this.
