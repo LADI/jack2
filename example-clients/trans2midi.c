@@ -63,9 +63,12 @@ static int process(jack_nframes_t nframes, void *arg)
 	double tick_float = beat_float * (double) 24.0;
 
 	double ticks_to_next_tick = ceil( tick_float ) - tick_float;
-        jack_nframes_t frames_to_next_tick  = (jack_nframes_t) (ticks_to_next_tick / (double) 24.0 / (double) bpm * 60.0 * (double) ttime.frame_rate );
+    jack_nframes_t frames_to_next_tick  = (jack_nframes_t) (ticks_to_next_tick / (double) 24.0 / (double) bpm * 60.0 * (double) ttime.frame_rate );
 
 	jack_nframes_t frames_per_tick = (jack_nframes_t) ((double) ttime.frame_rate * 60.0 / (double) bpm / 24.0);
+    jack_nframes_t next_frame_num = (ttime.frame-1)/frames_per_tick + 1;
+    frames_to_next_tick = next_frame_num*frames_per_tick - ttime.frame;
+
 	if( trans_state == JackTransportRolling )
 	{
 		if( old_trans_state != JackTransportRolling )
@@ -82,7 +85,8 @@ static int process(jack_nframes_t nframes, void *arg)
 
 		// transport rolling ... emit clocks.
 		jack_nframes_t emit_frame = frames_to_next_tick;
-		int next_tick = ceil( tick_float );
+		//int next_tick = ceil( tick_float );
+		int next_tick = next_frame_num;
 
         if( !clock_rolling ) {
             if( emit_frame < nframes ) {

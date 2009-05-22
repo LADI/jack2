@@ -173,18 +173,18 @@ int JackWinMMEDriver::Open(bool capturing,
         UINT ret = midiOutOpen(&handle, fMidiSource[devindex].fIndex, 0L, 0L, CALLBACK_NULL);
         if (ret == MMSYSERR_NOERROR) {
             fMidiSource[devindex].fHandle = handle;
-            if (!InitHeaders(&fMidiSource[devindex])) {
-                jack_error("memory allocation failed");
-                midiOutClose(handle);
-                continue;
-            }
-            res = midiOutPrepareHeader(handle, fMidiSource[devindex].fHeader, sizeof(MIDIHDR));
-            if (res != MMSYSERR_NOERROR) {
-                jack_error("midiOutPrepareHeader error %d %d %d", i, handle, res);
-                continue;
-            } else {
-                fMidiSource[devindex].fHeader->dwUser = 1;
-            }
+            //if (!InitHeaders(&fMidiSource[devindex])) {
+            //    jack_error("memory allocation failed");
+            //    midiOutClose(handle);
+            //    continue;
+            //}
+            //res = midiOutPrepareHeader(handle, fMidiSource[devindex].fHeader, sizeof(MIDIHDR));
+            //if (res != MMSYSERR_NOERROR) {
+            //    jack_error("midiOutPrepareHeader error %d %d %d", i, handle, res);
+            //    continue;
+            //} else {
+            // fMidiSource[devindex].fHeader->dwUser = 1;
+            //}
         } else {
             jack_error("midiOutOpen error");
             continue;
