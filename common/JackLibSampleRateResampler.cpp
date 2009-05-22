@@ -158,8 +158,8 @@ unsigned int JackLibSampleRateResampler::WriteResample(float* buffer, unsigned i
     }
     
     if (read_frames < frames) {
-        jack_error("Write space available = %ld", available_frames);
-        jack_error("JackLibSampleRateResampler::WriteResample error read_frames = %ld", read_frames);
+        //jack_error("Write space available = %ld", available_frames);
+        //jack_error("JackLibSampleRateResampler::WriteResample error read_frames = %ld", read_frames);
     }
         
     return read_frames;

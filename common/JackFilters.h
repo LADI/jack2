@@ -245,9 +245,9 @@ namespace Jack
             }
 
             // These values could be configurable
-            catch_factor = 100000;
+            catch_factor = 20000;
             catch_factor2 = 10000;
-            pclamp = 15.0;
+            pclamp = 10.0;
             controlquant = 10000.0;
         }
         

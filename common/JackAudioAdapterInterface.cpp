@@ -234,70 +234,56 @@ namespace Jack
         bool failure = false;
         fRunning = true;
    
+	double ratio;
 
         // Finer estimation of the position in the ringbuffer
         int delta_frames = (fPullAndPushTime > 0) ? (int)((float(long(GetMicroSeconds() - fPullAndPushTime)) * float(fAdaptedSampleRate)) / 1000000.f) : 0;
 	//int delta_frames = 0;
 
 	int fill;
-	if( fCaptureChannels > 0 )
+	if( fCaptureChannels > 0 ) {
 	    fill = fCaptureRingBuffer[0]->ReadSpace();
-	else
-	    fill = fPlaybackRingBuffer[0]->ReadSpace();
 
-	if( (fill < (fHostBufferSize + 10)) || (fill > (fRingbufferCurSize) ) ) {
-	    jack_error( "buffer bounds reached fill = %d", fill );
+	    if( (fill < (fHostBufferSize + 10)) || (fill > (fRingbufferCurSize)) || (fCaptureRingBuffer[0]->HasXRun()) ) {
+		jack_error( "capture: buffer bounds reached fill = %d", fill );
+		for (int i = 0; i < fCaptureChannels; i++) {
+		    fCaptureRingBuffer[i]->HardAdjustRead( fRingbufferCurSize/2 + fHostBufferSize/2 );
+		}
+		fPIControler_Capture.OutOfBounds();
+	    }
+
+	    ratio = fPIControler_Capture.GetRatio( fill - (fRingbufferCurSize/2 + fHostBufferSize/2) + delta_frames);
+
 	    for (int i = 0; i < fCaptureChannels; i++) {
-		fCaptureRingBuffer[i]->HardAdjustRead( fRingbufferCurSize/2 + fHostBufferSize/2 );
+		fCaptureRingBuffer[i]->SetRatio(1.0/ratio);
+		if (fCaptureRingBuffer[i]->ReadResample(inputBuffer[i], frames) < frames)
+		    failure = true;
 	    }
-	    for (int i = 0; i < fPlaybackChannels; i++) {
-		fPlaybackRingBuffer[i]->HardAdjustWrite( fRingbufferCurSize/2 - fHostBufferSize/2 );
-	    }
-	    fPIControler.OutOfBounds();
-	if( fCaptureChannels > 0 )
-	    fill = fCaptureRingBuffer[0]->ReadSpace();
-	else
-	    fill = fPlaybackRingBuffer[0]->ReadSpace();
 
-	    jack_error( "fill now = %d", fill );
 	}
 
-	double ratio;
-	if( fCaptureChannels > 0 )
-	    ratio = fPIControler.GetRatio( fill - (fRingbufferCurSize/2 + fHostBufferSize/2)  + delta_frames);
-	else
-	    ratio = fPIControler.GetRatio( fill - (fRingbufferCurSize/2 - fHostBufferSize/2)  - delta_frames);
+	if( fPlaybackChannels > 0 ) {
 
-	//jack_error( "retio = %f fill=%d", (float) ratio, fill );
-        
-    #ifdef JACK_MONITOR
-        fTable.Write(fCaptureRingBuffer[0]->GetError(), fCaptureRingBuffer[0]->GetError() - delta_frames, ratio, 1/ratio, fCaptureRingBuffer[0]->ReadSpace(), fCaptureRingBuffer[0]->ReadSpace());
-    #endif
-    
-        // Push/pull from ringbuffer
-        for (int i = 0; i < fCaptureChannels; i++) {
-            fCaptureRingBuffer[i]->SetRatio(1.0/ratio);
-            if (fCaptureRingBuffer[i]->ReadResample(inputBuffer[i], frames) < frames)
-                failure = true;
-        }
+	    fill = fPlaybackRingBuffer[0]->ReadSpace();
 
-        for (int i = 0; i < fPlaybackChannels; i++) {
-            fPlaybackRingBuffer[i]->SetRatio(ratio);
-            if (fPlaybackRingBuffer[i]->WriteResample(outputBuffer[i], frames) < frames)
-                 failure = true;
+	    if( (fill < (fAdaptedBufferSize + 2)) || (fill > (fRingbufferCurSize + fAdaptedBufferSize)) || (fPlaybackRingBuffer[0]->HasXRun()) ) {
+
+		//jack_error( "playback buffer bounds reached fill = %d", fill );
+		for (int i = 0; i < fPlaybackChannels; i++) {
+		    fPlaybackRingBuffer[i]->HardAdjustWrite( fRingbufferCurSize/2 - fHostBufferSize/2 + fAdaptedBufferSize );
+		}
+		fPIControler_Playback.OutOfBounds();
+	    }
+
+	    ratio = fPIControler_Playback.GetRatio( fill - (fRingbufferCurSize/2 - fHostBufferSize/2 + fAdaptedBufferSize)  - delta_frames);
+
+	    for (int i = 0; i < fPlaybackChannels; i++) {
+		fPlaybackRingBuffer[i]->SetRatio(ratio);
+		if (fPlaybackRingBuffer[i]->WriteResample(outputBuffer[i], frames) < frames)
+		    fPlaybackRingBuffer[i]->Reset(fRingbufferCurSize);
+	    }
         }
-        // Reset all ringbuffers in case of failure
-        if (failure) {
-            jack_error("JackAudioAdapterInterface::PushAndPull ringbuffer failure... reset");
-            if (fAdaptative) {
-                GrowRingBufferSize();
-                jack_info("Ringbuffer size = %d frames", fRingbufferCurSize);
-            }
-            ResetRingBuffers();
-            return -1;
-        } else {
-            return 0;
-        }
+	return 0;
     }
 
     int JackAudioAdapterInterface::PushAndPull(float** inputBuffer, float** outputBuffer, unsigned int frames)

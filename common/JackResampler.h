@@ -65,6 +65,7 @@ class JackResampler
         
 	void HardAdjustWrite( int adjust );
 	void HardAdjustRead( int adjust );
+	int HasXRun();
 
         void SetRatio(double ratio)
         {
