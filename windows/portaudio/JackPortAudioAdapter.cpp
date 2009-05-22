@@ -49,6 +49,10 @@ namespace Jack
         int in_max = 0;
         int out_max = 0;
 
+        fCaptureChannels = -1;
+        fPlaybackChannels = -1;
+
+
         fInputDevice = Pa_GetDefaultInputDevice();
         fOutputDevice = Pa_GetDefaultOutputDevice();
 
@@ -110,9 +114,9 @@ namespace Jack
             out_max = fPaDevices.GetDeviceInfo ( fOutputDevice )->maxOutputChannels;
 
         //effective channels
-        if ( ( fCaptureChannels == 0 ) || ( fCaptureChannels > in_max ) )
+        if ( ( fCaptureChannels == -1 ) || ( fCaptureChannels > in_max ) )
             fCaptureChannels = in_max;
-        if ( ( fPlaybackChannels == 0 ) || ( fPlaybackChannels > out_max ) )
+        if ( ( fPlaybackChannels == -1 ) || ( fPlaybackChannels > out_max ) )
             fPlaybackChannels = out_max;
 
         //set adapter interface channels
