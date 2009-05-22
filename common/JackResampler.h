@@ -20,7 +20,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef __JackResampler__
 #define __JackResampler__
 
-#include "ringbuffer.h"
+#include "adapterpipe.h"
 #include "JackError.h"
 
 namespace Jack
@@ -29,7 +29,7 @@ namespace Jack
 #define DEFAULT_RB_SIZE 32768
 #define DEFAULT_ADAPTATIVE_SIZE 2048		
 
-inline float Range(float min, float max, float val)
+inline double Range(double min, double max, double val)
 {
     return (val < min) ? min : ((val > max) ? max : val);
 }
@@ -43,7 +43,7 @@ class JackResampler
 
     protected:
     
-        jack_ringbuffer_t* fRingBuffer;
+        jack_adapterpipe_t* fRingBuffer;
         double fRatio;
         unsigned int fRingBufferSize;
        
@@ -63,10 +63,8 @@ class JackResampler
         virtual unsigned int ReadSpace();
         virtual unsigned int WriteSpace();
         
-        unsigned int GetError()
-        {
-            return (jack_ringbuffer_read_space(fRingBuffer) / sizeof(float)) - (fRingBufferSize / 2);
-        }
+	void HardAdjustWrite( int adjust );
+	void HardAdjustRead( int adjust );
 
         void SetRatio(double ratio)
         {

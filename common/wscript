@@ -236,6 +236,7 @@ def build(bld):
     create_jack_process_obj(bld, 'profiler', 'JackProfiler.cpp', serverlib)
 
     net_adapter_sources = [
+        'adapterpipe.c',
         'JackResampler.cpp',
         'JackLibSampleRateResampler.cpp',
         'JackAudioAdapter.cpp',
@@ -248,6 +249,7 @@ def build(bld):
         process.uselib = 'SAMPLERATE'
 
     audio_adapter_sources = [
+        'adapterpipe.c',
         'JackResampler.cpp',
         'JackLibSampleRateResampler.cpp',
         'JackAudioAdapter.cpp',
