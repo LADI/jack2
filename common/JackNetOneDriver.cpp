@@ -1078,7 +1078,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
             case 'H':
                 dont_htonl_floats = param->value.ui;
                 break;
-                }
+
             case 'D':
                 always_deadline = param->value.ui;
                 break;
