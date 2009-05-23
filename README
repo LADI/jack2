@@ -1,3 +1,15 @@
+---------
+jacknone 
+---------
+
+adds the netjack1 protocol to jack2,
+a lot of the development focus was on windows,
+
+the general purpose of this fork is to bring the jack2 
+codebase to the level of quality jack1 provides, while preserving its featureset.
+
+
+
 -----------------------------------------------
 jackdmp for Linux, MacOSX, Windows and Solaris
 -----------------------------------------------

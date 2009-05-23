@@ -11,8 +11,8 @@ import Task
 import re
 import Logs
 
-VERSION='1.9.3'
-APPNAME='jack'
+VERSION='0.1'
+APPNAME='jacknone'
 JACK_API_VERSION = '0.1.0'
 
 # these variables are mandatory ('/' are converted automatically)
@@ -152,7 +152,7 @@ def configure(conf):
 
     print
     display_msg("==================")
-    version_msg = "JACK " + VERSION
+    version_msg = "JACK NONE" + VERSION
     if svnrev:
         version_msg += " exported from r" + svnrev
     else:

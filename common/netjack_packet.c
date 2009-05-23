@@ -541,8 +541,13 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 #endif
     while (1)
     {
+#ifdef WIN32
         rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, 0,
 			    (struct sockaddr*) &sender_address, &senderlen);
+#else
+        rcv_len = recvfrom (sockfd, rx_packet, pcache->mtu, MSG_DONTWAIT,
+			    (struct sockaddr*) &sender_address, &senderlen);
+#endif
         if (rcv_len < 0)
             return;
 

@@ -101,13 +101,13 @@ void netjack_wait( netjack_driver_state_t *netj )
 		netj->next_deadline = jack_get_time() + 50*netj->period_usecs;
 	    else if( netj->latency == 1 )
 		// for normal 1 period latency mode, only 1 period for dealine.
-		netj->next_deadline = jack_get_time() + netj->period_usecs;
+		netj->next_deadline = jack_get_time() + 110 * netj->period_usecs /100;
 	    else
 		// looks like waiting 1 period always is correct.
 		// not 100% sure yet. with the improved resync, it might be better,
 		// to have more than one period headroom for high latency.
 		//netj->next_deadline = jack_get_time() + 5*netj->latency*netj->period_usecs/4;
-		netj->next_deadline = jack_get_time() + 10*netj->latency*netj->period_usecs/100;
+		netj->next_deadline = jack_get_time() + netj->period_usecs + 10*netj->latency*netj->period_usecs/100;
 
 	    netj->next_deadline_valid = 1;
     } else {
@@ -172,12 +172,12 @@ void netjack_wait( netjack_driver_state_t *netj )
 	    netj->next_deadline += netj->period_usecs/1000;
 	    */
 
-	if( netj->deadline_goodness < 10*(int)netj->period_usecs*netj->latency/100) {
-	    netj->next_deadline -= netj->period_usecs/1000;
+	if( netj->deadline_goodness < (netj->period_usecs/4+10*(int)netj->period_usecs*netj->latency/100) ) {
+	    netj->next_deadline += netj->period_usecs/100;
 	    //jack_log( "goodness: %d, Adjust deadline: --- %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
 	}
-	if( netj->deadline_goodness > 10*(int)netj->period_usecs*netj->latency/100 ) {
-	    netj->next_deadline += netj->period_usecs/1000;
+	if( netj->deadline_goodness > (netj->period_usecs/4+10*(int)netj->period_usecs*netj->latency/100) ) {
+	    netj->next_deadline -= netj->period_usecs/100;
 	    //jack_log( "goodness: %d, Adjust deadline: +++ %d\n", netj->deadline_goodness, (int) netj->period_usecs*netj->latency/100 );
 	}
     } else {
