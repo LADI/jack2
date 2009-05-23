@@ -126,7 +126,8 @@ void netjack_wait( netjack_driver_state_t *netj )
 	if( packet_cache_get_next_available_framecnt( global_packcache, netj->expected_framecnt, &next_frame_avail) ) {
 	    if( next_frame_avail == netj->expected_framecnt ) {
 		we_have_the_expected_frame = 1;
-		//break;
+		if( !netj->always_deadline )
+			break;
 	    }
 	}
 	if( ! netjack_poll_deadline( netj->sockfd, netj->next_deadline ) ) {
@@ -484,7 +485,8 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		unsigned int use_autoconfig,
 		unsigned int latency,
 		unsigned int redundancy,
-		int dont_htonl_floats)
+		int dont_htonl_floats,
+		int always_deadline)
 {
 
     // Fill in netj values.
@@ -513,6 +515,7 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     netj->latency = latency;
     netj->redundancy = redundancy;
     netj->use_autoconfig = use_autoconfig;
+    netj->always_deadline = always_deadline;
 
 
     netj->client = client;

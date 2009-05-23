@@ -51,7 +51,7 @@ namespace Jack
                                    int port, int mtu, int capture_ports, int playback_ports, int midi_input_ports, int midi_output_ports,
 				   int sample_rate, int period_size, int resample_factor,
                                    char* net_name, uint transport_sync, int bitdepth, int use_autoconfig,
-				   int latency, int redundancy, int dont_htonl_floats )
+				   int latency, int redundancy, int dont_htonl_floats, int always_deadline )
             : JackAudioDriver ( name, alias, engine, table )
     {
         jack_log ( "JackNetOneDriver::JackNetOneDriver port %d", port );
@@ -78,7 +78,8 @@ namespace Jack
 		use_autoconfig,
 		latency,
 		redundancy,
-		dont_htonl_floats);
+		dont_htonl_floats,
+		always_deadline);
     }
 
     JackNetOneDriver::~JackNetOneDriver()
@@ -814,7 +815,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 	    strcpy ( desc->name, "netone" );                             // size MUST be less then JACK_DRIVER_NAME_MAX + 1
 	    strcpy ( desc->desc, "netjack one slave backend component" ); // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
 
-	    desc->nparams = 16;
+	    desc->nparams = 17;
 	    params = ( jack_driver_param_desc_t* ) calloc ( desc->nparams, sizeof ( jack_driver_param_desc_t ) );
 
 	    int i = 0;
@@ -955,6 +956,15 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 		    "Dont convert samples to network byte order.");
 	    strcpy (params[i].long_desc, params[i].short_desc);
 
+	    i++;
+	    strcpy (params[i].name, "deadline");
+	    params[i].character  = 'D';
+	    params[i].type       = JackDriverParamUInt;
+	    params[i].value.ui   = 0U;
+	    strcpy (params[i].short_desc,
+		    "always use deadline (recommended for internet connect)");
+	    strcpy (params[i].long_desc, params[i].short_desc);
+
 	    desc->params = params;
 
 	    return desc;
@@ -978,6 +988,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
     unsigned int redundancy = 1;
     unsigned int mtu = 1400;
     int dont_htonl_floats = 0;
+    int always_deadline = 0;
     const JSList * node;
     const jack_driver_param_t * param;
 
@@ -1068,6 +1079,10 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
                 dont_htonl_floats = param->value.ui;
                 break;
                 }
+            case 'D':
+                always_deadline = param->value.ui;
+                break;
+                }
             }
 
             try
@@ -1078,7 +1093,9 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
                     new Jack::JackNetOneDriver ( "system", "net_pcm", engine, table, listen_port, mtu,
                                               capture_ports_midi, playback_ports_midi, capture_ports, playback_ports,
 					      sample_rate, period_size, resample_factor,
-					      "net_pcm", handle_transport_sync, bitdepth, use_autoconfig, latency, redundancy, dont_htonl_floats ) );
+					      "net_pcm", handle_transport_sync, bitdepth, use_autoconfig, latency, redundancy, 
+					      dont_htonl_floats, always_deadline ) );
+
                 if ( driver->Open ( period_size, sample_rate, 1, 1, capture_ports, playback_ports,
                                     0, "from_master_", "to_master_", 0, 0 ) == 0 )
                 {

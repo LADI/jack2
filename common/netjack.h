@@ -48,6 +48,7 @@ struct _netjack_driver_state {
     jack_nframes_t  period_size;
     jack_time_t	    period_usecs;
     int		    dont_htonl_floats;
+    int		    always_deadline;
 
     jack_nframes_t  codec_latency;
 
@@ -130,7 +131,8 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 		unsigned int use_autoconfig,
 		unsigned int latency,
 		unsigned int redundancy,
-		int dont_htonl_floats);
+		int dont_htonl_floats,
+		int always_deadline);
 
 void netjack_release( netjack_driver_state_t *netj );
 int netjack_startup( netjack_driver_state_t *netj );
