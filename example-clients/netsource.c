@@ -95,8 +95,13 @@ int state_recv_packet_queue_time = 0;
 
 int outsockfd;
 int insockfd;
+#ifdef WIN32
 struct sockaddr_in destaddr;
 struct sockaddr_in bindaddr;
+#else
+struct sockaddr destaddr;
+struct sockaddr bindaddr;
+#endif
 
 int sync_state;
 jack_transport_state_t last_transport_state;
@@ -584,11 +589,19 @@ main (int argc, char *argv[])
 
     outsockfd = socket (AF_INET, SOCK_DGRAM, 0);
     insockfd = socket (AF_INET, SOCK_DGRAM, 0);
+
+    if( (outsockfd == -1) || (insockfd == -1) ) {
+        fprintf (stderr, "cant open sockets\n" );
+        return 1;
+    }
+
     init_sockaddr_in ((struct sockaddr_in *) &destaddr, peer_ip, peer_port);
     if(reply_port)
     {
         init_sockaddr_in ((struct sockaddr_in *) &bindaddr, NULL, reply_port);
-        bind (insockfd, &bindaddr, sizeof (bindaddr));
+        if( bind (insockfd, &bindaddr, sizeof (bindaddr)) ) {
+		fprintf (stderr, "bind failure\n" );
+	}
     }
 
     /* try to become a client of the JACK server */

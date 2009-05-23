@@ -15,7 +15,7 @@ def create_jack_driver_obj(bld, target, sources, uselib = None):
     driver = bld.new_task_gen('cxx', 'shlib')
     driver.features.append('cc')
     driver.env['shlib_PATTERN'] = 'jack_%s.so'
-    driver.defines = ['HAVE_CONFIG_H','SERVER_SIDE']
+    driver.defines = ['HAVE_CONFIG_H','SERVER_SIDE', 'HAVE_PPOLL']
     driver.includes = ['.', '../linux', '../posix', '../common', '../common/jack', '../dbus']
     driver.target = target
     driver.source = sources
