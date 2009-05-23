@@ -245,7 +245,7 @@ namespace Jack
 	    fill = fCaptureRingBuffer[0]->ReadSpace();
 
 	    if( (fill < (fHostBufferSize + 10)) || (fill > (fRingbufferCurSize)) || (fCaptureRingBuffer[0]->HasXRun()) ) {
-		jack_error( "capture: buffer bounds reached fill = %d", fill );
+		//jack_error( "capture: buffer bounds reached fill = %d", fill );
 		for (int i = 0; i < fCaptureChannels; i++) {
 		    fCaptureRingBuffer[i]->HardAdjustRead( fRingbufferCurSize/2 + fHostBufferSize/2 );
 		}
