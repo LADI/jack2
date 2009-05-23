@@ -358,7 +358,7 @@ int main(int argc, char* argv[])
     }
 
     if (show_version) {
-        printf( "jackdmp version " VERSION
+        printf( "jacknone version " VERSION
 				" tmpdir " jack_server_dir
 				" protocol %d"
 				"\n", JACK_PROTOCOL_VERSION);
