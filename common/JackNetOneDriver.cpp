@@ -84,7 +84,6 @@ namespace Jack
 
     JackNetOneDriver::~JackNetOneDriver()
     {
-        printf( "destroy\n" );
 	// No destructor yet.
     }
 
@@ -106,7 +105,6 @@ namespace Jack
                                      capture_latency,
                                      playback_latency ) == 0 )
         {
-            printf( "open succeed\n" );
             fEngineControl->fPeriod = 0;
             fEngineControl->fComputation = 500 * 1000;
             fEngineControl->fConstraint = 500 * 1000;
@@ -114,7 +112,7 @@ namespace Jack
         }
         else
         {
-            printf( "open fail\n" );
+            jack_error( "open fail\n" );
             return -1;
         }
     }
@@ -128,7 +126,6 @@ namespace Jack
 
     int JackNetOneDriver::Attach()
     {
-        printf( "Attach\n" );
 	return 0;
     }
 
@@ -758,7 +755,7 @@ JackNetOneDriver::render_jack_ports_to_payload_celt (JSList *playback_ports, JSL
 	    CELTEncoder *encoder = (CELTEncoder *)src_node->data;
 	    encoded_bytes = celt_encode_float( encoder, floatbuf, NULL, packet_bufX, net_period_up );
 	    if( encoded_bytes != (int)net_period_up )
-		printf( "something in celt changed. netjack needs to be changed to handle this.\n" );
+		jack_error( "something in celt changed. netjack needs to be changed to handle this.\n" );
 	    src_node = jack_slist_next( src_node );
         }
         else if (strncmp(portname, JACK_DEFAULT_MIDI_TYPE, jack_port_type_size()) == 0)
@@ -1031,7 +1028,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 #if HAVE_SAMPLERATE
                 resample_factor = param->value.ui;
 #else
-		printf( "not built with libsamplerate support\n" );
+		jack_error( "not built with libsamplerate support\n" );
 		exit(10);
 #endif
                 break;
@@ -1040,7 +1037,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 #if HAVE_SAMPLERATE
                 resample_factor_up = param->value.ui;
 #else
-		printf( "not built with libsamplerate support\n" );
+		jack_error( "not built with libsamplerate support\n" );
 		exit(10);
 #endif
                 break;
@@ -1054,7 +1051,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 		bitdepth = 1000;
 		resample_factor = param->value.ui;
 #else
-		printf( "not built with celt support\n" );
+		jack_error( "not built with celt support\n" );
 		exit(10);
 #endif
 		break;
