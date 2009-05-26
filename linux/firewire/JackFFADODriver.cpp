@@ -706,6 +706,7 @@ int JackFFADODriver::Close()
 
 int JackFFADODriver::Start()
 {
+    JackAudioDriver::Start();
     return ffado_driver_start((ffado_driver_t *)fDriver);
 }
 
