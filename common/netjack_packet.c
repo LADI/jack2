@@ -839,7 +839,7 @@ netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct so
         pkthdr->fragment_nr = htonl (0);
         err = sendto(sockfd, packet_buf, pkt_size, flags, addr, addr_size);
 	if( err<0 ) {
-	    printf( "error in send\n" );
+	    //printf( "error in send\n" );
 	    perror( "send" );
 	}
     }
@@ -868,7 +868,7 @@ netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct so
         // sendto(last_pack_size);
         err = sendto(sockfd, tx_packet, last_payload_size + sizeof(jacknet_packet_header), flags, addr, addr_size);
 	if( err<0 ) {
-	    printf( "error in send\n" );
+	    //printf( "error in send\n" );
 	    perror( "send" );
 	}
     }
