@@ -11,7 +11,7 @@ import Task
 import re
 import Logs
 
-VERSION='0.1'
+VERSION='0.2'
 APPNAME='jacknone'
 JACK_API_VERSION = '0.1.0'
 
