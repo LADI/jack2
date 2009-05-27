@@ -27,7 +27,9 @@
 #endif /* USE_MLOCK */
 #include "JackCompilerDeps.h"
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 typedef struct {
     char *buf;
@@ -65,7 +67,7 @@ EXPORT size_t jack_adapterpipe_write(jack_adapterpipe_t *rb, const char *src,
 EXPORT size_t jack_adapterpipe_write_no_fail(jack_adapterpipe_t *rb, const char *src,
                                  size_t cnt);
 EXPORT void jack_adapterpipe_write_advance(jack_adapterpipe_t *rb, size_t cnt);
-EXPORT size_t jack_adapterpipe_write_space(const jack_adapterpipe_t *rb);                                                                
+EXPORT size_t jack_adapterpipe_write_space(const jack_adapterpipe_t *rb);
 
 /* Create a new adapterpipe to hold at least `sz' bytes of data. The
    actual buffer size is rounded up to the next power of two.  */
@@ -494,5 +496,6 @@ jack_adapterpipe_get_write_vector (const jack_adapterpipe_t * rb,
     vec[1].len = 0;
   }
 }
-
+#ifdef __cplusplus
 }
+#endif

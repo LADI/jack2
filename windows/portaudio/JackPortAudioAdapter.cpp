@@ -49,6 +49,10 @@ namespace Jack
         int in_max = 0;
         int out_max = 0;
 
+        fCaptureChannels = 1024;
+        fPlaybackChannels = 1024;
+
+
         fInputDevice = Pa_GetDefaultInputDevice();
         fOutputDevice = Pa_GetDefaultOutputDevice();
 
@@ -110,10 +114,17 @@ namespace Jack
             out_max = fPaDevices.GetDeviceInfo ( fOutputDevice )->maxOutputChannels;
 
         //effective channels
-        if ( ( fCaptureChannels == 0 ) || ( fCaptureChannels > in_max ) )
+        if ( ( fCaptureChannels == 1024 ) || ( fCaptureChannels > in_max ) )
             fCaptureChannels = in_max;
-        if ( ( fPlaybackChannels == 0 ) || ( fPlaybackChannels > out_max ) )
+        if ( ( fPlaybackChannels == 1024 ) || ( fPlaybackChannels > out_max ) )
             fPlaybackChannels = out_max;
+
+
+        //if( fCaptureChannels == 0 )
+        //    fInputDevice = paNoDevice;
+
+        //if( fPlaybackChannels == 0 )
+        //    fOutputDevice = paNoDevice;
 
         //set adapter interface channels
         SetInputs ( fCaptureChannels );
@@ -226,7 +237,7 @@ extern "C"
         strcpy(desc->params[i].name, "inchannels");
         desc->params[i].character = 'i';
         desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.ui = 0;
+        desc->params[i].value.ui = 1024;
         strcpy(desc->params[i].short_desc, "Maximum number of input channels");
         strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
 
@@ -234,7 +245,7 @@ extern "C"
         strcpy(desc->params[i].name, "outchannels");
         desc->params[i].character = 'o';
         desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.ui = 0;
+        desc->params[i].value.ui = 1024;
         strcpy(desc->params[i].short_desc, "Maximum number of output channels");
         strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
 

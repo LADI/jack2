@@ -93,6 +93,9 @@
 		<Unit filename="..\common\JackAudioAdapterInterface.cpp" />
 		<Unit filename="..\common\JackLibSampleRateResampler.cpp" />
 		<Unit filename="..\common\JackResampler.cpp" />
+		<Unit filename="..\common\adapterpipe.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="jackaudioadapter.rc">
 			<Option compilerVar="WINDRES" />
 		</Unit>
