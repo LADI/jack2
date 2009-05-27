@@ -199,8 +199,8 @@ int main(int argc, char* argv[])
     char **audio_driver_args = NULL;
     int audio_driver_nargs = 1;
     char *midi_driver_name = NULL;
-    char **midi_driver_args = NULL;
-    int midi_driver_nargs = 1;
+    //char **midi_driver_args = NULL;
+    //int midi_driver_nargs = 1;
     int port_max = 512;
     int do_mlock = 1;
     int do_unlock = 0;
@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
                 param = jackctl_get_parameter(server_parameters, "self-connect-mode");
                 if (param != NULL) {
 		    bool value_valid = false;
-		    for (int k=0; k<jackctl_parameter_get_enum_constraints_count( param ); k++ ) {
+		    for (unsigned int k=0; k<jackctl_parameter_get_enum_constraints_count( param ); k++ ) {
 			value = jackctl_parameter_get_enum_constraint_value( param, k );
 			if( value.c == optarg[0] )
 			    value_valid = true;

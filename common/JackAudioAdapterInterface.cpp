@@ -240,7 +240,7 @@ namespace Jack
         int delta_frames = (fPullAndPushTime > 0) ? (int)((float(long(GetMicroSeconds() - fPullAndPushTime)) * float(fAdaptedSampleRate)) / 1000000.f) : 0;
 	//int delta_frames = 0;
 
-	int fill;
+	unsigned int fill;
 	if( fCaptureChannels > 0 ) {
 	    fill = fCaptureRingBuffer[0]->ReadSpace();
 
