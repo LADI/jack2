@@ -911,7 +911,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 	    i++;
 	    strcpy (params[i].name, "transport-sync");
 	    params[i].character  = 't';
-	    params[i].type       = JackDriverParamUInt;
+	    params[i].type       = JackDriverParamBool;
 	    params[i].value.ui   = 1U;
 	    strcpy (params[i].short_desc,
 		    "Whether to slave the transport to the master transport");
@@ -920,7 +920,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 	    i++;
 	    strcpy (params[i].name, "autoconf");
 	    params[i].character  = 'a';
-	    params[i].type       = JackDriverParamUInt;
+	    params[i].type       = JackDriverParamBool;
 	    params[i].value.ui   = 1U;
 	    strcpy (params[i].short_desc,
 		    "Whether to use Autoconfig, or just start.");
@@ -947,7 +947,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 	    i++;
 	    strcpy (params[i].name, "no-htonl");
 	    params[i].character  = 'H';
-	    params[i].type       = JackDriverParamUInt;
+	    params[i].type       = JackDriverParamBool;
 	    params[i].value.ui   = 0U;
 	    strcpy (params[i].short_desc,
 		    "Dont convert samples to network byte order.");
@@ -956,7 +956,7 @@ JackNetOneDriver::render_jack_ports_to_payload (int bitdepth, JSList *playback_p
 	    i++;
 	    strcpy (params[i].name, "deadline");
 	    params[i].character  = 'D';
-	    params[i].type       = JackDriverParamUInt;
+	    params[i].type       = JackDriverParamBool;
 	    params[i].value.ui   = 0U;
 	    strcpy (params[i].short_desc,
 		    "always use deadline (recommended for internet connect)");
