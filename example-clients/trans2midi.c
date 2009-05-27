@@ -48,7 +48,6 @@ double ceil( double );
 
 static int process(jack_nframes_t nframes, void *arg)
 {
-	int i,j;
 	void* port_buf = jack_port_get_buffer(output_port, nframes);
 	unsigned char* buffer;
 	jack_midi_clear_buffer(port_buf);
@@ -62,12 +61,9 @@ static int process(jack_nframes_t nframes, void *arg)
 	double beat_float = position_secs * (double) bpm / 60.0;
 	double tick_float = beat_float * (double) 24.0;
 
-	double ticks_to_next_tick = ceil( tick_float ) - tick_float;
-    jack_nframes_t frames_to_next_tick  = (jack_nframes_t) (ticks_to_next_tick / (double) 24.0 / (double) bpm * 60.0 * (double) ttime.frame_rate );
-
 	jack_nframes_t frames_per_tick = (jack_nframes_t) ((double) ttime.frame_rate * 60.0 / (double) bpm / 24.0);
-    jack_nframes_t next_frame_num = (ttime.frame-1)/frames_per_tick + 1;
-    frames_to_next_tick = next_frame_num*frames_per_tick - ttime.frame;
+	jack_nframes_t next_frame_num = (ttime.frame-1)/frames_per_tick + 1;
+	jack_nframes_t frames_to_next_tick = next_frame_num*frames_per_tick - ttime.frame;
 
 	if( trans_state == JackTransportRolling )
 	{
@@ -85,7 +81,6 @@ static int process(jack_nframes_t nframes, void *arg)
 
 		// transport rolling ... emit clocks.
 		jack_nframes_t emit_frame = frames_to_next_tick;
-		//int next_tick = ceil( tick_float );
 		int next_tick = next_frame_num;
 
         if( !clock_rolling ) {
@@ -109,22 +104,12 @@ static int process(jack_nframes_t nframes, void *arg)
             }
 
         }
-		//jack_error( "rolling.... next_tick (%d) in %d fames_per_tick %d", next_tick, frames_to_next_tick, frames_per_tick );
         if( clock_rolling ) {
 		while( emit_frame < nframes )
 		{
 			buffer = jack_midi_event_reserve(port_buf, emit_frame, 1);
 			buffer[0] = 0xf8;
 
-#if 0
-			if( (next_tick % 6) == 0 )
-			{
-				buffer = jack_midi_event_reserve(port_buf, emit_frame, 3);
-				buffer[0] = 0xf2;
-				buffer[1] = (next_tick/6) & 0x7f;
-				buffer[2] = ((next_tick/6) >> 7) & 0x7f;
-			}
-#endif
 			emit_frame += frames_per_tick;
 			next_tick  += 1;
 		}
@@ -165,8 +150,6 @@ static int process(jack_nframes_t nframes, void *arg)
 
 int main(int narg, char **args)
 {
-	int i;
-	jack_nframes_t nframes;
 	if( narg != 2)
 	{
 		usage();
