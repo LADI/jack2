@@ -39,10 +39,9 @@ static void signal_handler(int sig)
 
 static void usage()
 {
-	fprintf(stderr, "usage: jack_midiseq name nsamp [startindex note nsamp] ...... [startindex note nsamp]\n");
-	fprintf(stderr, "eg: jack_midiseq Sequencer 24000 0 60 8000 12000 63 8000\n");
-	fprintf(stderr, "will play a 1/2 sec loop (if srate is 48khz) with a c4 note at the start of the loop\n");
-	fprintf(stderr, "that lasts for 12000 samples, then a d4# that starts at 1/4 sec that lasts for 800 samples\n");
+	fprintf(stderr, "usage: jack_trans2midi <bpm>\n");
+	fprintf(stderr, "eg: jack_trans2midi 135\n");
+	fprintf(stderr, "will emit a midiclock with 135 bpm.\n");
 }
 double ceil( double );
 
@@ -67,57 +66,44 @@ static int process(jack_nframes_t nframes, void *arg)
 
 	if( trans_state == JackTransportRolling )
 	{
-		if( old_trans_state != JackTransportRolling )
-		{
-
-			// transport just started... emit start or cont
-			buffer = jack_midi_event_reserve(port_buf, 0, 1);
-			if( ttime.frame == 0 )
-				buffer[0] = 0xfa;  // start
-			else
-				buffer[0] = 0xfb;  // cont.
-
-		}
-
 		// transport rolling ... emit clocks.
 		jack_nframes_t emit_frame = frames_to_next_tick;
 		int next_tick = next_frame_num;
 
-        if( !clock_rolling ) {
-            if( emit_frame < nframes ) {
-                if( (next_tick % 6) == 0 ) {
-                    // ok... we are at an SPP postion.
-                    // now emit that, and continue.
-  				buffer = jack_midi_event_reserve(port_buf, emit_frame, 3);
-				buffer[0] = 0xf2;
-				buffer[1] = (next_tick/6) & 0x7f;
-				buffer[2] = ((next_tick/6) >> 7) & 0x7f;
+		if( !clock_rolling ) {
+			if( emit_frame < nframes ) {
+				if( (next_tick % 6) == 0 ) {
+					// ok... we are at an SPP postion.
+					// now emit that, and continue.
+					buffer = jack_midi_event_reserve(port_buf, emit_frame, 3);
+					buffer[0] = 0xf2;
+					buffer[1] = (next_tick/6) & 0x7f;
+					buffer[2] = ((next_tick/6) >> 7) & 0x7f;
 
-                buffer = jack_midi_event_reserve(port_buf, emit_frame, 1);
-                buffer[0] = 0xfb;  // cont.
+					buffer = jack_midi_event_reserve(port_buf, emit_frame, 1);
+					buffer[0] = 0xfb;  // cont.
 
-                clock_rolling = 1;
-                emit_frame += frames_per_tick;
-                next_tick  += 1;
+					clock_rolling = 1;
+					emit_frame += frames_per_tick;
+					next_tick  += 1;
+				}
+			}
 
-                }
-            }
-
-        }
-        if( clock_rolling ) {
-		while( emit_frame < nframes )
-		{
-			buffer = jack_midi_event_reserve(port_buf, emit_frame, 1);
-			buffer[0] = 0xf8;
-
-			emit_frame += frames_per_tick;
-			next_tick  += 1;
 		}
-        }
+		if( clock_rolling ) {
+			while( emit_frame < nframes )
+			{
+				buffer = jack_midi_event_reserve(port_buf, emit_frame, 1);
+				buffer[0] = 0xf8;
+
+				emit_frame += frames_per_tick;
+				next_tick  += 1;
+			}
+		}
 	}
 	else
 	{
-	    clock_rolling = 0;
+		clock_rolling = 0;
 		if( old_trans_state == JackTransportRolling )
 		{
 			// transport has stopped.
@@ -125,22 +111,21 @@ static int process(jack_nframes_t nframes, void *arg)
 
 			buffer = jack_midi_event_reserve(port_buf, 0, 1);
 			buffer[0] = 0xfc;  // stop
-            // make the code trigger a SPP emission.
-            last_tick_pos = (int) 0;
-
+			// make the code trigger a SPP emission.
+			last_tick_pos = (int) 0;
 		}
 		else
 		{
 			// transport is still stopped....
 			// but emitting SPP of current position might make sense.
-                        if( last_tick_pos != (int) tick_float )
-                        {
-                                last_tick_pos = (int) tick_float;
-                                buffer = jack_midi_event_reserve(port_buf, 0, 3);
-                                buffer[0] = 0xf2;
-                                buffer[1] = (last_tick_pos/6) & 0x7f;
-                                buffer[2] = ((last_tick_pos/6) >> 7) & 0x7f;
-                        }
+			if( last_tick_pos != (int) tick_float )
+			{
+				last_tick_pos = (int) tick_float;
+				buffer = jack_midi_event_reserve(port_buf, 0, 3);
+				buffer[0] = 0xf2;
+				buffer[1] = (last_tick_pos/6) & 0x7f;
+				buffer[2] = ((last_tick_pos/6) >> 7) & 0x7f;
+			}
 		}
 	}
 
