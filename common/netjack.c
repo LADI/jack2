@@ -272,7 +272,7 @@ void netjack_wait( netjack_driver_state_t *netj )
 		    netj->next_deadline_valid = 0;
 		    netj->packet_data_valid = 1;
 		    netj->running_free = 0;
-		    jack_error( "resync after freerun... %d\n", netj->expected_framecnt );
+		    jack_info( "resync after freerun... %d\n", netj->expected_framecnt );
 		} else {
 		    // give up. lets run freely.
 		    // XXX: hmm...
@@ -296,7 +296,6 @@ void netjack_wait( netjack_driver_state_t *netj )
 	netj->num_lost_packets += 1;
     else {
 	netj->num_lost_packets = 0;
-	//packet_header_ntoh (pkthdr);
     }
 }
 
@@ -589,8 +588,8 @@ netjack_startup( netjack_driver_state_t *netj )
 #else
 	socklen_t address_size = sizeof (struct sockaddr_in);
 #endif
-	jack_info ("Waiting for an incoming packet !!!");
-	jack_info ("*** IMPORTANT *** Dont connect a client to jackd until the driver is attached to a clock source !!!");
+	//jack_info ("Waiting for an incoming packet !!!");
+	//jack_info ("*** IMPORTANT *** Dont connect a client to jackd until the driver is attached to a clock source !!!");
 
     while(1) {
     first_pack_len = recvfrom (netj->sockfd, (char *)first_packet, sizeof (jacknet_packet_header), 0, (struct sockaddr*) & netj->syncsource_address, &address_size);
@@ -667,7 +666,6 @@ netjack_startup( netjack_driver_state_t *netj )
     }
 
     netj->rx_bufsize = sizeof (jacknet_packet_header) + netj->net_period_down * netj->capture_channels * get_sample_size (netj->bitdepth);
-    //netj->rx_buf = malloc (netj->rx_bufsize);
     netj->pkt_buf = malloc (netj->rx_bufsize);
     global_packcache = packet_cache_new (netj->latency + 50, netj->rx_bufsize, netj->mtu);
 

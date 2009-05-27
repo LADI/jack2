@@ -775,8 +775,14 @@ packet_cache_find_latency( packet_cache *pcache, jack_nframes_t expected_framecn
 int
 netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, size_t *addr_size, int mtu)
 {
-    if (pkt_size <= mtu)
-        return recvfrom (sockfd, packet_buf, pkt_size, flags, addr, addr_size);
+    int retval;
+    socklen_t from_len = *addr_size;
+    if (pkt_size <= mtu) {
+        retval = recvfrom (sockfd, packet_buf, pkt_size, flags, addr, &from_len);
+	*addr_size = from_len;
+	return retval;
+    }
+
     char *rx_packet = alloca (mtu);
     jacknet_packet_header *pkthdr = (jacknet_packet_header *) rx_packet;
     int rcv_len;
@@ -784,7 +790,7 @@ netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct 
     cache_packet *cpack;
     do
     {
-        rcv_len = recvfrom (sockfd, rx_packet, mtu, 0, addr, addr_size);
+        rcv_len = recvfrom (sockfd, rx_packet, mtu, 0, addr, &from_len);
         if (rcv_len < 0)
             return rcv_len;
         framecnt = ntohl (pkthdr->framecnt);
@@ -793,6 +799,7 @@ netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct 
     } while (!cache_packet_is_complete (cpack));
     memcpy (packet_buf, cpack->packet_buf, pkt_size);
     cache_packet_reset (cpack);
+    *addr_size = from_len;
     return pkt_size;
 }
 

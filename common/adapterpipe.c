@@ -74,12 +74,12 @@ EXPORT size_t jack_adapterpipe_write_space(const jack_adapterpipe_t *rb);
 EXPORT jack_adapterpipe_t *
 jack_adapterpipe_create (size_t sz)
 {
-  int power_of_two;
+  unsigned int power_of_two;
   jack_adapterpipe_t *rb;
 
   rb = (jack_adapterpipe_t*)malloc (sizeof (jack_adapterpipe_t));
 
-  for (power_of_two = 1; 1 << power_of_two < sz; power_of_two++);
+  for (power_of_two = 1; 1U << power_of_two < sz; power_of_two++);
 
   rb->size = 1 << power_of_two;
   rb->size_mask = rb->size;
