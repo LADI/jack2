@@ -356,7 +356,8 @@ JackAlsaDriver::alsa_driver_configure_stream (alsa_driver_t *driver, char *devic
         unsigned long *nchns,
         unsigned long sample_width)
 {
-	int err, format;
+	int err;
+	unsigned int format;
 	unsigned int frame_rate;
 	snd_pcm_uframes_t stop_th;
 	static struct {
