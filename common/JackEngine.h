@@ -46,6 +46,7 @@ class SERVER_EXPORT JackEngine : public JackLockAble
 
         JackGraphManager* fGraphManager;
         JackEngineControl* fEngineControl;
+        JackSelfConnectMode fSelfConnectMode;
         JackClientInterface* fClientTable[CLIENT_NUM];
         JackSynchro* fSynchroTable;
         JackServerNotifyChannel fChannel;              /*! To communicate between the RT thread and server */
@@ -80,9 +81,11 @@ class SERVER_EXPORT JackEngine : public JackLockAble
             return (refnum >= 0 && refnum < CLIENT_NUM && fClientTable[refnum] != NULL);
         }
 
+        int CheckPortsConnect(int refnum, jack_port_id_t src, jack_port_id_t dst);
+
     public:
 
-        JackEngine(JackGraphManager* manager, JackSynchro* table, JackEngineControl* controler);
+        JackEngine(JackGraphManager* manager, JackSynchro* table, JackEngineControl* controler, JackSelfConnectMode self_connect_mode);
         ~JackEngine();
 
         int Open();

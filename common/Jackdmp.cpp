@@ -180,6 +180,7 @@ int main(int argc, char* argv[])
     int replace_registry = 0;
     
     const char *options = "-d:X:P:uvshVrRL:STFl:t:mn:p:"
+        "a:"
 #ifdef __linux__
         "c:"
 #endif
@@ -208,6 +209,7 @@ int main(int argc, char* argv[])
                                        { "version", 0, 0, 'V' },
                                        { "silent", 0, 0, 's' },
                                        { "sync", 0, 0, 'S' },
+                                       { "autoconnect", 1, 0, 'a' },
                                        { 0, 0, 0, 0 }
                                    };
 
@@ -275,6 +277,26 @@ int main(int argc, char* argv[])
                 }
                 break;
         #endif
+
+            case 'a':
+                param = jackctl_get_parameter(server_parameters, "self-connect-mode");
+                if (param != NULL) {
+                    bool value_valid = false;
+                    for (int k=0; k<jackctl_parameter_get_enum_constraints_count( param ); k++ ) {
+                        value = jackctl_parameter_get_enum_constraint_value( param, k );
+                        if( value.c == optarg[0] )
+                            value_valid = true;
+                    }
+
+                    if( value_valid ) {
+                        value.c = optarg[0];
+                        jackctl_parameter_set_value(param, &value);
+                    } else {
+                        usage(stdout);
+                        goto fail_free1;
+                    }
+                }
+                break;
 
             case 'd':
                 seen_audio_driver = true;
