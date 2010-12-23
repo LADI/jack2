@@ -108,8 +108,8 @@ def configure(conf):
     #   conf.check_tool('compiler_cxx')
     #   conf.check_tool('compiler_cc')
  
-    conf.env.append_unique('CXXFLAGS', '-O3 -Wall')
-    conf.env.append_unique('CCFLAGS', '-O3 -Wall')
+    conf.env.append_unique('CXXFLAGS', '-Wall')
+    conf.env.append_unique('CCFLAGS', '-Wall')
 
     conf.sub_config('common')
     if conf.env['IS_LINUX']:
@@ -164,7 +164,7 @@ def configure(conf):
     else:
         conf.env['LIBDIR'] = conf.env['PREFIX'] + '/lib'
 
-    if Options.options.libdir:
+    if Options.options.mandir:
         conf.env['MANDIR'] = conf.env['PREFIX'] + Options.options.mandir
     else:
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
@@ -198,6 +198,22 @@ def configure(conf):
         if m != None:
             svnrev = m.group(1)
 
+    conf.env.append_unique('LINKFLAGS', '-lm -lstdc++')
+
+    if Options.options.mixed == True:
+        env_variant2 = conf.env.copy()
+        conf.set_env_name('lib32', env_variant2)
+        env_variant2.set_variant('lib32')
+        conf.setenv('lib32')
+        conf.env.append_unique('CXXFLAGS', '-m32')
+        conf.env.append_unique('CCFLAGS', '-m32')
+        conf.env.append_unique('LINKFLAGS', '-m32')
+        if Options.options.libdir32:
+            conf.env['LIBDIR'] = conf.env['PREFIX'] + Options.options.libdir32
+        else:
+            conf.env['LIBDIR'] = conf.env['PREFIX'] + '/lib32'
+        conf.write_config_header('config.h')
+
     print
     display_msg("==================")
     version_msg = "JACK " + VERSION
@@ -214,6 +230,9 @@ def configure(conf):
     display_msg("Library directory", conf.env['LIBDIR'], 'CYAN')
     display_msg("Drivers directory", conf.env['ADDON_DIR'], 'CYAN')
     display_feature('Build debuggable binaries', conf.env['BUILD_DEBUG'])
+    display_msg('C compiler flags', repr(conf.env['CCFLAGS']))
+    display_msg('C++ compiler flags', repr(conf.env['CXXFLAGS']))
+    display_msg('Linker flags', repr(conf.env['LINKFLAGS']))
     display_feature('Build doxygen documentation', conf.env['BUILD_DOXYGEN_DOCS'])
     display_feature('Build with engine profiling', conf.env['BUILD_WITH_PROFILE'])
     display_feature('Build with 32/64 bits mixed mode', conf.env['BUILD_WITH_32_64'])
@@ -247,22 +266,6 @@ def configure(conf):
             print 'WARNING: with --enable-pkg-config-dbus-service-dir option to this script'
             print Logs.colors.NORMAL,
     print
-
-    conf.env.append_unique('LINKFLAGS', '-lm -lstdc++')
-
-    if Options.options.mixed == True:
-	env_variant2 = conf.env.copy()
-	conf.set_env_name('lib32', env_variant2)
-	env_variant2.set_variant('lib32')
-	conf.setenv('lib32')
-    	conf.env.append_unique('CXXFLAGS', '-m32')
-    	conf.env.append_unique('CCFLAGS', '-m32')
-    	conf.env.append_unique('LINKFLAGS', '-m32')
-    	if Options.options.libdir32:
-	    conf.env['LIBDIR'] = conf.env['PREFIX'] + Options.options.libdir32
-    	else:
-	    conf.env['LIBDIR'] = conf.env['PREFIX'] + '/lib32'
-	conf.write_config_header('config.h')
 
 def build(bld):
     print ("make[1]: Entering directory `" + os.getcwd() + "/" + blddir + "'" )
