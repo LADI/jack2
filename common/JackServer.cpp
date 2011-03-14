@@ -45,7 +45,7 @@ JackServer::JackServer(bool sync, bool temporary, int timeout, bool rt, int prio
     } else {
         jack_info("JACK server starting in non-realtime mode");
     }
-    
+
     fGraphManager = JackGraphManager::Allocate(port_max);
     fEngineControl = new JackEngineControl(sync, temporary, timeout, rt, priority, verbose, clock, server_name);
     fEngine = new JackLockedEngine(fGraphManager, GetSynchroTable(), fEngineControl, self_connect_mode);
@@ -61,7 +61,6 @@ JackServer::JackServer(bool sync, bool temporary, int timeout, bool rt, int prio
 JackServer::~JackServer()
 {
     JackGraphManager::Destroy(fGraphManager);
-    delete fAudioDriver;
     delete fDriverInfo;
     delete fFreewheelDriver;
     delete fEngine;
@@ -72,17 +71,17 @@ int JackServer::Open(jack_driver_desc_t* driver_desc, JSList* driver_params)
 {
     // TODO: move that in reworked JackServerGlobals::Init()
     JackMessageBuffer::Create();
-    
+
      if ((fAudioDriver = fDriverInfo->Open(driver_desc, fEngine, GetSynchroTable(), driver_params)) == NULL) {
         jack_error("Cannot initialize driver");
         goto fail_close1;
     }
-  
+
     if (fChannel.Open(fEngineControl->fServerName, this) < 0) {
         jack_error("Server channel open error");
         goto fail_close2;
     }
-  
+
     if (fEngine->Open() < 0) {
         jack_error("Cannot open engine");
         goto fail_close3;
@@ -92,12 +91,12 @@ int JackServer::Open(jack_driver_desc_t* driver_desc, JSList* driver_params)
         jack_error("Cannot open driver");
         goto fail_close4;
     }
- 
+
     if (fAudioDriver->Attach() < 0) {
         jack_error("Cannot attach audio driver");
         goto fail_close5;
     }
-   
+
     fFreewheelDriver->SetMaster(false);
     fAudioDriver->SetMaster(true);
     fAudioDriver->AddSlave(fFreewheelDriver); // After ???
@@ -113,11 +112,11 @@ fail_close4:
 
 fail_close3:
     fChannel.Close();
- 
-fail_close2:     
+
+fail_close2:
     fAudioDriver->Close();
 
-fail_close1:     
+fail_close1:
     JackMessageBuffer::Destroy();
     return -1;
 }
@@ -136,14 +135,14 @@ int JackServer::Close()
     return 0;
 }
 
-int JackServer::InternalClientLoad(const char* client_name, const char* so_name, const char* objet_data, int options, int* int_ref, int uuid, int* status)
+int JackServer::InternalClientLoad1(const char* client_name, const char* so_name, const char* objet_data, int options, int* int_ref, int uuid, int* status)
 {
     JackLoadableInternalClient* client = new JackLoadableInternalClient1(JackServerGlobals::fInstance, GetSynchroTable(), objet_data);
     assert(client);
     return InternalClientLoadAux(client, so_name, client_name, options, int_ref, uuid, status);
  }
 
-int JackServer::InternalClientLoad(const char* client_name, const char* so_name, const JSList * parameters, int options, int* int_ref, int uuid, int* status)
+int JackServer::InternalClientLoad2(const char* client_name, const char* so_name, const JSList * parameters, int options, int* int_ref, int uuid, int* status)
 {
     JackLoadableInternalClient* client = new JackLoadableInternalClient2(JackServerGlobals::fInstance, GetSynchroTable(), parameters);
     assert(client);
@@ -154,6 +153,8 @@ int JackServer::InternalClientLoadAux(JackLoadableInternalClient* client, const 
 {
     // Clear status
     *status = 0;
+
+    // Client object is internally kept in JackEngine
     if ((client->Init(so_name) < 0) || (client->Open(JACK_DEFAULT_SERVER_NAME, client_name,  uuid, (jack_options_t)options, (jack_status_t*)status) < 0)) {
         delete client;
         int my_status1 = *status | JackFailure;
@@ -190,7 +191,7 @@ int JackServer::SetBufferSize(jack_nframes_t buffer_size)
         jack_log("SetBufferSize: requirement for new buffer size equals current value");
         return 0;
     }
-    
+
     if (fAudioDriver->IsFixedBufferSize()) {
         jack_log("SetBufferSize: driver only supports a fixed buffer size");
         return -1;
@@ -316,37 +317,36 @@ int JackServer::SwitchMaster(jack_driver_desc_t* driver_desc, JSList* driver_par
     fAudioDriver->Stop();
     fAudioDriver->Detach();
     fAudioDriver->Close();
-    
+
     // Open new master
     JackDriverInfo* info = new JackDriverInfo();
     JackDriverClientInterface* master = info->Open(driver_desc, fEngine, GetSynchroTable(), driver_params);
-    
+
     if (master == NULL || info == NULL) {
         delete info;
         delete master;
         return -1;
     } else {
-    
+
         // Get slaves list
         std::list<JackDriverInterface*> slave_list = fAudioDriver->GetSlaves();
         std::list<JackDriverInterface*>::const_iterator it;
-        
+
         // Move slaves in new master
         for (it = slave_list.begin(); it != slave_list.end(); it++) {
             JackDriverInterface* slave = *it;
             master->AddSlave(slave);
         }
-    
+
         // Delete old master
-        delete fAudioDriver;
         delete fDriverInfo;
-         
+
         // Activate master
         fAudioDriver = master;
         fDriverInfo = info;
         fAudioDriver->Attach();
         fAudioDriver->SetMaster(true);
-        return fAudioDriver->Start();        
+        return fAudioDriver->Start();
     }
 }
 
