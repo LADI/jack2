@@ -48,7 +48,7 @@ JackServer::JackServer(bool sync, bool temporary, int timeout, bool rt, int prio
 
     fGraphManager = JackGraphManager::Allocate(port_max);
     fEngineControl = new JackEngineControl(sync, temporary, timeout, rt, priority, verbose, clock, server_name);
-        fEngine = new JackLockedEngine(fGraphManager, GetSynchroTable(), fEngineControl, self_connect_mode);
+    fEngine = new JackLockedEngine(fGraphManager, GetSynchroTable(), fEngineControl, self_connect_mode);
 
     // A distinction is made between the threaded freewheel driver and the
     // regular freewheel driver because the freewheel driver needs to run in

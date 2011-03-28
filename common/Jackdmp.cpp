@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
                 param = jackctl_get_parameter(server_parameters, "self-connect-mode");
                 if (param != NULL) {
                     bool value_valid = false;
-                    for (int k=0; k<jackctl_parameter_get_enum_constraints_count( param ); k++ ) {
+                    for (uint32_t k=0; k<jackctl_parameter_get_enum_constraints_count( param ); k++ ) {
                         value = jackctl_parameter_get_enum_constraint_value( param, k );
                         if( value.c == optarg[0] )
                             value_valid = true;
@@ -311,7 +311,7 @@ int main(int argc, char* argv[])
                         jackctl_parameter_set_value(param, &value);
                     } else {
                         usage(stdout);
-                        goto fail_free1;
+                        goto destroy_server;
                     }
                 }
                 break;
