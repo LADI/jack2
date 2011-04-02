@@ -497,7 +497,10 @@ int main(int argc, char* argv[])
             fprintf(stderr, "Unknown driver \"%s\"\n", *it);
             goto close_server;
         }
-        jackctl_server_add_slave(server_ctl, slave_driver_ctl);
+        if (!jackctl_server_add_slave(server_ctl, slave_driver_ctl)) {
+            fprintf(stderr, "Driver \"%s\" cannot be loaded\n", *it);
+            goto close_server;
+        }
     }
 
     // Loopback driver
@@ -512,7 +515,10 @@ int main(int argc, char* argv[])
                 value.ui = loopback;
                 jackctl_parameter_set_value(param, &value);
             }
-            jackctl_server_add_slave(server_ctl, loopback_driver_ctl);
+            if (!jackctl_server_add_slave(server_ctl, loopback_driver_ctl)) {
+                fprintf(stderr, "Driver \"loopback\" cannot be loaded\n");
+                goto close_server;
+            }
         }
 
     }
@@ -530,7 +536,10 @@ int main(int argc, char* argv[])
             fprintf(stderr, "Unknown internal \"%s\"\n", *it);
             goto stop_server;
         }
-        jackctl_server_load_internal(server_ctl, internal_driver_ctl);
+        if (!jackctl_server_load_internal(server_ctl, internal_driver_ctl)) {
+            fprintf(stderr, "Internal client \"%s\" cannot be loaded\n", *it);
+            goto stop_server;
+        }
     }
 
     notify_server_start(server_name);
@@ -544,12 +553,12 @@ int main(int argc, char* argv[])
     if (! jackctl_server_stop(server_ctl)) {
         fprintf(stderr, "Cannot stop server...\n");
     }
-    if (notify_sent) {
-        notify_server_stop(server_name);
-    }
  close_server:
     jackctl_server_close(server_ctl);
  destroy_server:
     jackctl_server_destroy(server_ctl);
+    if (notify_sent) {
+        notify_server_stop(server_name);
+    }
     return return_value;
 }
