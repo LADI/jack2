@@ -75,15 +75,13 @@
 #include "netjack_packet.h"
 
 // JACK2 specific.
-#include "jack/control.h"
+#include "control.h"
 
 #ifdef NO_JACK_ERROR
 #define jack_error printf
 #endif
 
 int fraggo = 0;
-
-packet_cache *global_packcache = NULL;
 
 void
 packet_header_hton (jacknet_packet_header *pkthdr)
@@ -132,7 +130,7 @@ int get_sample_size (int bitdepth)
     //JN: why? is this for buffer sizes before or after encoding?
     //JN: if the former, why not int16_t, if the latter, shouldn't it depend on -c N?
     if( bitdepth == CELT_MODE )
-	return sizeof( unsigned char );
+        return sizeof( unsigned char );
     return sizeof (int32_t);
 }
 
@@ -330,7 +328,6 @@ cache_packet_add_fragment (cache_packet *pack, char *packet_buf, int rcv_len)
         return;
     }
 
-
     if (fragment_nr == 0)
     {
         memcpy (pack->packet_buf, packet_buf, rcv_len);
@@ -376,7 +373,6 @@ netjack_poll_deadline (int sockfd, jack_time_t deadline)
     int timeout;
 #endif
 
-
     jack_time_t now = jack_get_time();
     if( now >= deadline )
 	return 0;
@@ -388,9 +384,8 @@ netjack_poll_deadline (int sockfd, jack_time_t deadline)
 #if HAVE_PPOLL
     timeout_spec.tv_nsec = (deadline - now) * 1000;
 #else
-    timeout = (deadline - now + 500) / 1000;
+    timeout = lrintf( (float)(deadline - now) / 1000.0 );
 #endif
-
 
     fds.fd = sockfd;
     fds.events = POLLIN;
@@ -565,7 +560,7 @@ packet_cache_drain_socket( packet_cache *pcache, int sockfd )
 	if( pcache->last_framecnt_retreived_valid && (framecnt <= pcache->last_framecnt_retreived ))
 	    continue;
 
-        cpack = packet_cache_get_packet (global_packcache, framecnt);
+        cpack = packet_cache_get_packet (pcache, framecnt);
         cache_packet_add_fragment (cpack, rx_packet, rcv_len);
 	cpack->recv_timestamp = jack_get_time();
     }
@@ -602,24 +597,24 @@ packet_cache_retreive_packet_pointer( packet_cache *pcache, jack_nframes_t frame
 
     for (i = 0; i < pcache->size; i++) {
         if (pcache->packets[i].valid && (pcache->packets[i].framecnt == framecnt)) {
-	    cpack = &(pcache->packets[i]);
+            cpack = &(pcache->packets[i]);
             break;
-	}
+        }
     }
 
     if( cpack == NULL ) {
-	//printf( "retreive packet: %d....not found\n", framecnt );
-	return -1;
+        //printf( "retreive packet: %d....not found\n", framecnt );
+        return -1;
     }
 
     if( !cache_packet_is_complete( cpack ) ) {
-	return -1;
+        return -1;
     }
 
     // ok. cpack is the one we want and its complete.
     *packet_buf = cpack->packet_buf;
     if( timestamp )
-	*timestamp = cpack->recv_timestamp;
+        *timestamp = cpack->recv_timestamp;
 
     pcache->last_framecnt_retreived_valid = 1;
     pcache->last_framecnt_retreived = framecnt;
@@ -636,18 +631,18 @@ packet_cache_release_packet( packet_cache *pcache, jack_nframes_t framecnt )
 
     for (i = 0; i < pcache->size; i++) {
         if (pcache->packets[i].valid && (pcache->packets[i].framecnt == framecnt)) {
-	    cpack = &(pcache->packets[i]);
+            cpack = &(pcache->packets[i]);
             break;
-	}
+        }
     }
 
     if( cpack == NULL ) {
-	//printf( "retreive packet: %d....not found\n", framecnt );
-	return -1;
+        //printf( "retreive packet: %d....not found\n", framecnt );
+        return -1;
     }
 
     if( !cache_packet_is_complete( cpack ) ) {
-	return -1;
+        return -1;
     }
 
     cache_packet_reset (cpack);
@@ -663,13 +658,13 @@ packet_cache_get_fill( packet_cache *pcache, jack_nframes_t expected_framecnt )
 
     for (i = 0; i < pcache->size; i++)
     {
-	cache_packet *cpack = &(pcache->packets[i]);
+        cache_packet *cpack = &(pcache->packets[i]);
         if (cpack->valid && cache_packet_is_complete( cpack ))
-	    if( cpack->framecnt >= expected_framecnt )
-		num_packets_before_us += 1;
+            if( cpack->framecnt >= expected_framecnt )
+                num_packets_before_us += 1;
     }
 
-    return 100.0 * (float)num_packets_before_us / (float)( pcache->size ) ;
+    return 100.0 * (float)num_packets_before_us / (float)( pcache->size );
 }
 
 // Returns 0 when no valid packet is inside the cache.
@@ -682,29 +677,29 @@ packet_cache_get_next_available_framecnt( packet_cache *pcache, jack_nframes_t e
 
     for (i = 0; i < pcache->size; i++)
     {
-	cache_packet *cpack = &(pcache->packets[i]);
-	//printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
+        cache_packet *cpack = &(pcache->packets[i]);
+        //printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
 
         if (!cpack->valid || !cache_packet_is_complete( cpack )) {
-	    //printf( "invalid\n" );
-	    continue;
-	}
+            //printf( "invalid\n" );
+            continue;
+        }
 
-	if( cpack->framecnt < expected_framecnt )
-	    continue;
+        if( cpack->framecnt < expected_framecnt )
+            continue;
 
-	if( (cpack->framecnt - expected_framecnt) > best_offset ) {
-	    continue;
+        if( (cpack->framecnt - expected_framecnt) > best_offset ) {
+            continue;
 	}
 
 	best_offset = cpack->framecnt - expected_framecnt;
 	retval = 1;
 
-	if( best_offset == 0 )
+	if (best_offset == 0)
 	    break;
     }
-    if( retval && framecnt )
-	*framecnt = expected_framecnt + best_offset;
+    if (retval && framecnt)
+        *framecnt = expected_framecnt + best_offset;
 
     return retval;
 }
@@ -718,12 +713,12 @@ packet_cache_get_highest_available_framecnt( packet_cache *pcache, jack_nframes_
 
     for (i = 0; i < pcache->size; i++)
     {
-	cache_packet *cpack = &(pcache->packets[i]);
-	//printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
+        cache_packet *cpack = &(pcache->packets[i]);
+        //printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
 
         if (!cpack->valid || !cache_packet_is_complete( cpack )) {
-	    //printf( "invalid\n" );
-	    continue;
+            //printf( "invalid\n" );
+            continue;
 	}
 
 	if (cpack->framecnt < best_value) {
@@ -734,8 +729,8 @@ packet_cache_get_highest_available_framecnt( packet_cache *pcache, jack_nframes_
 	retval = 1;
 
     }
-    if( retval && framecnt )
-	*framecnt = best_value;
+    if (retval && framecnt)
+        *framecnt = best_value;
 
     return retval;
 }
@@ -750,15 +745,15 @@ packet_cache_find_latency( packet_cache *pcache, jack_nframes_t expected_framecn
 
     for (i = 0; i < pcache->size; i++)
     {
-	cache_packet *cpack = &(pcache->packets[i]);
-	//printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
+        cache_packet *cpack = &(pcache->packets[i]);
+        //printf( "p%d: valid=%d, frame %d\n", i, cpack->valid, cpack->framecnt );
 
         if (!cpack->valid || !cache_packet_is_complete( cpack )) {
-	    //printf( "invalid\n" );
-	    continue;
+            //printf( "invalid\n" );
+            continue;
 	}
 
-	if( (cpack->framecnt - expected_framecnt) < best_offset ) {
+	if ((cpack->framecnt - expected_framecnt) < best_offset) {
 	    continue;
 	}
 
@@ -768,67 +763,12 @@ packet_cache_find_latency( packet_cache *pcache, jack_nframes_t expected_framecn
 	if( best_offset == 0 )
 	    break;
     }
-    if( retval && framecnt )
-	*framecnt = JACK_MAX_FRAMES - best_offset;
+    if (retval && framecnt)
+        *framecnt = JACK_MAX_FRAMES - best_offset;
 
     return retval;
 }
 // fragmented packet IO
-int
-netjack_recvfrom (int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, size_t *addr_size, int mtu)
-{
-    int retval;
-    socklen_t from_len = *addr_size;
-    if (pkt_size <= mtu) {
-        retval = recvfrom (sockfd, packet_buf, pkt_size, flags, addr, &from_len);
-	*addr_size = from_len;
-	return retval;
-    }
-
-    char *rx_packet = alloca (mtu);
-    jacknet_packet_header *pkthdr = (jacknet_packet_header *) rx_packet;
-    int rcv_len;
-    jack_nframes_t framecnt;
-    cache_packet *cpack;
-    do
-    {
-        rcv_len = recvfrom (sockfd, rx_packet, mtu, 0, addr, &from_len);
-        if (rcv_len < 0)
-            return rcv_len;
-        framecnt = ntohl (pkthdr->framecnt);
-        cpack = packet_cache_get_packet (global_packcache, framecnt);
-        cache_packet_add_fragment (cpack, rx_packet, rcv_len);
-    } while (!cache_packet_is_complete (cpack));
-    memcpy (packet_buf, cpack->packet_buf, pkt_size);
-    cache_packet_reset (cpack);
-    *addr_size = from_len;
-    return pkt_size;
-}
-
-int
-netjack_recv (int sockfd, char *packet_buf, int pkt_size, int flags, int mtu)
-{
-    if (pkt_size <= mtu)
-        return recv (sockfd, packet_buf, pkt_size, flags);
-    char *rx_packet = alloca (mtu);
-    jacknet_packet_header *pkthdr = (jacknet_packet_header *) rx_packet;
-    int rcv_len;
-    jack_nframes_t framecnt;
-    cache_packet *cpack;
-    do
-    {
-        rcv_len = recv (sockfd, rx_packet, mtu, flags);
-        if (rcv_len < 0)
-            return rcv_len;
-        framecnt = ntohl (pkthdr->framecnt);
-        cpack = packet_cache_get_packet (global_packcache, framecnt);
-        cache_packet_add_fragment (cpack, rx_packet, rcv_len);
-    } while (!cache_packet_is_complete (cpack));
-    memcpy (packet_buf, cpack->packet_buf, pkt_size);
-    cache_packet_reset (cpack);
-    return pkt_size;
-}
-
 void
 netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct sockaddr *addr, int addr_size, int mtu)
 {
@@ -843,18 +783,18 @@ netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct so
     int fragment_payload_size = mtu - sizeof (jacknet_packet_header);
 
     if (pkt_size <= mtu) {
-	int err;
-	pkthdr = (jacknet_packet_header *) packet_buf;
+        int err;
+        pkthdr = (jacknet_packet_header *) packet_buf;
         pkthdr->fragment_nr = htonl (0);
         err = sendto(sockfd, packet_buf, pkt_size, flags, addr, addr_size);
-	if( err<0 ) {
-	    //printf( "error in send\n" );
-	    perror( "send" );
-	}
+        if( err<0 ) {
+            //printf( "error in send\n" );
+            perror( "send" );
+        }
     }
     else
     {
-	int err;
+        int err;
         // Copy the packet header to the tx pack first.
         memcpy(tx_packet, packet_buf, sizeof (jacknet_packet_header));
 
@@ -876,13 +816,12 @@ netjack_sendto (int sockfd, char *packet_buf, int pkt_size, int flags, struct so
 
         // sendto(last_pack_size);
         err = sendto(sockfd, tx_packet, last_payload_size + sizeof(jacknet_packet_header), flags, addr, addr_size);
-	if( err<0 ) {
-	    //printf( "error in send\n" );
-	    perror( "send" );
-	}
+        if( err<0 ) {
+            //printf( "error in send\n" );
+            perror( "send" );
+        }
     }
 }
-
 
 void
 decode_midi_buffer (uint32_t *buffer_uint32, unsigned int buffer_size_uint32, jack_default_audio_sample_t* buf)
@@ -964,8 +903,8 @@ render_payload_to_jack_ports_float ( void *packet_payload, jack_nframes_t net_pe
 
     uint32_t *packet_bufX = (uint32_t *)packet_payload;
 
-    if( !packet_payload )
-	return;
+    if (!packet_payload)
+        return;
 
     while (node != NULL)
     {
@@ -1008,19 +947,19 @@ render_payload_to_jack_ports_float ( void *packet_payload, jack_nframes_t net_pe
             else
 #endif
             {
-		if( dont_htonl_floats )
-		{
-		    memcpy( buf, packet_bufX, net_period_down*sizeof(jack_default_audio_sample_t));
-		}
-		else
-		{
-		    for (i = 0; i < net_period_down; i++)
-		    {
-			val.i = packet_bufX[i];
-			val.i = ntohl (val.i);
-			buf[i] = val.f;
-		    }
-		}
+                if( dont_htonl_floats )
+                {
+                    memcpy( buf, packet_bufX, net_period_down*sizeof(jack_default_audio_sample_t));
+                }
+                else
+                {
+                    for (i = 0; i < net_period_down; i++)
+                    {
+                    val.i = packet_bufX[i];
+                    val.i = ntohl (val.i);
+                    buf[i] = val.f;
+                    }
+                }
             }
         }
         else if (jack_port_is_midi (porttype))
@@ -1088,19 +1027,19 @@ render_jack_ports_to_payload_float (JSList *playback_ports, JSList *playback_src
             else
 #endif
             {
-		if( dont_htonl_floats )
-		{
-		    memcpy( packet_bufX, buf, net_period_up*sizeof(jack_default_audio_sample_t) );
-		}
-		else
-		{
-		    for (i = 0; i < net_period_up; i++)
-		    {
-			val.f = buf[i];
-			val.i = htonl (val.i);
-			packet_bufX[i] = val.i;
-		    }
-		}
+                if( dont_htonl_floats )
+                {
+                    memcpy( packet_bufX, buf, net_period_up*sizeof(jack_default_audio_sample_t) );
+                }
+                else
+                {
+                    for (i = 0; i < net_period_up; i++)
+                    {
+                    val.f = buf[i];
+                    val.i = htonl (val.i);
+                    packet_bufX[i] = val.i;
+                    }
+                }
             }
         }
         else if (jack_port_is_midi (porttype))
@@ -1275,8 +1214,8 @@ render_payload_to_jack_ports_8bit (void *packet_payload, jack_nframes_t net_peri
 
     int8_t *packet_bufX = (int8_t *)packet_payload;
 
-    if( !packet_payload )
-	return;
+    if (!packet_payload)
+        return;
 
     while (node != NULL)
     {
@@ -1425,14 +1364,20 @@ render_payload_to_jack_ports_celt (void *packet_payload, jack_nframes_t net_peri
         if (jack_port_is_audio (porttype))
         {
             // audio port, decode celt data.
+            CELTDecoder *decoder = src_node->data;
+    #if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
+            if( !packet_payload )
+                celt_decode_float( decoder, NULL, net_period_down, buf, nframes );
+            else
+                celt_decode_float( decoder, packet_bufX, net_period_down, buf, nframes );
+    #else
+            if( !packet_payload )
+                celt_decode_float( decoder, NULL, net_period_down, buf );
+            else
+                celt_decode_float( decoder, packet_bufX, net_period_down, buf );
+    #endif
 
-	    CELTDecoder *decoder = src_node->data;
-	    if( !packet_payload )
-		celt_decode_float( decoder, NULL, net_period_down, buf );
-	    else
-		celt_decode_float( decoder, packet_bufX, net_period_down, buf );
-
-	    src_node = jack_slist_next (src_node);
+            src_node = jack_slist_next (src_node);
         }
         else if (jack_port_is_midi (porttype))
         {
@@ -1440,8 +1385,8 @@ render_payload_to_jack_ports_celt (void *packet_payload, jack_nframes_t net_peri
             // convert the data buffer to a standard format (uint32_t based)
             unsigned int buffer_size_uint32 = net_period_down / 2;
             uint32_t * buffer_uint32 = (uint32_t*) packet_bufX;
-	    if( packet_payload )
-		decode_midi_buffer (buffer_uint32, buffer_size_uint32, buf);
+            if( packet_payload )
+                decode_midi_buffer (buffer_uint32, buffer_size_uint32, buf);
         }
         packet_bufX = (packet_bufX + net_period_down);
         node = jack_slist_next (node);
@@ -1472,7 +1417,11 @@ render_jack_ports_to_payload_celt (JSList *playback_ports, JSList *playback_srcs
 	    float *floatbuf = alloca (sizeof(float) * nframes );
 	    memcpy( floatbuf, buf, nframes*sizeof(float) );
 	    CELTEncoder *encoder = src_node->data;
+#if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
+	    encoded_bytes = celt_encode_float( encoder, floatbuf, nframes, packet_bufX, net_period_up );
+#else
 	    encoded_bytes = celt_encode_float( encoder, floatbuf, NULL, packet_bufX, net_period_up );
+#endif
 	    if( encoded_bytes != net_period_up )
 		printf( "something in celt changed. netjack needs to be changed to handle this.\n" );
 	    src_node = jack_slist_next( src_node );

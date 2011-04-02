@@ -12,7 +12,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with this program; if not, write to the Free Software 
+along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
@@ -46,15 +46,15 @@ PortFollower;
 \brief A "decorator" debug client to validate API use.
 */
 
-class JackDebugClient : public JackClient
+class SERVER_EXPORT JackDebugClient : public JackClient
 {
     protected:
 
         JackClient* fClient;
         std::ofstream* fStream;
         PortFollower fPortList[MAX_PORT_HISTORY]; // Arbitrary value... To be tuned...
-        int fTotalPortNumber;	// The total number of port opened and maybe closed. Historical view.
-        int fOpenPortNumber;	// The current number of opened port.
+        int fTotalPortNumber;   // The total number of port opened and maybe closed. Historical view.
+        int fOpenPortNumber;    // The current number of opened port.
         int fIsActivated;
         int fIsDeactivated;
         int fIsClosed;
@@ -68,7 +68,7 @@ class JackDebugClient : public JackClient
         JackDebugClient(JackClient* fTheClient);
         virtual ~JackDebugClient();
 
-        virtual int Open(const char* server_name, const char* name, jack_options_t options, jack_status_t* status);
+        virtual int Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status);
         int Close();
 
         virtual JackGraphManager* GetGraphManager() const;
@@ -84,7 +84,7 @@ class JackDebugClient : public JackClient
         int SetBufferSize(jack_nframes_t buffer_size);
         int SetFreeWheel(int onoff);
         void ShutDown();
-        pthread_t GetThreadID();
+        jack_native_thread_t GetThreadID();
 
         // Port management
         int PortRegister(const char* port_name, const char* port_type, unsigned long flags, unsigned long buffer_size);
@@ -121,12 +121,22 @@ class JackDebugClient : public JackClient
         int SetPortRegistrationCallback(JackPortRegistrationCallback callback, void* arg);
         int SetPortConnectCallback(JackPortConnectCallback callback, void *arg);
         int SetPortRenameCallback(JackPortRenameCallback callback, void *arg);
+        int SetSessionCallback(JackSessionCallback callback, void *arg);
+        int SetLatencyCallback(JackLatencyCallback callback, void *arg);
 
         // Internal clients
         char* GetInternalClientName(int ref);
         int InternalClientHandle(const char* client_name, jack_status_t* status);
         int InternalClientLoad(const char* client_name, jack_options_t options, jack_status_t* status, jack_varargs_t* va);
         void InternalClientUnload(int ref, jack_status_t* status);
+
+        // Session API
+        jack_session_command_t* SessionNotify(const char* target, jack_session_event_type_t type, const char* path);
+        int SessionReply(jack_session_event_t* ev);
+        char* GetUUIDForClientName(const char* client_name);
+        char* GetClientNameByUUID(const char* uuid);
+        int ReserveClientName(const char* client_name, const char* uuid);
+        int ClientHasSessionCallback(const char* client_name);
 
         JackClientControl* GetClientControl() const;
         void CheckClient(const char* function_name) const;
