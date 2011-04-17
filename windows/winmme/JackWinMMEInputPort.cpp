@@ -55,8 +55,8 @@ JackWinMMEInputPort::JackWinMMEInputPort(const char *alias_name,
     std::auto_ptr<JackMidiBufferWriteQueue> write_queue_ptr(write_queue);
     sysex_buffer = new jack_midi_data_t[max_bytes];
     char error_message[MAXERRORLENGTH];
-    MMRESULT result = midiInOpen(&handle, index, (DWORD)HandleMidiInputEvent,
-                                 (DWORD)this,
+    MMRESULT result = midiInOpen(&handle, index, (DWORD_PTR)HandleMidiInputEvent,
+                                 (DWORD_PTR)this,
                                  CALLBACK_FUNCTION | MIDI_IO_STATUS);
     if (result != MMSYSERR_NOERROR) {
         GetInErrorString(result, error_message);
@@ -117,7 +117,6 @@ JackWinMMEInputPort::JackWinMMEInputPort(const char *alias_name,
 
 JackWinMMEInputPort::~JackWinMMEInputPort()
 {
-    Stop();
     MMRESULT result = midiInReset(handle);
     if (result != MMSYSERR_NOERROR) {
         WriteInError("JackWinMMEInputPort [destructor]", "midiInReset", result);
@@ -183,6 +182,7 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
 {
     set_threaded_log_function();
     jack_nframes_t current_frame = GetCurrentFrame();
+
     switch (message) {
     case MIM_CLOSE:
         jack_info("JackWinMMEInputPort::ProcessWinMME - MIDI device closed.");
@@ -192,16 +192,17 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
                   "driver thinks that JACK is not processing messages fast "
                   "enough.");
         // Fallthrough on purpose.
-    case MIM_DATA:
+    case MIM_DATA: {
         jack_midi_data_t message_buffer[3];
         jack_midi_data_t status = param1 & 0xff;
         int length = GetMessageLength(status);
+
         switch (length) {
         case 3:
-            message_buffer[2] = param1 & 0xff0000;
+             message_buffer[2] = (param1 >> 16)  & 0xff;
             // Fallthrough on purpose.
         case 2:
-            message_buffer[1] = param1 & 0xff00;
+            message_buffer[1] = (param1 >> 8) & 0xff;
             // Fallthrough on purpose.
         case 1:
             message_buffer[0] = status;
@@ -219,13 +220,14 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
         }
         EnqueueMessage(current_frame, (size_t) length, message_buffer);
         break;
-    case MIM_LONGDATA:
+    }
+    case MIM_LONGDATA: {
         LPMIDIHDR header = (LPMIDIHDR) param1;
         jack_midi_data_t *data = (jack_midi_data_t *) header->lpData;
         size_t length1 = header->dwBytesRecorded;
         if ((data[0] != 0xf0) || (data[length1 - 1] != 0xf7)) {
             jack_error("JackWinMMEInputPort::ProcessWinMME - Discarding "
-                       "%d-byte sysex chunk.", length);
+                       "%d-byte sysex chunk.", length1);
         } else {
             EnqueueMessage(current_frame, length1, data);
         }
@@ -239,6 +241,7 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
                        result);
         }
         break;
+    }
     case MIM_LONGERROR:
         jack_error("JackWinMMEInputPort::ProcessWinMME - Invalid or "
                    "incomplete sysex message received.");
@@ -291,4 +294,5 @@ JackWinMMEInputPort::WriteInError(const char *jack_func, const char *mm_func,
     GetInErrorString(result, error_message);
     jack_error("%s - %s: %s", jack_func, mm_func, error_message);
 }
+
 

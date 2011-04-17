@@ -60,7 +60,7 @@ namespace Jack
         return 0;
     }
 
-    int JackPortAudioDriver::OpenStream()
+    PaError JackPortAudioDriver::OpenStream(jack_nframes_t buffer_size)
     {
         PaStreamParameters inputParameters;
         PaStreamParameters outputParameters;
@@ -82,7 +82,7 @@ namespace Jack
                                             : 0;
         outputParameters.hostApiSpecificStreamInfo = NULL;
 
-        PaError err = Pa_OpenStream(&fStream,
+        return Pa_OpenStream(&fStream,
                             (fInputDevice == paNoDevice) ? 0 : &inputParameters,
                             (fOutputDevice == paNoDevice) ? 0 : &outputParameters,
                             fEngineControl->fSampleRate,
@@ -90,8 +90,6 @@ namespace Jack
                             paNoFlag,  // Clipping is on...
                             Render,
                             this);
-
-        return (err == paNoError) ? 0: -1;
     }
 
     int JackPortAudioDriver::Open(jack_nframes_t buffer_size,
@@ -108,6 +106,7 @@ namespace Jack
     {
         int in_max = 0;
         int out_max = 0;
+        PaError err = paNoError;
 
         jack_log("JackPortAudioDriver::Open nframes = %ld in = %ld out = %ld capture name = %s playback name = %s samplerate = %ld",
                  buffer_size, inchannels, outchannels, capture_driver_uid, playback_driver_uid, samplerate);
@@ -148,8 +147,13 @@ namespace Jack
             outchannels = out_max;
         }
 
-        if (OpenStream() < 0) {
-            jack_error("Pa_OpenStream error = %s", Pa_GetErrorText(err));
+        // Core driver may have changed the in/out values
+        fCaptureChannels = inchannels;
+        fPlaybackChannels = outchannels;
+
+        err = OpenStream(buffer_size);
+        if (err != paNoError) {
+            jack_error("Pa_OpenStream error %d = %s", err, Pa_GetErrorText(err));
             goto error;
         }
 
@@ -158,10 +162,6 @@ namespace Jack
         fEngineControl->fComputation = 500 * 1000;
         fEngineControl->fConstraint = fEngineControl->fPeriodUsecs * 1000;
 #endif
-
-        // Core driver may have changed the in/out values
-        fCaptureChannels = inchannels;
-        fPlaybackChannels = outchannels;
 
         assert(strlen(capture_driver_uid) < JACK_CLIENT_NAME_SIZE);
         assert(strlen(playback_driver_uid) < JACK_CLIENT_NAME_SIZE);
@@ -173,7 +173,7 @@ namespace Jack
 
 error:
         JackAudioDriver::Close();
-        jack_error("Can't open default PortAudio device : %s", Pa_GetErrorText(err));
+        jack_error("Can't open default PortAudio device");
         return -1;
     }
 
@@ -220,8 +220,9 @@ error:
             return -1;
         }
 
-        if (OpenStream() < 0) {
-            jack_error("Pa_OpenStream error = %s", Pa_GetErrorText(err));
+        err = OpenStream(buffer_size);
+        if (err != paNoError) {
+            jack_error("Pa_OpenStream error %d = %s", err, Pa_GetErrorText(err));
             return -1;
         } else {
             JackAudioDriver::SetBufferSize(buffer_size); // Generic change, never fails

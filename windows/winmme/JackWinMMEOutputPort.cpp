@@ -55,8 +55,8 @@ JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
     thread = new JackThread(this);
     std::auto_ptr<JackThread> thread_ptr(thread);
     char error_message[MAXERRORLENGTH];
-    MMRESULT result = midiOutOpen(&handle, index, (DWORD)HandleMessageEvent,
-                                  (DWORD)this, CALLBACK_FUNCTION);
+    MMRESULT result = midiOutOpen(&handle, index, (DWORD_PTR)HandleMessageEvent,
+                                  (DWORD_PTR)this, CALLBACK_FUNCTION);
     if (result != MMSYSERR_NOERROR) {
         GetOutErrorString(result, error_message);
         goto raise_exception;
@@ -84,8 +84,9 @@ JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
     snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", alias_name, name_tmp,
              index + 1);
     snprintf(name, sizeof(name) - 1, "%s:playback_%d", client_name, index + 1);
-    thread_ptr.release();
+    read_queue_ptr.release();
     thread_queue_ptr.release();
+    thread_ptr.release();
     return;
 
  destroy_thread_queue_semaphore:
@@ -104,7 +105,6 @@ JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
 
 JackWinMMEOutputPort::~JackWinMMEOutputPort()
 {
-    Stop();
     MMRESULT result = midiOutReset(handle);
     if (result != MMSYSERR_NOERROR) {
         WriteOutError("JackWinMMEOutputPort [destructor]", "midiOutReset",
@@ -123,21 +123,19 @@ JackWinMMEOutputPort::~JackWinMMEOutputPort()
     }
     delete read_queue;
     delete thread_queue;
+    delete thread;
 }
 
 bool
 JackWinMMEOutputPort::Execute()
 {
     for (;;) {
-        jack_log("JackWinMMEOutputPort::Execute TOTO");
-        JackSleep(100000);
-
-        if (! Wait(thread_queue_semaphore)) {
+         if (! Wait(thread_queue_semaphore)) {
             jack_log("JackWinMMEOutputPort::Execute BREAK");
 
             break;
         }
-        /*
+
         jack_midi_event_t *event = thread_queue->DequeueEvent();
         if (! event) {
             break;
@@ -217,7 +215,7 @@ JackWinMMEOutputPort::Execute()
                          "midiOutUnprepareHeader", result);
             break;
         }
-        */
+
     }
  stop_execution:
     return false;
@@ -264,8 +262,10 @@ JackWinMMEOutputPort::ProcessJack(JackMidiBuffer *port_buffer,
                                   jack_nframes_t frames)
 {
     read_queue->ResetMidiBuffer(port_buffer);
+
     for (jack_midi_event_t *event = read_queue->DequeueEvent(); event;
-         event = read_queue->DequeueEvent()) {
+        event = read_queue->DequeueEvent()) {
+
         switch (thread_queue->EnqueueEvent(event, frames)) {
         case JackMidiWriteQueue::BUFFER_FULL:
             jack_error("JackWinMMEOutputPort::ProcessJack - The thread queue "
@@ -309,7 +309,6 @@ JackWinMMEOutputPort::Start()
 bool
 JackWinMMEOutputPort::Stop()
 {
-
     jack_info("JackWinMMEOutputPort::Stop - stopping MIDI output port "
               "processing thread.");
 
@@ -339,8 +338,6 @@ JackWinMMEOutputPort::Stop()
 bool
 JackWinMMEOutputPort::Wait(HANDLE semaphore)
 {
-    jack_log("JackWinMMEOutputPort::Wait %d", semaphore);
-
     DWORD result = WaitForSingleObject(semaphore, INFINITE);
     switch (result) {
     case WAIT_FAILED:
@@ -372,3 +369,4 @@ JackWinMMEOutputPort::WriteOutError(const char *jack_func, const char *mm_func,
     GetOutErrorString(result, error_message);
     jack_error("%s - %s: %s", jack_func, mm_func, error_message);
 }
+

@@ -114,7 +114,7 @@ struct jackctl_driver
     jack_driver_desc_t * desc_ptr;
     JSList * parameters;
     JSList * set_parameters;
-    JackDriverInfo* info;
+    JSList * infos;
 };
 
 struct jackctl_internal
@@ -228,7 +228,8 @@ bool
 jackctl_add_driver_parameters(
     struct jackctl_driver * driver_ptr)
 {
-    uint32_t i;
+    unsigned int i;
+
     union jackctl_parameter_value jackctl_value;
     jackctl_param_type_t jackctl_type;
     struct jackctl_parameter * parameter_ptr;
@@ -321,6 +322,7 @@ jackctl_drivers_load(
         driver_ptr->desc_ptr = (jack_driver_desc_t *)descriptor_node_ptr->data;
         driver_ptr->parameters = NULL;
         driver_ptr->set_parameters = NULL;
+        driver_ptr->infos = NULL;
 
         if (!jackctl_add_driver_parameters(driver_ptr))
         {
@@ -390,6 +392,7 @@ jackctl_internals_load(
         internal_ptr->desc_ptr = (jack_driver_desc_t *)descriptor_node_ptr->data;
         internal_ptr->parameters = NULL;
         internal_ptr->set_parameters = NULL;
+        internal_ptr->refnum = -1;
 
         if (!jackctl_add_driver_parameters((struct jackctl_driver *)internal_ptr))
         {
@@ -1284,8 +1287,13 @@ EXPORT bool jackctl_server_add_slave(jackctl_server * server_ptr, jackctl_driver
             jack_error("cannot add a slave in a running server");
             return false;
         } else {
-            driver_ptr->info = server_ptr->engine->AddSlave(driver_ptr->desc_ptr, driver_ptr->set_parameters);
-            return (driver_ptr->info != 0);
+            JackDriverInfo* info = server_ptr->engine->AddSlave(driver_ptr->desc_ptr, driver_ptr->set_parameters);
+            if (info) {
+                driver_ptr->infos = jack_slist_append(driver_ptr->infos, info);
+                return true;
+            } else {
+                return false;
+            }
         }
     } else {
         return false;
@@ -1299,9 +1307,16 @@ EXPORT bool jackctl_server_remove_slave(jackctl_server * server_ptr, jackctl_dri
             jack_error("cannot remove a slave from a running server");
             return false;
         } else {
-            server_ptr->engine->RemoveSlave(driver_ptr->info);
-            delete driver_ptr->info;
-            return true;
+            if (driver_ptr->infos) {
+                JackDriverInfo* info = (JackDriverInfo*)driver_ptr->infos->data;
+                assert(info);
+                driver_ptr->infos = jack_slist_remove(driver_ptr->infos, info);
+                server_ptr->engine->RemoveSlave(info);
+                delete info;
+                return true;
+            } else {
+                return false;
+            }
         }
     } else {
         return false;

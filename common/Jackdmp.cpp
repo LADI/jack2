@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
     const JSList * server_parameters;
     const char* server_name = "default";
     jackctl_driver_t * master_driver_ctl;
-    jackctl_driver_t * loopback_driver_ctl;
+    jackctl_driver_t * loopback_driver_ctl = NULL;
     int replace_registry = 0;
     const char *options = "-d:X:I:P:uvshVrRL:STFl:t:mn:p:"
         "a:"
@@ -507,7 +507,6 @@ int main(int argc, char* argv[])
     if (loopback > 0) {
         loopback_driver_ctl = jackctl_server_get_driver(server_ctl, "loopback");
 
-        // XX: What if this fails?
         if (loopback_driver_ctl != NULL) {
             const JSList * loopback_parameters = jackctl_driver_get_parameters(loopback_driver_ctl);
             param = jackctl_get_parameter(loopback_parameters, "channels");
@@ -519,8 +518,10 @@ int main(int argc, char* argv[])
                 fprintf(stderr, "Driver \"loopback\" cannot be loaded\n");
                 goto close_server;
             }
+        } else {
+            fprintf(stderr, "Driver \"loopback\" not found\n");
+            goto close_server;
         }
-
     }
 
     // Start the server
@@ -554,6 +555,22 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Cannot stop server...\n");
     }
  close_server:
+    if (loopback > 0 && loopback_driver_ctl) {
+        jackctl_server_remove_slave(server_ctl, loopback_driver_ctl);
+    }
+    // Slave drivers
+    for (it = slaves_list.begin(); it != slaves_list.end(); it++) {
+        jackctl_driver_t * slave_driver_ctl = jackctl_server_get_driver(server_ctl, *it);
+        if (slave_driver_ctl)
+            jackctl_server_remove_slave(server_ctl, slave_driver_ctl);
+    }
+
+    // Internal clients
+    for (it = internals_list.begin(); it != internals_list.end(); it++) {
+        jackctl_internal_t * internal_driver_ctl = jackctl_server_get_internal(server_ctl, *it);
+        if (internal_driver_ctl)
+            jackctl_server_unload_internal(server_ctl, internal_driver_ctl);
+    }
     jackctl_server_close(server_ctl);
  destroy_server:
     jackctl_server_destroy(server_ctl);

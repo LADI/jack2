@@ -56,6 +56,7 @@ JackDriver::JackDriver()
     fEngine = NULL;
     fGraphManager = NULL;
     fBeginDateUst = 0;
+    fDelayedUsecs = 0.f;
     fIsMaster = true;
     fIsRunning = false;
 }
@@ -375,6 +376,12 @@ int JackDriver::Start()
     return 0;
 }
 
+int JackDriver::Stop()
+{
+    fIsRunning = false;
+    return 0;
+}
+
 int JackDriver::StartSlaves()
 {
     int res = 0;
@@ -391,12 +398,6 @@ int JackDriver::StartSlaves()
         }
     }
     return res;
-}
-
-int JackDriver::Stop()
-{
-    fIsRunning = false;
-    return 0;
 }
 
 int JackDriver::StopSlaves()

@@ -44,31 +44,46 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  * suite.
  *
  * To port this program to non-POSIX platforms, you'll have to include
- * implementations for mutexes, semaphores, and command-line argument handling.
+ * implementations for semaphores and command-line argument handling.
  */
 
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <getopt.h>
-#include <pthread.h>
-#include <semaphore.h>
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
 
+#ifdef WIN32
+#include <windows.h>
+#include <unistd.h>
+#else
+#include <semaphore.h>
+#endif
+
+#include <signal.h>
+
 #define ABS(x) (((x) >= 0) ? (x) : (-(x)))
 
-const char *ERROR_UNEXPECTED = "in port received unexpected MIDI message";
-const char *ERROR_UNEXPECTED_EXTRA = "received more than one MIDI message";
+#ifdef WIN32
+typedef HANDLE semaphore_t;
+#else
+typedef sem_t *semaphore_t;
+#endif
+
 const char *ERROR_RESERVE = "could not reserve MIDI event on port buffer";
-const char *ERROR_TIMEOUT = "timed out while waiting for MIDI message";
+const char *ERROR_SHUTDOWN = "the JACK server has been shutdown";
+const char *ERROR_TIMEOUT1 = "timed out while waiting for MIDI message";
+
 const char *SOURCE_EVENT_RESERVE = "jack_midi_event_reserve";
 const char *SOURCE_PROCESS = "handle_process";
-const char *SOURCE_TRYLOCK = "pthread_mutex_trylock";
-const char *SOURCE_UNLOCK = "pthread_mutex_unlock";
+const char *SOURCE_SHUTDOWN = "handle_shutdown";
+const char *SOURCE_SIGNAL_SEMAPHORE = "signal_semaphore";
+const char *SOURCE_WAIT_SEMAPHORE = "wait_semaphore";
 
 jack_client_t *client;
 const char *error_message;
@@ -77,6 +92,7 @@ jack_nframes_t highest_latency;
 jack_time_t highest_latency_time;
 jack_latency_range_t in_latency_range;
 jack_port_t *in_port;
+semaphore_t init_semaphore;
 jack_nframes_t last_activity;
 jack_time_t last_activity_time;
 jack_time_t *latency_time_values;
@@ -90,24 +106,28 @@ size_t messages_sent;
 size_t message_size;
 jack_latency_range_t out_latency_range;
 jack_port_t *out_port;
+semaphore_t process_semaphore;
 int process_state;
 char *program_name;
 jack_port_t *remote_in_port;
 jack_port_t *remote_out_port;
 size_t samples;
-
-#ifdef __APPLE__
-sem_t* semaphore;
-#else
-sem_t semaphore;
-#endif
-
-pthread_mutex_t start_mutex;
 int timeout;
 jack_nframes_t total_latency;
 jack_time_t total_latency_time;
 size_t unexpected_messages;
 size_t xrun_count;
+
+static void signal_handler(int sig)
+{
+	jack_client_close(client);
+	fprintf(stderr, "signal received, exiting ...\n");
+	exit(0);
+}
+
+#ifdef WIN32
+char semaphore_error_msg[1024];
+#endif
 
 static void
 output_error(const char *source, const char *message);
@@ -118,12 +138,85 @@ output_usage();
 static void
 set_process_error(const char *source, const char *message);
 
+static int
+signal_semaphore(semaphore_t semaphore);
+
+static int
+wait_semaphore(semaphore_t semaphore, int block);
+
+static semaphore_t
+create_semaphore(int id)
+{
+    semaphore_t semaphore;
+
+#ifdef WIN32
+    semaphore = CreateSemaphore(NULL, 0, 1, NULL);
+#elif defined (__APPLE__)
+    char name[128];
+    sprintf(name, "midi_sem_%d", id);
+    semaphore = sem_open(name, O_CREAT, 0777, 0);
+    if (semaphore == (sem_t *) SEM_FAILED) {
+        semaphore = NULL;
+    }
+#else
+    semaphore = malloc(sizeof(semaphore_t));
+    if (semaphore != NULL) {
+        if (sem_init(semaphore, 0, 0)) {
+            free(semaphore);
+            semaphore = NULL;
+        }
+    }
+#endif
+
+    return semaphore;
+}
+
 static void
-die(char *source, char *error_message)
+destroy_semaphore(semaphore_t semaphore, int id)
+{
+
+#ifdef WIN32
+    CloseHandle(semaphore);
+#else
+    sem_destroy(semaphore);
+#ifdef __APPLE__
+    {
+        char name[128];
+        sprintf(name, "midi_sem_%d", id);
+        sem_unlink(name);
+    }
+#else
+    free(semaphore);
+#endif
+#endif
+
+}
+
+static void
+die(const char *source, const char *error_message)
 {
     output_error(source, error_message);
     output_usage();
     exit(EXIT_FAILURE);
+}
+
+static const char *
+get_semaphore_error()
+{
+
+#ifdef WIN32
+    DWORD error = GetLastError();
+    if (! FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, error,
+                        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                        semaphore_error_msg, 1024, NULL)) {
+        snprintf(semaphore_error_msg, 1023, "Unknown OS error code '%d'",
+                error);
+    }
+    return semaphore_error_msg;
+#else
+    return strerror(errno);
+#endif
+
 }
 
 static void
@@ -136,7 +229,6 @@ static int
 handle_process(jack_nframes_t frames, void *arg)
 {
     jack_midi_data_t *buffer;
-    int code;
     jack_midi_event_t event;
     jack_nframes_t event_count;
     jack_nframes_t event_time;
@@ -144,23 +236,20 @@ handle_process(jack_nframes_t frames, void *arg)
     size_t i;
     jack_nframes_t last_frame_time;
     jack_midi_data_t *message;
+    jack_time_t microseconds;
     void *port_buffer;
     jack_time_t time;
+    jack_midi_clear_buffer(jack_port_get_buffer(out_port, frames));
     switch (process_state) {
 
     case 0:
         /* State: initializing */
-        code = pthread_mutex_trylock(&start_mutex);
-        if (code) {
-            if (code != EBUSY) {
-                set_process_error(SOURCE_TRYLOCK, strerror(code));
-            }
-            break;
-        }
-        code = pthread_mutex_unlock(&start_mutex);
-        if (code) {
-            set_process_error(SOURCE_UNLOCK, strerror(code));
-            break;
+        switch (wait_semaphore(init_semaphore, 0)) {
+        case -1:
+            set_process_error(SOURCE_WAIT_SEMAPHORE, get_semaphore_error());
+            // Fallthrough on purpose
+        case 0:
+            return 0;
         }
         highest_latency = 0;
         lowest_latency = 0;
@@ -179,7 +268,6 @@ handle_process(jack_nframes_t frames, void *arg)
 
     case 1:
         /* State: processing */
-        jack_midi_clear_buffer(jack_port_get_buffer(out_port, frames));
         port_buffer = jack_port_get_buffer(in_port, frames);
         event_count = jack_midi_get_event_count(port_buffer);
         last_frame_time = jack_last_frame_time(client);
@@ -193,10 +281,10 @@ handle_process(jack_nframes_t frames, void *arg)
             }
             unexpected_messages++;
         }
-        jack_time_t microseconds =
-            jack_frames_to_time(client, last_frame_time) - last_activity_time;
+        microseconds = jack_frames_to_time(client, last_frame_time) -
+            last_activity_time;
         if ((microseconds / 1000000) >= timeout) {
-            set_process_error(SOURCE_PROCESS, ERROR_TIMEOUT);
+            set_process_error(SOURCE_PROCESS, ERROR_TIMEOUT1);
         }
         break;
     found_message:
@@ -218,13 +306,10 @@ handle_process(jack_nframes_t frames, void *arg)
         messages_received++;
         if (messages_received == samples) {
             process_state = 2;
-
-#ifdef __APPLE__
-            sem_post(semaphore);
-#else
-            sem_post(&semaphore);
-#endif
-
+            if (! signal_semaphore(process_semaphore)) {
+                // Sigh ...
+                die(SOURCE_SIGNAL_SEMAPHORE, get_semaphore_error());
+            }
             break;
         }
     send_message:
@@ -233,7 +318,6 @@ handle_process(jack_nframes_t frames, void *arg)
             frame = frames - 1;
         }
         port_buffer = jack_port_get_buffer(out_port, frames);
-        jack_midi_clear_buffer(port_buffer);
         buffer = jack_midi_event_reserve(port_buffer, frame, message_size);
         if (buffer == NULL) {
             set_process_error(SOURCE_EVENT_RESERVE, ERROR_RESERVE);
@@ -259,7 +343,7 @@ handle_process(jack_nframes_t frames, void *arg)
 static void
 handle_shutdown(void *arg)
 {
-    set_process_error("handle_shutdown", "The JACK server has been shutdown");
+    set_process_error(SOURCE_SHUTDOWN, ERROR_SHUTDOWN);
 }
 
 static int
@@ -314,11 +398,58 @@ set_process_error(const char *source, const char *message)
     error_source = source;
     error_message = message;
     process_state = -1;
+    if (! signal_semaphore(process_semaphore)) {
+        // Sigh
+        output_error(source, message);
+        die(SOURCE_SIGNAL_SEMAPHORE, get_semaphore_error());
+    }
+}
 
-#ifdef __APPLE__
-    sem_post(semaphore);
+static int
+signal_semaphore(semaphore_t semaphore)
+{
+
+#ifdef WIN32
+    return ReleaseSemaphore(semaphore, 1, NULL);
 #else
-    sem_post(&semaphore);
+    return ! sem_post(semaphore);
+#endif
+
+}
+
+static int
+wait_semaphore(semaphore_t semaphore, int block)
+{
+
+#ifdef WIN32
+    DWORD result = WaitForSingleObject(semaphore, block ? INFINITE : 0);
+    switch (result) {
+    case WAIT_OBJECT_0:
+        return 1;
+    case WAIT_TIMEOUT:
+        return 0;
+    }
+    return -1;
+#else
+    if (block) {
+        while (sem_wait(semaphore)) {
+            if (errno != EINTR) {
+                return -1;
+            }
+        }
+    } else {
+        while (sem_trywait(semaphore)) {
+            switch (errno) {
+            case EAGAIN:
+                return 0;
+            case EINTR:
+                continue;
+            default:
+                return -1;
+            }
+        }
+    }
+    return 1;
 #endif
 
 }
@@ -326,8 +457,8 @@ set_process_error(const char *source, const char *message)
 int
 main(int argc, char **argv)
 {
-    int code;
     size_t jitter_plot[101];
+    size_t latency_plot[101];
     int long_index = 0;
     struct option long_options[] = {
         {"help", 0, NULL, 'h'},
@@ -342,6 +473,7 @@ main(int argc, char **argv)
     program_name = argv[0];
     samples = 1024;
     timeout = 5;
+
     for (;;) {
         char c = getopt_long(argc, argv, option_string, long_options,
                              &long_index);
@@ -433,6 +565,19 @@ main(int argc, char **argv)
                (message_size - 2) * sizeof(jack_midi_data_t));
         message_2[message_size - 1] = 0xf7;
     }
+
+    /* install a signal handler to properly quits jack client */
+#ifdef WIN32
+	signal(SIGINT, signal_handler);
+    signal(SIGABRT, signal_handler);
+	signal(SIGTERM, signal_handler);
+#else
+	signal(SIGQUIT, signal_handler);
+	signal(SIGTERM, signal_handler);
+	signal(SIGHUP, signal_handler);
+	signal(SIGINT, signal_handler);
+#endif
+
     client = jack_client_open(program_name, JackNullOption, NULL);
     if (client == NULL) {
         error_message = "failed to open JACK client";
@@ -478,40 +623,22 @@ main(int argc, char **argv)
     jack_on_shutdown(client, handle_shutdown, NULL);
     jack_set_info_function(handle_info);
     process_state = 0;
-
-#ifdef __APPLE__
-    // sem_init is not implemented on OSX
-    char name[128];
-    sprintf(name, "midi_sem_%p", client);
-    if ((semaphore = sem_open(name, O_CREAT, 0777, 0)) == (sem_t*)SEM_FAILED) {
-        error_message = strerror(errno);
-        error_source = "sem_open";
+    init_semaphore = create_semaphore(0);
+    if (init_semaphore == NULL) {
+        error_message = get_semaphore_error();
+        error_source = "create_semaphore";
         goto unregister_out_port;
     }
-#else
-    if (sem_init(&semaphore, 0, 0)) {
-        error_message = strerror(errno);
-        error_source = "sem_init";
-        goto unregister_out_port;
-    }
-#endif
-
-    code = pthread_mutex_init(&start_mutex, NULL);
-    if (code) {
-        error_message = strerror(errno);
-        error_source = "pthread_mutex_init";
-        goto destroy_semaphore;
-    }
-    code = pthread_mutex_trylock(&start_mutex);
-    if (code) {
-        error_message = strerror(code);
-        error_source = "pthread_mutex_trylock";
-        goto destroy_mutex;
+    process_semaphore = create_semaphore(1);
+    if (process_semaphore == NULL) {
+        error_message = get_semaphore_error();
+        error_source = "create_semaphore";
+        goto destroy_init_semaphore;
     }
     if (jack_activate(client)) {
         error_message = "could not activate client";
         error_source = "jack_activate";
-        goto destroy_mutex;
+        goto destroy_process_semaphore;
     }
     if (jack_connect(client, jack_port_name(out_port),
                      jack_port_name(remote_out_port))) {
@@ -525,38 +652,40 @@ main(int argc, char **argv)
         error_source = "jack_connect";
         goto deactivate_client;
     }
-    code = pthread_mutex_unlock(&start_mutex);
-    if (code) {
-        error_message = strerror(code);
-        error_source = "pthread_mutex_unlock";
+    if (! signal_semaphore(init_semaphore)) {
+        error_message = get_semaphore_error();
+        error_source = "post_semaphore";
         goto deactivate_client;
     }
-
-#ifdef __APPLE__
-    while (sem_wait(semaphore) != 0) {
-#else
-    while (sem_wait(&semaphore) != 0) {
-#endif
-
-        if (errno != EINTR) {
-            error_message = strerror(errno);
-            error_source = "sem_wait";
-            goto deactivate_client;
-        }
+    if (wait_semaphore(process_semaphore, 1) == -1) {
+        error_message = get_semaphore_error();
+        error_source = "wait_semaphore";
+        goto deactivate_client;
     }
     if (process_state == 2) {
         double average_latency = ((double) total_latency) / samples;
         double average_latency_time = total_latency_time / samples;
         size_t i;
+        double latency_plot_offset =
+            floor(((double) lowest_latency_time) / 100.0) / 10.0;
         double sample_rate = (double) jack_get_sample_rate(client);
         jack_nframes_t total_jitter = 0;
         jack_time_t total_jitter_time = 0;
         for (i = 0; i <= 100; i++) {
             jitter_plot[i] = 0;
+            latency_plot[i] = 0;
         }
         for (i = 0; i < samples; i++) {
+            double latency_time_value = (double) latency_time_values[i];
+            double latency_plot_time =
+                (latency_time_value / 1000.0) - latency_plot_offset;
             double jitter_time = ABS(average_latency_time -
-                                     ((double) latency_time_values[i]));
+                                     latency_time_value);
+            if (latency_plot_time >= 10.0) {
+                (latency_plot[100])++;
+            } else {
+                (latency_plot[(int) (latency_plot_time * 10.0)])++;
+            }
             if (jitter_time >= 10000.0) {
                 (jitter_plot[100])++;
             } else {
@@ -569,8 +698,8 @@ main(int argc, char **argv)
         printf("Reported out-port latency: %.2f-%.2f ms (%u-%u frames)\n"
                "Reported in-port latency: %.2f-%.2f ms (%u-%u frames)\n"
                "Average latency: %.2f ms (%.2f frames)\n"
-               "Best latency: %.2f ms (%u frames)\n"
-               "Worst latency: %.2f ms (%u frames)\n"
+               "Lowest latency: %.2f ms (%u frames)\n"
+               "Highest latency: %.2f ms (%u frames)\n"
                "Peak MIDI jitter: %.2f ms (%u frames)\n"
                "Average MIDI jitter: %.2f ms (%.2f frames)\n",
                (out_latency_range.min / sample_rate) * 1000.0,
@@ -596,6 +725,19 @@ main(int argc, char **argv)
         if (jitter_plot[100]) {
             printf("     > 10 ms: %u\n", jitter_plot[100]);
         }
+        printf("\nLatency Plot:\n");
+        for (i = 0; i < 100; i++) {
+            if (latency_plot[i]) {
+                printf("%.1f - %.1f ms: %u\n",
+                       latency_plot_offset + (((float) i) / 10.0),
+                       latency_plot_offset + (((float) (i + 1)) / 10.0),
+                       latency_plot[i]);
+            }
+        }
+        if (latency_plot[100]) {
+            printf("     > %.1f ms: %u\n", latency_plot_offset + 10.0,
+                   latency_plot[100]);
+        }
     }
     printf("\nMessages sent: %d\n"
            "Messages received: %d\n",
@@ -608,17 +750,10 @@ main(int argc, char **argv)
     }
  deactivate_client:
     jack_deactivate(client);
- destroy_mutex:
-    pthread_mutex_destroy(&start_mutex);
- destroy_semaphore:
-
-#ifdef __APPLE__
-    sem_destroy(semaphore);
-    sem_unlink(name);
-#else
-    sem_destroy(&semaphore);
-#endif
-
+ destroy_process_semaphore:
+    destroy_semaphore(process_semaphore, 1);
+ destroy_init_semaphore:
+    destroy_semaphore(init_semaphore, 0);
  unregister_out_port:
     jack_port_unregister(client, out_port);
  unregister_in_port:

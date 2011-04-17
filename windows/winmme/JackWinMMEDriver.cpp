@@ -35,10 +35,7 @@ JackWinMMEDriver::JackWinMMEDriver(const char *name, const char *alias,
 }
 
 JackWinMMEDriver::~JackWinMMEDriver()
-{
-    Stop();
-    Close();
-}
+{}
 
 int
 JackWinMMEDriver::Attach()
@@ -105,7 +102,9 @@ JackWinMMEDriver::Attach()
 int
 JackWinMMEDriver::Close()
 {
+    // Generic MIDI driver close
     int result = JackMidiDriver::Close();
+
     if (input_ports) {
         for (int i = 0; i < fCaptureChannels; i++) {
             delete input_ports[i];
@@ -186,7 +185,6 @@ JackWinMMEDriver::Open(bool capturing, bool playing, int in_channels,
     jack_info("JackWinMMEDriver::Open - input_count  %d", input_count);
     jack_info("JackWinMMEDriver::Open - output_count  %d", output_count);
 
-
     if (! (input_count || output_count)) {
         jack_error("JackWinMMEDriver::Open - no WinMME inputs or outputs "
                    "allocated.");
@@ -212,7 +210,6 @@ JackWinMMEDriver::Open(bool capturing, bool playing, int in_channels,
 int
 JackWinMMEDriver::Read()
 {
-
     jack_nframes_t buffer_size = fEngineControl->fBufferSize;
     for (int i = 0; i < fCaptureChannels; i++) {
         input_ports[i]->ProcessJack(GetInputBuffer(i), buffer_size);
@@ -221,16 +218,14 @@ JackWinMMEDriver::Read()
     return 0;
 }
 
-
 int
 JackWinMMEDriver::Write()
 {
-    /*
     jack_nframes_t buffer_size = fEngineControl->fBufferSize;
     for (int i = 0; i < fPlaybackChannels; i++) {
         output_ports[i]->ProcessJack(GetOutputBuffer(i), buffer_size);
     }
-    */
+
     return 0;
 }
 
