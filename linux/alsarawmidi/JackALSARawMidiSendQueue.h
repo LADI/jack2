@@ -31,11 +31,14 @@ namespace Jack {
     private:
 
         bool blocked;
+        size_t bytes_available;
+        size_t bytes_per_poll;
         snd_rawmidi_t *rawmidi;
 
     public:
 
-        JackALSARawMidiSendQueue(snd_rawmidi_t *rawmidi);
+        JackALSARawMidiSendQueue(snd_rawmidi_t *rawmidi,
+                                 size_t bytes_per_poll=0);
 
         JackMidiWriteQueue::EnqueueResult
         EnqueueEvent(jack_nframes_t time, size_t size,
@@ -43,6 +46,9 @@ namespace Jack {
 
         bool
         IsBlocked();
+
+        void
+        ResetPollByteCount();
 
     };
 

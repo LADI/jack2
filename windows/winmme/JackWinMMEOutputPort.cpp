@@ -130,37 +130,31 @@ bool
 JackWinMMEOutputPort::Execute()
 {
     for (;;) {
-         if (! Wait(thread_queue_semaphore)) {
+        if (! Wait(thread_queue_semaphore)) {
             jack_log("JackWinMMEOutputPort::Execute BREAK");
-
+            
             break;
         }
-
         jack_midi_event_t *event = thread_queue->DequeueEvent();
         if (! event) {
             break;
         }
         jack_time_t frame_time = GetTimeFromFrames(event->time);
-        for (jack_time_t current_time = GetMicroSeconds();
-             frame_time > current_time; current_time = GetMicroSeconds()) {
-            jack_time_t sleep_time = frame_time - current_time;
+        jack_time_t current_time = GetMicroSeconds();
+        if (frame_time > current_time) {
+            LARGE_INTEGER due_time;
 
-            // Windows has a millisecond sleep resolution for its Sleep calls.
-            // This is unfortunate, as MIDI timing often requires a higher
-            // resolution.  For now, we attempt to compensate by letting an
-            // event be sent if we're less than 500 microseconds from sending
-            // the event.  We assume that it's better to let an event go out
-            // 499 microseconds early than let an event go out 501 microseconds
-            // late.  Of course, that's assuming optimal sleep times, which is
-            // a whole different Windows issue ...
-            if (sleep_time < 500) {
+            // 100 ns resolution
+            due_time.QuadPart = - ((frame_time - current_time) * 10);
+            if (! SetWaitableTimer(timer, &due_time, 0, NULL, NULL, 0)) {
+                WriteOSError("JackWinMMEOutputPort::Execute",
+                             "ChangeTimerQueueTimer");
                 break;
             }
 
-            if (sleep_time < 1000) {
-                sleep_time = 1000;
+            if (! Wait(timer)) {
+                break;
             }
-            JackSleep(sleep_time);
         }
         jack_midi_data_t *data = event->buffer;
         DWORD message = 0;
@@ -178,27 +172,24 @@ JackWinMMEOutputPort::Execute()
             result = midiOutShortMsg(handle, message);
             if (result != MMSYSERR_NOERROR) {
                 WriteOutError("JackWinMMEOutputPort::Execute",
-                             "midiOutShortMsg", result);
+                              "midiOutShortMsg", result);
             }
             continue;
         }
         MIDIHDR header;
         header.dwBufferLength = size;
-        header.dwBytesRecorded = size;
         header.dwFlags = 0;
-        header.dwOffset = 0;
-        header.dwUser = 0;
-        header.lpData = (LPSTR)data;
+        header.lpData = (LPSTR) data;
         result = midiOutPrepareHeader(handle, &header, sizeof(MIDIHDR));
         if (result != MMSYSERR_NOERROR) {
             WriteOutError("JackWinMMEOutputPort::Execute",
-                         "midiOutPrepareHeader", result);
+                          "midiOutPrepareHeader", result);
             continue;
         }
         result = midiOutLongMsg(handle, &header, sizeof(MIDIHDR));
         if (result != MMSYSERR_NOERROR) {
             WriteOutError("JackWinMMEOutputPort::Execute", "midiOutLongMsg",
-                         result);
+                          result);
             continue;
         }
 
@@ -212,13 +203,20 @@ JackWinMMEOutputPort::Execute()
         result = midiOutUnprepareHeader(handle, &header, sizeof(MIDIHDR));
         if (result != MMSYSERR_NOERROR) {
             WriteOutError("JackWinMMEOutputPort::Execute",
-                         "midiOutUnprepareHeader", result);
+                          "midiOutUnprepareHeader", result);
             break;
         }
-
     }
- stop_execution:
     return false;
+}
+
+void
+JackWinMMEOutputPort::GetOutErrorString(MMRESULT error, LPTSTR text)
+{
+    MMRESULT result = midiOutGetErrorText(error, text, MAXERRORLENGTH);
+    if (result != MMSYSERR_NOERROR) {
+        snprintf(text, MAXERRORLENGTH, "Unknown MM error code '%d'", error);
+    }
 }
 
 void
@@ -237,7 +235,7 @@ JackWinMMEOutputPort::HandleMessage(UINT message, DWORD_PTR param1,
         jack_info("JackWinMMEOutputPort::HandleMessage - MIDI device opened.");
         break;
     case MOM_POSITIONCB:
-        LPMIDIHDR header = (LPMIDIHDR) param2;
+        LPMIDIHDR header = (LPMIDIHDR) param1;
         jack_info("JackWinMMEOutputPort::HandleMessage - %d bytes out of %d "
                   "bytes of the current sysex message have been sent.",
                   header->dwOffset, header->dwBytesRecorded);
@@ -262,7 +260,6 @@ JackWinMMEOutputPort::ProcessJack(JackMidiBuffer *port_buffer,
                                   jack_nframes_t frames)
 {
     read_queue->ResetMidiBuffer(port_buffer);
-
     for (jack_midi_event_t *event = read_queue->DequeueEvent(); event;
         event = read_queue->DequeueEvent()) {
 
@@ -295,15 +292,23 @@ JackWinMMEOutputPort::Signal(HANDLE semaphore)
 bool
 JackWinMMEOutputPort::Start()
 {
-    bool result = thread->GetStatus() != JackThread::kIdle;
-    if (! result) {
-        result = ! thread->StartSync();
-        if (! result) {
-            jack_error("JackWinMMEOutputPort::Start - failed to start MIDI "
-                       "processing thread.");
-        }
+    if (thread->GetStatus() != JackThread::kIdle) {
+        return true;
     }
-    return result;
+    timer = CreateWaitableTimer(NULL, FALSE, NULL);
+    if (! timer) {
+        WriteOSError("JackWinMMEOutputPort::Start", "CreateWaitableTimer");
+        return false;
+    }
+    if (! thread->StartSync()) {
+        return true;
+    }
+    jack_error("JackWinMMEOutputPort::Start - failed to start MIDI processing "
+               "thread.");
+    if (! CloseHandle(timer)) {
+        WriteOSError("JackWinMMEOutputPort::Start", "CloseHandle");
+    }
+    return false;
 }
 
 bool
@@ -332,6 +337,10 @@ JackWinMMEOutputPort::Stop()
         jack_error("JackWinMMEOutputPort::Stop - could not %s MIDI processing "
                    "thread.", verb);
     }
+    if (! CloseHandle(timer)) {
+        WriteOSError("JackWinMMEOutputPort::Stop", "CloseHandle");
+        result = -1;
+    }
     return ! result;
 }
 
@@ -353,15 +362,6 @@ JackWinMMEOutputPort::Wait(HANDLE semaphore)
 }
 
 void
-JackWinMMEOutputPort::GetOutErrorString(MMRESULT error, LPTSTR text)
-{
-    MMRESULT result = midiOutGetErrorText(error, text, MAXERRORLENGTH);
-    if (result != MMSYSERR_NOERROR) {
-        snprintf(text, MAXERRORLENGTH, "Unknown MM error code '%d'", error);
-    }
-}
-
-void
 JackWinMMEOutputPort::WriteOutError(const char *jack_func, const char *mm_func,
                                    MMRESULT result)
 {
@@ -369,4 +369,3 @@ JackWinMMEOutputPort::WriteOutError(const char *jack_func, const char *mm_func,
     GetOutErrorString(result, error_message);
     jack_error("%s - %s: %s", jack_func, mm_func, error_message);
 }
-

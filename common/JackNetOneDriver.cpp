@@ -32,7 +32,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "netjack_packet.h"
 
 #if HAVE_SAMPLERATE
-#include "samplerate.h"
+#include <samplerate.h>
 #endif
 
 #if HAVE_CELT
@@ -784,8 +784,7 @@ extern "C"
         strcpy ( desc->name, "netone" );                             // size MUST be less then JACK_DRIVER_NAME_MAX + 1
         strcpy ( desc->desc, "netjack one slave backend component" ); // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
 
-        desc->nparams = 18;
-        params = ( jack_driver_param_desc_t* ) calloc ( desc->nparams, sizeof ( jack_driver_param_desc_t ) );
+        params = ( jack_driver_param_desc_t* ) calloc ( 18, sizeof ( jack_driver_param_desc_t ) );
 
         int i = 0;
         strcpy (params[i].name, "audio-ins");
@@ -871,6 +870,7 @@ extern "C"
                 "Factor for sample rate reduction on the upstream");
         strcpy (params[i].long_desc, params[i].short_desc);
 
+#if HAVE_CELT
         i++;
         strcpy (params[i].name, "celt");
         params[i].character  = 'c';
@@ -879,7 +879,7 @@ extern "C"
         strcpy (params[i].short_desc,
                 "sets celt encoding and number of kbits per channel");
         strcpy (params[i].long_desc, params[i].short_desc);
-
+#endif
         i++;
         strcpy (params[i].name, "bit-depth");
         params[i].character  = 'b';
@@ -942,6 +942,8 @@ extern "C"
         strcpy (params[i].short_desc,
                 "always use deadline");
         strcpy (params[i].long_desc, params[i].short_desc);
+
+        desc->nparams = i + 1;
 
         desc->params = params;
 

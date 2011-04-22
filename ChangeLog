@@ -29,10 +29,19 @@ Jan Engelhardt
 Adrian Knoth
 David Garcia Garzon
 Valerio Pilo
+Chris Caudle
 
 ---------------------------
   Jackdmp changes log
 ---------------------------
+
+2011-04-20 Stephane Letz  <letz@grame.fr>
+
+	* Add XRun detection in PortAudio driver.
+
+2011-04-18 Stephane Letz  <letz@grame.fr>
+
+	* JackWeakAPI.cpp renamed in JackWeakAPI.c.
 
 2011-04-04 Stephane Letz  <letz@grame.fr>
 
