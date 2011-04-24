@@ -532,7 +532,9 @@ static union jackctl_parameter_value alias_parameter_get_value(void * obj)
 
 static bool alias_parameter_set_value(void * obj, const union jackctl_parameter_value * value_ptr)
 {
+    jack_info("hwalias <- %s", controller_ptr->alias_vparam_value.i ? "true" : "false");
     controller_ptr->alias_vparam_value = *value_ptr;
+    controller_ptr->alias_vparam_set = true;
     return true;
 }
 

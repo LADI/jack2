@@ -1631,12 +1631,34 @@ jack_controller_port_connect_callback(
     struct jack_graph_port *port1_ptr;
     struct jack_graph_port *port2_ptr;
     struct jack_graph_connection *connection_ptr;
+    char port1_alias1[jack_port_name_size()];
+    char port1_alias2[jack_port_name_size()];
+    char * port1_aliases[2] = {port1_alias1, port1_alias2};
+    int port1_naliases;
+    char port2_alias1[jack_port_name_size()];
+    char port2_alias2[jack_port_name_size()];
+    char * port2_aliases[2] = {port2_alias1, port2_alias2};
+    int port2_naliases;
 
     port1 = jack_port_by_id(controller_ptr->client, port1_id);
     port2 = jack_port_by_id(controller_ptr->client, port2_id);
 
     port1_name = jack_port_name(port1);
     port2_name = jack_port_name(port2);
+
+    if (controller_ptr->alias_vparam_value.i)
+    {
+        port1_naliases = jack_port_get_aliases(port1, port1_aliases);
+        if (port1_naliases > 0)
+        {
+            port1_name = port1_aliases[0];
+        }
+        port2_naliases = jack_port_get_aliases(port2, port2_aliases);
+        if (port2_naliases > 0)
+        {
+            port2_name = port2_aliases[0];
+        }
+    }
 
     port1_ptr = jack_controller_patchbay_find_port_by_full_name(patchbay_ptr, port1_name);
     if (port1_ptr == NULL)
