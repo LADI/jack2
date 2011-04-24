@@ -1505,6 +1505,11 @@ jack_controller_graph_order_callback(
     const char **ports;
     int i;
     jack_port_t *port_ptr;
+    char alias1[jack_port_name_size()];
+    char alias2[jack_port_name_size()];
+    char * aliases[2] = {alias1, alias2};
+    int naliases;
+    const char *port_name;
     
     if (patchbay_ptr->graph.version > 1)
     {
@@ -1519,7 +1524,19 @@ jack_controller_graph_order_callback(
         {
             jack_info("graph reorder: new port '%s'", ports[i]);
             port_ptr = jack_port_by_name(controller_ptr->client, ports[i]);;
-            jack_controller_patchbay_new_port(patchbay_ptr, ports[i], jack_port_flags(port_ptr), jack_port_type_id(port_ptr));
+
+            port_name = ports[i];
+            if (controller_ptr->alias_vparam_value.i)
+            {
+                naliases = jack_port_get_aliases(port_ptr, aliases);
+                if (naliases > 0)
+                {
+                    jack_info("port alias '%s'", aliases[0]);
+                    port_name = aliases[0];
+                }
+            }
+
+            jack_controller_patchbay_new_port(patchbay_ptr, port_name, jack_port_flags(port_ptr), jack_port_type_id(port_ptr));
         }
 
         free(ports);
@@ -1563,13 +1580,27 @@ jack_controller_port_registration_callback(
     jack_port_t *port_ptr;
     struct jack_graph_port *graph_port_ptr;
     const char *port_name;
+    char alias1[jack_port_name_size()];
+    char alias2[jack_port_name_size()];
+    char * aliases[2] = {alias1, alias2};
+    int naliases;
 
     port_ptr = jack_port_by_id(controller_ptr->client, port_id);
     port_name = jack_port_name(port_ptr);
 
     if (created)
     {
-        jack_log("port '%s' created", port_name);
+        jack_info("port '%s' created", port_name);
+        if (controller_ptr->alias_vparam_value.i)
+        {
+            naliases = jack_port_get_aliases(port_ptr, aliases);
+            if (naliases > 0)
+            {
+                jack_info("port alias '%s'", aliases[0]);
+                port_name = aliases[0];
+            }
+        }
+
         jack_controller_patchbay_new_port(patchbay_ptr, port_name, jack_port_flags(port_ptr), jack_port_type_id(port_ptr));
     }
     else

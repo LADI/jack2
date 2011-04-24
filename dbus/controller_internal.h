@@ -64,6 +64,10 @@ struct jack_controller
     struct jack_parameter slave_drivers_vparam;
     union jackctl_parameter_value slave_drivers_vparam_value;
 
+    struct jack_parameter alias_vparam;
+    bool alias_vparam_set;
+    union jackctl_parameter_value alias_vparam_value;
+
     struct jack_dbus_object_descriptor dbus_descriptor;
 
     pthread_mutex_t lock;

@@ -513,6 +513,36 @@ static union jackctl_parameter_value slave_drivers_parameter_get_default_value(v
     return value;
 }
 
+static bool alias_parameter_is_set(void * obj)
+{
+    return controller_ptr->alias_vparam_set;
+}
+
+static bool alias_parameter_reset(void * obj)
+{
+    controller_ptr->alias_vparam_set = false;
+    controller_ptr->alias_vparam_value.i = FALSE;
+    return true;
+}
+
+static union jackctl_parameter_value alias_parameter_get_value(void * obj)
+{
+    return controller_ptr->alias_vparam_value;
+}
+
+static bool alias_parameter_set_value(void * obj, const union jackctl_parameter_value * value_ptr)
+{
+    controller_ptr->alias_vparam_value = *value_ptr;
+    return true;
+}
+
+static union jackctl_parameter_value alias_parameter_get_default_value(void * obj)
+{
+    union jackctl_parameter_value value;
+    value.i = FALSE;
+    return value;
+}
+
 #undef controller_ptr
 
 void *
@@ -585,6 +615,27 @@ jack_controller_create(
     address[0] = PTNODE_ENGINE;
     address[1] = NULL;
     jack_params_add_parameter(controller_ptr->params, address, true, &controller_ptr->slave_drivers_vparam);
+
+    controller_ptr->alias_vparam_set = false;
+    controller_ptr->alias_vparam_value.i = FALSE;
+
+    controller_ptr->alias_vparam.obj = controller_ptr;
+
+    controller_ptr->alias_vparam.vtable.is_set = alias_parameter_is_set;
+    controller_ptr->alias_vparam.vtable.reset = alias_parameter_reset;
+    controller_ptr->alias_vparam.vtable.get_value = alias_parameter_get_value;
+    controller_ptr->alias_vparam.vtable.set_value = alias_parameter_set_value;
+    controller_ptr->alias_vparam.vtable.get_default_value = alias_parameter_get_default_value;
+
+    controller_ptr->alias_vparam.type = JackParamBool;
+    controller_ptr->alias_vparam.name = "alias";
+    controller_ptr->alias_vparam.short_decr = "Show port aliases";
+    controller_ptr->alias_vparam.long_descr = controller_ptr->alias_vparam.short_decr;
+    controller_ptr->alias_vparam.constraint_flags = 0;
+
+    address[0] = PTNODE_ENGINE;
+    address[1] = NULL;
+    jack_params_add_parameter(controller_ptr->params, address, true, &controller_ptr->alias_vparam);
 
     controller_ptr->dbus_descriptor.context = controller_ptr;
     controller_ptr->dbus_descriptor.interfaces = g_jackcontroller_interfaces;
