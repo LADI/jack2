@@ -98,6 +98,7 @@ int JackAlsaDriver::Attach()
     unsigned long port_flags = (unsigned long)CaptureDriverFlags;
     char name[REAL_JACK_PORT_NAME_SIZE];
     char alias[REAL_JACK_PORT_NAME_SIZE];
+    bool hwalias;
 
     assert(fCaptureChannels < DRIVER_PORT_NUM);
     assert(fPlaybackChannels < DRIVER_PORT_NUM);
@@ -113,8 +114,14 @@ int JackAlsaDriver::Attach()
 
     jack_log("JackAlsaDriver::Attach fBufferSize %ld fSampleRate %ld", fEngineControl->fBufferSize, fEngineControl->fSampleRate);
 
+    hwalias = strcmp(fAliasName, "alsa_pcm") != 0;
+
     for (int i = 0; i < fCaptureChannels; i++) {
-        snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
+        if (hwalias) {
+            snprintf(alias, sizeof(alias), "%s:capture_%d", fAliasName, i + 1);
+        } else {
+            snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
+        }
         snprintf(name, sizeof(name), "%s:capture_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE, (JackPortFlags)port_flags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
@@ -129,7 +136,11 @@ int JackAlsaDriver::Attach()
     port_flags = (unsigned long)PlaybackDriverFlags;
 
     for (int i = 0; i < fPlaybackChannels; i++) {
-        snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
+        if (hwalias) {
+            snprintf(alias, sizeof(alias), "%s:playback_%d", fAliasName, i + 1);
+        } else {
+            snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
+        }
         snprintf(name, sizeof(name), "%s:playback_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE, (JackPortFlags)port_flags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
@@ -805,7 +816,43 @@ SERVER_EXPORT const jack_driver_desc_t* driver_get_descriptor ()
         " seq - ALSA Sequencer driver\n"
         " raw - ALSA RawMIDI driver\n");
 
+    value.i = FALSE;
+    jack_driver_descriptor_add_parameter(desc, &filler, "hw-alias", 'A', JackDriverParamBool, &value, NULL, "Use hardware device name for alias instead of alsa_pcm", NULL);
+
     return desc;
+}
+
+static char * get_device_name(const char * device_id)
+{
+    int err;
+    snd_ctl_card_info_t *card_info;
+    char * ctl_name;
+    snd_ctl_t * ctl_handle;
+    char * device_name = NULL;
+
+    snd_ctl_card_info_alloca (&card_info);
+
+    ctl_name = Jack::get_control_device_name (device_id);
+    if (ctl_name == NULL) {
+        goto exit;
+    }
+
+    if ((err = snd_ctl_open (&ctl_handle, ctl_name, 0)) < 0) {
+        goto free_ctl_name;
+    }
+
+    if ((err = snd_ctl_card_info (ctl_handle, card_info)) < 0) {
+        goto close;
+    }
+
+    device_name = strdup (snd_ctl_card_info_get_name(card_info));
+
+close:
+    snd_ctl_close (ctl_handle);
+free_ctl_name:
+    free (ctl_name);
+exit:
+    return device_name;
 }
 
 static Jack::JackAlsaDriver* g_alsa_driver;
@@ -832,6 +879,8 @@ SERVER_EXPORT Jack::JackDriverClientInterface* driver_initialize(Jack::JackLocke
     const JSList * node;
     const jack_driver_param_t * param;
     const char *midi_driver = "none";
+    const char *alias_name = NULL;
+    bool hw_alias = FALSE;
 
     for (node = params; node; node = jack_slist_next (node)) {
         param = (const jack_driver_param_t *) node->data;
@@ -930,6 +979,9 @@ SERVER_EXPORT Jack::JackDriverClientInterface* driver_initialize(Jack::JackLocke
             case 'X':
                 midi_driver = strdup(param->value.str);
                 break;
+            case 'A':
+                hw_alias = param->value.i;
+                break;
         }
     }
 
@@ -939,7 +991,15 @@ SERVER_EXPORT Jack::JackDriverClientInterface* driver_initialize(Jack::JackLocke
         playback = TRUE;
     }
 
-    g_alsa_driver = new Jack::JackAlsaDriver("system", "alsa_pcm", engine, table);
+    if (hw_alias) {
+        alias_name = get_device_name(playback_pcm_name);
+    }
+
+    if (alias_name == NULL) {
+        alias_name = "alsa_pcm";
+    }
+
+    g_alsa_driver = new Jack::JackAlsaDriver("system", alias_name, engine, table);
     Jack::JackDriverClientInterface* threaded_driver = new Jack::JackThreadedDriver(g_alsa_driver);
     // Special open for ALSA driver...
     if (g_alsa_driver->Open(frames_per_interrupt, user_nperiods, srate, hw_monitoring, hw_metering, capture, playback, dither, soft_mode, monitor,
