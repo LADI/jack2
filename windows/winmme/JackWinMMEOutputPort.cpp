@@ -23,6 +23,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackMidiUtil.h"
 #include "JackTime.h"
 #include "JackWinMMEOutputPort.h"
+#include "JackGlobals.h"
+#include "JackEngineControl.h"
 
 using Jack::JackWinMMEOutputPort;
 
@@ -44,7 +46,8 @@ JackWinMMEOutputPort::HandleMessageEvent(HMIDIOUT handle, UINT message,
 
 JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
                                            const char *client_name,
-                                           const char *driver_name, UINT index,
+                                           const char *driver_name,
+                                           UINT index,
                                            size_t max_bytes,
                                            size_t max_messages)
 {
@@ -132,7 +135,7 @@ JackWinMMEOutputPort::Execute()
     for (;;) {
         if (! Wait(thread_queue_semaphore)) {
             jack_log("JackWinMMEOutputPort::Execute BREAK");
-            
+
             break;
         }
         jack_midi_event_t *event = thread_queue->DequeueEvent();
@@ -145,16 +148,42 @@ JackWinMMEOutputPort::Execute()
             LARGE_INTEGER due_time;
 
             // 100 ns resolution
-            due_time.QuadPart = - ((frame_time - current_time) * 10);
+            due_time.QuadPart =
+                -((LONGLONG) ((frame_time - current_time) * 10));
             if (! SetWaitableTimer(timer, &due_time, 0, NULL, NULL, 0)) {
                 WriteOSError("JackWinMMEOutputPort::Execute",
-                             "ChangeTimerQueueTimer");
+                             "SetWaitableTimer");
                 break;
             }
+
+            // Debugging code
+            jack_log("JackWinMMEOutputPort::Execute - waiting at %f for %f "
+                     "milliseconds before sending message (current frame: %d, "
+                     "send frame: %d)",
+                     ((double) current_time) / 1000.0,
+                     ((double) (frame_time - current_time)) / 1000.0,
+                     GetFramesFromTime(current_time), event->time);
+            // End debugging code
 
             if (! Wait(timer)) {
                 break;
             }
+
+            // Debugging code
+            jack_time_t wakeup_time = GetMicroSeconds();
+            jack_log("JackWinMMEOutputPort::Execute - woke up at %f.",
+                     ((double) wakeup_time) / 1000.0);
+            if (wakeup_time > frame_time) {
+                jack_log("JackWinMMEOutputPort::Execute - overslept by %f "
+                         "milliseconds.",
+                         ((double) (wakeup_time - frame_time)) / 1000.0);
+            } else if (wakeup_time < frame_time) {
+                jack_log("JackWinMMEOutputPort::Execute - woke up %f "
+                         "milliseconds too early.",
+                         ((double) (frame_time - wakeup_time)) / 1000.0);
+            }
+            // End debugging code
+
         }
         jack_midi_data_t *data = event->buffer;
         DWORD message = 0;
@@ -248,7 +277,7 @@ JackWinMMEOutputPort::Init()
     set_threaded_log_function();
     // XX: Can more be done?  Ideally, this thread should have the JACK server
     // thread priority + 1.
-    if (thread->AcquireSelfRealTime()) {
+    if (thread->AcquireSelfRealTime(GetEngineControl()->fServerPriority)) {
         jack_error("JackWinMMEOutputPort::Init - could not acquire realtime "
                    "scheduling. Continuing anyway.");
     }

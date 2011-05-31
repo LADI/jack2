@@ -61,10 +61,9 @@ JackWinMMEDriver::Attach()
     for (int i = 0; i < fCaptureChannels; i++) {
         JackWinMMEInputPort *input_port = input_ports[i];
         name = input_port->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            CaptureDriverFlags, buffer_size);
-        if (index == NO_PORT) {
+        if (fEngine->PortRegister(fClientControl.fRefNum, name,
+                                JACK_DEFAULT_MIDI_TYPE,
+                                CaptureDriverFlags, buffer_size, &index) < 0) {
             jack_error("JackWinMMEDriver::Attach - cannot register input port "
                        "with name '%s'.", name);
             // X: Do we need to deallocate ports?
@@ -86,10 +85,9 @@ JackWinMMEDriver::Attach()
     for (int i = 0; i < fPlaybackChannels; i++) {
         JackWinMMEOutputPort *output_port = output_ports[i];
         name = output_port->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            PlaybackDriverFlags, buffer_size);
-        if (index == NO_PORT) {
+        if (fEngine->PortRegister(fClientControl.fRefNum, name,
+                                JACK_DEFAULT_MIDI_TYPE,
+                                PlaybackDriverFlags, buffer_size, &index) < 0) {
             jack_error("JackWinMMEDriver::Attach - cannot register output "
                        "port with name '%s'.", name);
             // X: Do we need to deallocate ports?
@@ -362,16 +360,8 @@ extern "C"
     SERVER_EXPORT jack_driver_desc_t * driver_get_descriptor()
     {
         jack_driver_desc_t * desc;
-        //unsigned int i;
 
-        desc = (jack_driver_desc_t*)calloc (1, sizeof (jack_driver_desc_t));
-        strcpy(desc->name, "winmme");                             // size MUST be less then JACK_DRIVER_NAME_MAX + 1
-        strcpy(desc->desc, "WinMME API based MIDI backend");      // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
-
-        desc->nparams = 0;
-        desc->params = (jack_driver_param_desc_t*)calloc (desc->nparams, sizeof (jack_driver_param_desc_t));
-
-        return desc;
+        return jack_driver_descriptor_construct("winmme", "WinMME API based MIDI backend", NULL);
     }
 
     SERVER_EXPORT Jack::JackDriverClientInterface* driver_initialize(Jack::JackLockedEngine* engine, Jack::JackSynchro* table, const JSList* params)

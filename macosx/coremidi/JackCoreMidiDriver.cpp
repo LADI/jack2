@@ -94,10 +94,9 @@ JackCoreMidiDriver::Attach()
     for (int i = 0; i < num_physical_inputs; i++) {
         port_obj = physical_input_ports[i];
         name = port_obj->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            CaptureDriverFlags, buffer_size);
-        if (index == NO_PORT) {
+        if (fEngine->PortRegister(fClientControl.fRefNum, name,
+                                JACK_DEFAULT_MIDI_TYPE,
+                                CaptureDriverFlags, buffer_size, &index) < 0) {
             jack_error("JackCoreMidiDriver::Attach - cannot register physical "
                        "input port with name '%s'.", name);
             // X: Do we need to deallocate ports?
@@ -113,10 +112,9 @@ JackCoreMidiDriver::Attach()
     for (int i = 0; i < num_virtual_inputs; i++) {
         port_obj = virtual_input_ports[i];
         name = port_obj->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            CaptureDriverFlags, buffer_size);
-        if (index == NO_PORT) {
+        if (fEngine->PortRegister(fClientControl.fRefNum, name,
+                                JACK_DEFAULT_MIDI_TYPE,
+                                CaptureDriverFlags, buffer_size, &index) < 0) {
             jack_error("JackCoreMidiDriver::Attach - cannot register virtual "
                        "input port with name '%s'.", name);
             // X: Do we need to deallocate ports?
@@ -138,9 +136,9 @@ JackCoreMidiDriver::Attach()
     for (int i = 0; i < num_physical_outputs; i++) {
         port_obj = physical_output_ports[i];
         name = port_obj->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            PlaybackDriverFlags, buffer_size);
+        fEngine->PortRegister(fClientControl.fRefNum, name,
+                            JACK_DEFAULT_MIDI_TYPE,
+                            PlaybackDriverFlags, buffer_size, &index);
         if (index == NO_PORT) {
             jack_error("JackCoreMidiDriver::Attach - cannot register physical "
                        "output port with name '%s'.", name);
@@ -157,9 +155,9 @@ JackCoreMidiDriver::Attach()
     for (int i = 0; i < num_virtual_outputs; i++) {
         port_obj = virtual_output_ports[i];
         name = port_obj->GetName();
-        index = fGraphManager->AllocatePort(fClientControl.fRefNum, name,
-                                            JACK_DEFAULT_MIDI_TYPE,
-                                            PlaybackDriverFlags, buffer_size);
+        fEngine->PortRegister(fClientControl.fRefNum, name,
+                            JACK_DEFAULT_MIDI_TYPE,
+                            PlaybackDriverFlags, buffer_size, &index);
         if (index == NO_PORT) {
             jack_error("JackCoreMidiDriver::Attach - cannot register virtual "
                        "output port with name '%s'.", name);
@@ -637,30 +635,14 @@ extern "C" {
     SERVER_EXPORT jack_driver_desc_t * driver_get_descriptor()
     {
         jack_driver_desc_t * desc;
-        unsigned int i;
+        jack_driver_desc_filler_t filler;
+        jack_driver_param_value_t value;
 
-        desc = (jack_driver_desc_t*)calloc (1, sizeof (jack_driver_desc_t));
-        strcpy(desc->name, "coremidi");                                     // size MUST be less then JACK_DRIVER_NAME_MAX + 1
-        strcpy(desc->desc, "Apple CoreMIDI API based MIDI backend");      // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
+        desc = jack_driver_descriptor_construct("coremidi", "Apple CoreMIDI API based MIDI backend", &filler);
 
-        desc->nparams = 2;
-        desc->params = (jack_driver_param_desc_t*)calloc (desc->nparams, sizeof (jack_driver_param_desc_t));
-
-        i = 0;
-        strcpy(desc->params[i].name, "inchannels");
-        desc->params[i].character = 'i';
-        desc->params[i].type = JackDriverParamUInt;
-        desc->params[i].value.ui = 0;
-        strcpy(desc->params[i].short_desc, "CoreMIDI virtual bus");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
-
-        i++;
-        strcpy(desc->params[i].name, "outchannels");
-        desc->params[i].character = 'o';
-        desc->params[i].type = JackDriverParamUInt;
-        desc->params[i].value.ui = 0;
-        strcpy(desc->params[i].short_desc, "CoreMIDI virtual bus");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.ui  = 0;
+        jack_driver_descriptor_add_parameter(desc, &filler, "inchannels", 'i', JackDriverParamUInt, &value, NULL, "CoreMIDI virtual bus", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "outchannels", 'o', JackDriverParamUInt, &value, NULL, "CoreMIDI virtual bus", NULL);
 
         return desc;
     }

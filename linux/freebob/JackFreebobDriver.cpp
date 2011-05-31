@@ -39,6 +39,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackClientControl.h"
 #include "JackPort.h"
 #include "JackGraphManager.h"
+#include "JackLockedEngine.h"
 
 namespace Jack
 {
@@ -666,7 +667,7 @@ JackFreebobDriver::freebob_driver_midi_finish (freebob_driver_midi_handle_t *m)
 int JackFreebobDriver::Attach()
 {
     JackPort* port;
-    int port_index;
+    jack_port_id_t port_index;
 
     char buf[JACK_PORT_NAME_SIZE];
     char portname[JACK_PORT_NAME_SIZE];
@@ -730,10 +731,10 @@ int JackFreebobDriver::Attach()
         } else {
             printMessage ("Registering capture port %s", buf);
 
-            if ((port_index = fGraphManager->AllocatePort(fClientControl.fRefNum, buf,
+            if (fEngine->PortRegister(fClientControl.fRefNum, buf,
                               JACK_DEFAULT_AUDIO_TYPE,
                               CaptureDriverFlags,
-                              fEngineControl->fBufferSize)) == NO_PORT) {
+                              fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", buf);
                 return -1;
             }
@@ -759,16 +760,16 @@ int JackFreebobDriver::Attach()
             printMessage ("Don't register playback port %s", buf);
         } else {
             printMessage ("Registering playback port %s", buf);
-            if ((port_index = fGraphManager->AllocatePort(fClientControl.fRefNum, buf,
+            if (fEngine->PortRegister(fClientControl.fRefNum, buf,
                               JACK_DEFAULT_AUDIO_TYPE,
                               PlaybackDriverFlags,
-                              fEngineControl->fBufferSize)) == NO_PORT) {
+                              fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", buf);
                 return -1;
             }
             port = fGraphManager->GetPort(port_index);
             // Add one buffer more latency if "async" mode is used...
-            range.min = range.max = (driver->period_size * (driver->device_options.nb_buffers - 1)) + ((fEngineControl->fSyncMode) ? 0 : fEngineControl->fBufferSize) + driver->playback_frame_latency);
+            range.min = range.max = (driver->period_size * (driver->device_options.nb_buffers - 1)) + ((fEngineControl->fSyncMode) ? 0 : fEngineControl->fBufferSize) + driver->playback_frame_latency;
             port->SetLatencyRange(JackPlaybackLatency, &range);
             fPlaybackPortList[i] = port_index;
             jack_log("JackFreebobDriver::Attach fPlaybackPortList[i] %ld ", port_index);
@@ -952,106 +953,37 @@ extern "C"
     const jack_driver_desc_t *
     driver_get_descriptor () {
         jack_driver_desc_t * desc;
-        jack_driver_param_desc_t * params;
-        unsigned int i;
+        jack_driver_desc_filler_t filler;
+        jack_driver_param_value_t value;
 
-        desc = (jack_driver_desc_t *)calloc (1, sizeof (jack_driver_desc_t));
+        desc = jack_driver_descriptor_construct("freebob", "Linux FreeBob API based audio backend", &filler);
 
-        strcpy (desc->name, "freebob");                                // size MUST be less then JACK_DRIVER_NAME_MAX + 1
-        strcpy(desc->desc, "Linux FreeBob API based audio backend");   // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
+        strcpy(value.str, "hw:0");
+        jack_driver_descriptor_add_parameter(desc, &filler, "device", 'd', JackDriverParamString, &value, NULL, "The FireWire device to use. Format is: 'hw:port[,node]'.", NULL);
 
-        desc->nparams = 11;
+        value.ui = 1024;
+        jack_driver_descriptor_add_parameter(desc, &filler, "period", 'p', JackDriverParamUInt, &value, NULL, "Frames per period", NULL);
 
-        params = (jack_driver_param_desc_t *)calloc (desc->nparams, sizeof (jack_driver_param_desc_t));
-        desc->params = params;
+        value.ui = 3;
+        jack_driver_descriptor_add_parameter(desc, &filler, "nperiods", 'n', JackDriverParamUInt, &value, NULL, "Number of periods of playback latency", NULL);
 
-        i = 0;
-        strcpy (params[i].name, "device");
-        params[i].character  = 'd';
-        params[i].type       = JackDriverParamString;
-        strcpy (params[i].value.str,  "hw:0");
-        strcpy (params[i].short_desc, "The FireWire device to use. Format is: 'hw:port[,node]'.");
-        strcpy (params[i].long_desc,  params[i].short_desc);
+        value.ui = 48000U;
+        jack_driver_descriptor_add_parameter(desc, &filler, "rate", 'r', JackDriverParamUInt, &value, NULL, "Sample rate", NULL);
 
-        i++;
-        strcpy (params[i].name, "period");
-        params[i].character  = 'p';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui   = 1024;
-        strcpy (params[i].short_desc, "Frames per period");
-        strcpy (params[i].long_desc, params[i].short_desc);
+        value.i = 0;
+        jack_driver_descriptor_add_parameter(desc, &filler, "capture", 'C', JackDriverParamBool, &value, NULL, "Provide capture ports.", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "playback", 'P', JackDriverParamBool, &value, NULL, "Provide playback ports.", NULL);
 
-        i++;
-        strcpy (params[i].name, "nperiods");
-        params[i].character  = 'n';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui   = 3;
-        strcpy (params[i].short_desc, "Number of periods of playback latency");
-        strcpy (params[i].long_desc, params[i].short_desc);
+        value.i = 1;
+        jack_driver_descriptor_add_parameter(desc, &filler, "duplex", 'D', JackDriverParamBool, &value, NULL, "Provide both capture and playback ports.", NULL);
 
-        i++;
-        strcpy (params[i].name, "rate");
-        params[i].character  = 'r';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui   = 48000U;
-        strcpy (params[i].short_desc, "Sample rate");
-        strcpy (params[i].long_desc, params[i].short_desc);
+        value.ui = 0;
+        jack_driver_descriptor_add_parameter(desc, &filler, "input-latency", 'I', JackDriverParamUInt, &value, NULL, "Extra input latency (frames)", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "output-latency", 'O', JackDriverParamUInt, &value, NULL, "Extra output latency (frames)", NULL);
 
-        i++;
-        strcpy (params[i].name, "capture");
-        params[i].character  = 'C';
-        params[i].type       = JackDriverParamBool;
-        params[i].value.i    = 0;
-        strcpy (params[i].short_desc, "Provide capture ports.");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "playback");
-        params[i].character  = 'P';
-        params[i].type       = JackDriverParamBool;
-        params[i].value.i    = 0;
-        strcpy (params[i].short_desc, "Provide playback ports.");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "duplex");
-        params[i].character  = 'D';
-        params[i].type       = JackDriverParamBool;
-        params[i].value.i    = 1;
-        strcpy (params[i].short_desc, "Provide both capture and playback ports.");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "input-latency");
-        params[i].character  = 'I';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui    = 0;
-        strcpy (params[i].short_desc, "Extra input latency (frames)");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "output-latency");
-        params[i].character  = 'O';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui    = 0;
-        strcpy (params[i].short_desc, "Extra output latency (frames)");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "inchannels");
-        params[i].character  = 'i';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui    = 0;
-        strcpy (params[i].short_desc, "Number of input channels to provide (note: currently ignored)");
-        strcpy (params[i].long_desc, params[i].short_desc);
-
-        i++;
-        strcpy (params[i].name, "outchannels");
-        params[i].character  = 'o';
-        params[i].type       = JackDriverParamUInt;
-        params[i].value.ui    = 0;
-        strcpy (params[i].short_desc, "Number of output channels to provide (note: currently ignored)");
-        strcpy (params[i].long_desc, params[i].short_desc);
+        value.ui = 0;
+        jack_driver_descriptor_add_parameter(desc, &filler, "inchannels", 'i', JackDriverParamUInt, &value, NULL, "Number of input channels to provide (note: currently ignored)", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "outchannels", 'o', JackDriverParamUInt, &value, NULL, "Number of output channels to provide (note: currently ignored)", NULL);
 
         return desc;
     }

@@ -1,18 +1,18 @@
 /*
   Copyright (C) 2009-2010 Grame
-  
+
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation; either version 2.1 of the License, or
   (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU Lesser General Public License for more details.
-  
+
   You should have received a copy of the GNU Lesser General Public License
-  along with this program; if not, write to the Free Software 
+  along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
@@ -48,31 +48,35 @@ enum JackNetEncoder {
     JackIntEncoder = 1,     // Samples are transmitted as 16 bits integer
     JackCeltEncoder = 2,    // Samples are transmitted using CELT codec (http://www.celt-codec.org/)
 };
-    
+
 typedef struct {
-    
-    int audio_input;    // from master or to slave
-    int audio_output;   // to master or from slave
-    int midi_input;     // from master or to slave
-    int midi_output;    // to master or from slave
+
+    int audio_input;    // from master or to slave (-1 for get master audio physical outputs)
+    int audio_output;   // to master or from slave (-1 for get master audio physical inputs)
+    int midi_input;     // from master or to slave (-1 for get master MIDI physical outputs)
+    int midi_output;    // to master or from slave (-1 for get master MIDI physical inputs)
     int mtu;            // network Maximum Transmission Unit
     int time_out;       // in second, -1 means in infinite
     int encoder;        // Encoder type (one of JackNetEncoder)
     int kbps;           // KB per second for CELT encoder
-    char mode;          
+    char mode;          // one of JackNetMode
 
 } jack_slave_t;
 
 typedef struct {
-    
-    jack_nframes_t buffer_size;
-    jack_nframes_t sample_rate;
-    char master_name[MASTER_NAME_SIZE];
+
+    int audio_input;                    // master audio physical outputs
+    int audio_output;                   // master audio physical inputs
+    int midi_input;                     // master MIDI physical outputs
+    int midi_output;                    // master MIDI physical inputs
+    jack_nframes_t buffer_size;         // mater buffer size
+    jack_nframes_t sample_rate;         // mater sample rate
+    char master_name[MASTER_NAME_SIZE]; // master machine name
 
 } jack_master_t;
 
 /**
- *  jack_net_t is an opaque type. You may only access it using the
+ *  jack_net_slave_t is an opaque type. You may only access it using the
  *  API provided.
  */
 typedef struct _jack_net_slave jack_net_slave_t;
@@ -99,7 +103,7 @@ int jack_net_slave_close(jack_net_slave_t* net);
 /**
  * Prototype for Process callback.
  * @param nframes buffer size
- * @param audio_input number of audio inputs 
+ * @param audio_input number of audio inputs
  * @param audio_input_buffer an array of audio input buffers (from master)
  * @param midi_input number of MIDI inputs
  * @param midi_input_buffer an array of MIDI input buffers (from master)
@@ -112,14 +116,14 @@ int jack_net_slave_close(jack_net_slave_t* net);
  * @return zero on success, non-zero on error
  */
 typedef int (* JackNetSlaveProcessCallback) (jack_nframes_t buffer_size,
-                                            int audio_input, 
-                                            float** audio_input_buffer, 
+                                            int audio_input,
+                                            float** audio_input_buffer,
                                             int midi_input,
                                             void** midi_input_buffer,
                                             int audio_output,
-                                            float** audio_output_buffer, 
-                                            int midi_output, 
-                                            void** midi_output_buffer, 
+                                            float** audio_output_buffer,
+                                            int midi_output,
+                                            void** midi_output_buffer,
                                             void* data);
 
 /**
@@ -203,11 +207,11 @@ typedef void (*JackNetSlaveShutdownCallback)(void* data);
 int jack_set_net_slave_shutdown_callback(jack_net_slave_t *net, JackNetSlaveShutdownCallback shutdown_callback, void *arg);
 
 /**
- *  jack_net_t is an opaque type. You may only access it using the
+ *  jack_net_master_t is an opaque type. You may only access it using the
  *  API provided.
  */
 typedef struct _jack_net_master jack_net_master_t;
-    
+
  /**
  * Open a network connection with the slave machine.
  * @param ip the multicast address of the master
@@ -226,7 +230,7 @@ jack_net_master_t* jack_net_master_open(const char* ip, int port, const char* na
  * @return 0 on success, otherwise a non-zero error code
  */
 int jack_net_master_close(jack_net_master_t* net);
- 
+
 /**
  * Receive sync and data from the network
  * @param net the network connection
@@ -236,7 +240,7 @@ int jack_net_master_close(jack_net_master_t* net);
  * @param midi_input_buffer an array of MIDI input buffers
  *
  * @return zero on success, non-zero on error
- */   
+ */
 int jack_net_master_recv(jack_net_master_t* net, int audio_input, float** audio_input_buffer, int midi_input, void** midi_input_buffer);
 
 /**
@@ -248,7 +252,7 @@ int jack_net_master_recv(jack_net_master_t* net, int audio_input, float** audio_
  * @param midi_output_buffer an array of MIDI output buffers
  *
  * @return zero on success, non-zero on error
- */   
+ */
 int jack_net_master_send(jack_net_master_t* net, int audio_output, float** audio_output_buffer, int midi_output, void** midi_output_buffer);
 
 // Experimental Adapter API
@@ -269,9 +273,9 @@ typedef struct _jack_adapter jack_adapter_t;
  * @param adapted_sample_rate the adapted buffer sample rate
  *
  * @return 0 on success, otherwise a non-zero error code
- */  
+ */
 jack_adapter_t* jack_create_adapter(int input, int output,
-                                    jack_nframes_t host_buffer_size, 
+                                    jack_nframes_t host_buffer_size,
                                     jack_nframes_t host_sample_rate,
                                     jack_nframes_t adapted_buffer_size,
                                     jack_nframes_t adapted_sample_rate);
@@ -281,7 +285,7 @@ jack_adapter_t* jack_create_adapter(int input, int output,
  * @param adapter the adapter to be destroyed
  *
  * @return 0 on success, otherwise a non-zero error code
- */  
+ */
 int jack_destroy_adapter(jack_adapter_t* adapter);
 
 /**
@@ -289,7 +293,7 @@ int jack_destroy_adapter(jack_adapter_t* adapter);
  * @param adapter the adapter to be flushed
  *
  * @return 0 on success, otherwise a non-zero error code
- */ 
+ */
 void jack_flush_adapter(jack_adapter_t* adapter);
 
 /**
@@ -300,7 +304,7 @@ void jack_flush_adapter(jack_adapter_t* adapter);
  * @param frames number of frames
  *
  * @return 0 on success, otherwise a non-zero error code
- */  
+ */
 int jack_adapter_push_and_pull(jack_adapter_t* adapter, float** input, float** output, unsigned int frames);
 
 /**
@@ -309,7 +313,7 @@ int jack_adapter_push_and_pull(jack_adapter_t* adapter, float** input, float** o
  * @param input an array of audio input buffers
  * @param output an array of audio ouput buffers
  * @param frames number of frames
- * 
+ *
  * @return 0 on success, otherwise a non-zero error code
  */
 int jack_adapter_pull_and_push(jack_adapter_t* adapter, float** input, float** output, unsigned int frames);

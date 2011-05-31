@@ -133,6 +133,7 @@ class SERVER_EXPORT JackMachThread : public JackPosixThread
             return JackMachThread::AcquireRealTimeImp(thread, period, computation, constraint);
         }
         static int DropRealTimeImp(jack_native_thread_t thread);
+
 };
 
 } // end of namespace

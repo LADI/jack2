@@ -116,10 +116,10 @@ namespace Jack
         fSocket.SetPort(port);
         fSocket.SetAddress(fMulticastIP, port);
 
-        // If not set, takes deafault
+        // If not set, takes default
         fParams.fSendAudioChannels = (send_audio == -1) ? 2 : send_audio;
 
-        // If not set, takes deafault
+        // If not set, takes default
         fParams.fReturnAudioChannels = (return_audio == -1) ? 2 : return_audio;
 
         //set the audio adapter interface channel values
@@ -135,14 +135,13 @@ namespace Jack
     {
         jack_log("JackNetAdapter::~JackNetAdapter");
 
-        int port_index;
         if (fSoftCaptureBuffer) {
-            for (port_index = 0; port_index < fCaptureChannels; port_index++)
+            for (int port_index = 0; port_index < fCaptureChannels; port_index++)
                 delete[] fSoftCaptureBuffer[port_index];
             delete[] fSoftCaptureBuffer;
         }
         if (fSoftPlaybackBuffer) {
-            for (port_index = 0; port_index < fPlaybackChannels; port_index++)
+            for (int port_index = 0; port_index < fPlaybackChannels; port_index++)
                 delete[] fSoftPlaybackBuffer[port_index];
             delete[] fSoftPlaybackBuffer;
         }
@@ -151,8 +150,6 @@ namespace Jack
 //open/close--------------------------------------------------------------------------
     int JackNetAdapter::Open()
     {
-        jack_log("JackNetAdapter::Open");
-
         jack_info("NetAdapter started in %s mode %s Master's transport sync.",
                     (fParams.fSlaveSyncMode) ? "sync" : "async", (fParams.fTransportSync) ? "with" : "without");
 
@@ -212,8 +209,6 @@ namespace Jack
     {
         jack_log("JackNetAdapter::Init");
 
-        int port_index;
-
         //init network connection
         if (!JackNetSlaveInterface::Init()) {
             jack_error("JackNetSlaveInterface::Init() error...");
@@ -229,8 +224,7 @@ namespace Jack
         //set buffers
         if (fCaptureChannels > 0) {
             fSoftCaptureBuffer = new sample_t*[fCaptureChannels];
-            for (port_index = 0; port_index < fCaptureChannels; port_index++)
-            {
+            for (int port_index = 0; port_index < fCaptureChannels; port_index++) {
                 fSoftCaptureBuffer[port_index] = new sample_t[fParams.fPeriodSize];
                 fNetAudioCaptureBuffer->SetBuffer(port_index, fSoftCaptureBuffer[port_index]);
             }
@@ -238,8 +232,7 @@ namespace Jack
 
         if (fPlaybackChannels > 0) {
             fSoftPlaybackBuffer = new sample_t*[fPlaybackChannels];
-            for (port_index = 0; port_index < fPlaybackChannels; port_index++)
-            {
+            for (int port_index = 0; port_index < fPlaybackChannels; port_index++) {
                 fSoftPlaybackBuffer[port_index] = new sample_t[fParams.fPeriodSize];
                 fNetAudioPlaybackBuffer->SetBuffer(port_index, fSoftPlaybackBuffer[port_index]);
             }
@@ -273,7 +266,7 @@ namespace Jack
             return false;
         } catch (JackNetException& e) {
             e.PrintMessage();
-            jack_info("NetAdapter is restarted.");
+            jack_info("NetAdapter is restarted");
             Reset();
             fThread.DropSelfRealTime();
             fThread.SetStatus(JackThread::kIniting);
@@ -403,112 +396,47 @@ extern "C"
 
     SERVER_EXPORT jack_driver_desc_t* jack_get_descriptor()
     {
-        jack_driver_desc_t* desc = (jack_driver_desc_t*) calloc(1, sizeof(jack_driver_desc_t));
+        jack_driver_desc_t * desc;
+        jack_driver_desc_filler_t filler;
+        jack_driver_param_value_t value;
 
-        strcpy(desc->name, "netadapter");                              // size MUST be less then JACK_DRIVER_NAME_MAX + 1
-        strcpy(desc->desc, "netjack net <==> audio backend adapter");  // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
+        desc = jack_driver_descriptor_construct("netadapter", "netjack net <==> audio backend adapter", &filler);
 
-        desc->params = (jack_driver_param_desc_t*) calloc(12, sizeof(jack_driver_param_desc_t));
+        strcpy(value.str, DEFAULT_MULTICAST_IP);
+        jack_driver_descriptor_add_parameter(desc, &filler, "multicast_ip", 'a', JackDriverParamString, &value, NULL, "Multicast Address", NULL);
 
-        int i = 0;
-        strcpy(desc->params[i].name, "multicast_ip");
-        desc->params[i].character = 'a';
-        desc->params[i].type = JackDriverParamString;
-        strcpy(desc->params[i].value.str, DEFAULT_MULTICAST_IP);
-        strcpy(desc->params[i].short_desc, "Multicast Address");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.i = DEFAULT_PORT;
+        jack_driver_descriptor_add_parameter(desc, &filler, "udp_net_port", 'p', JackDriverParamInt, &value, NULL, "UDP port", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "udp_net_port");
-        desc->params[i].character = 'p';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = DEFAULT_PORT;
-        strcpy(desc->params[i].short_desc, "UDP port");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.i = DEFAULT_MTU;
+        jack_driver_descriptor_add_parameter(desc, &filler, "mtu", 'M', JackDriverParamInt, &value, NULL, "MTU to the master", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "mtu");
-        desc->params[i].character = 'M';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = DEFAULT_MTU;
-        strcpy(desc->params[i].short_desc, "MTU to the master");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
-
-        i++;
-        strcpy(desc->params[i].name, "input-ports");
-        desc->params[i].character = 'C';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = 2;
-        strcpy(desc->params[i].short_desc, "Number of audio input ports");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
-
-        i++;
-        strcpy(desc->params[i].name, "output-ports");
-        desc->params[i].character = 'P';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = 2;
-        strcpy(desc->params[i].short_desc, "Number of audio output ports");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.i = 2;
+        jack_driver_descriptor_add_parameter(desc, &filler, "input-ports", 'C', JackDriverParamInt, &value, NULL, "Number of audio input ports", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "output-ports", 'C', JackDriverParamInt, &value, NULL, "Number of audio output ports", NULL);
 
     #if HAVE_CELT
-        i++;
-        strcpy(desc->params[i].name, "celt");
-        desc->params[i].character = 'c';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = -1;
-        strcpy(desc->params[i].short_desc, "Set CELT encoding and number of kBits per channel");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.i = -1;
+        jack_driver_descriptor_add_parameter(desc, &filler, "celt", 'c', JackDriverParamInt, &value, NULL, "Set CELT encoding and number of kBits per channel", NULL);
     #endif
 
-        i++;
-        strcpy(desc->params[i].name, "client-name");
-        desc->params[i].character = 'n';
-        desc->params[i].type = JackDriverParamString;
-        strcpy(desc->params[i].value.str, "'hostname'");
-        strcpy(desc->params[i].short_desc, "Name of the jack client");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        strcpy(value.str, "'hostname'");
+        jack_driver_descriptor_add_parameter(desc, &filler, "client-name", 'n', JackDriverParamString, &value, NULL, "Name of the jack client", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "transport-sync");
-        desc->params[i].character  = 't';
-        desc->params[i].type = JackDriverParamUInt;
-        desc->params[i].value.ui = 1U;
-        strcpy(desc->params[i].short_desc, "Sync transport with master's");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.ui = 1U;
+        jack_driver_descriptor_add_parameter(desc, &filler, "transport-sync", 't', JackDriverParamUInt, &value, NULL, "Sync transport with master's", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "mode");
-        desc->params[i].character  = 'm';
-        desc->params[i].type = JackDriverParamString;
-        strcpy(desc->params[i].value.str, "slow");
-        strcpy(desc->params[i].short_desc, "Slow, Normal or Fast mode.");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        strcpy(value.str, "slow");
+        jack_driver_descriptor_add_parameter(desc, &filler, "mode", 'm', JackDriverParamString, &value, NULL, "Slow, Normal or Fast mode.", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "quality");
-        desc->params[i].character = 'q';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.ui = 0;
-        strcpy(desc->params[i].short_desc, "Resample algorithm quality (0 - 4)");
-        strcpy(desc->params[i].long_desc, desc->params[i].short_desc);
+        value.i = 0;
+        jack_driver_descriptor_add_parameter(desc, &filler, "quality", 'q', JackDriverParamInt, &value, NULL, "Resample algorithm quality (0 - 4)", NULL);
 
-        i++;
-        strcpy(desc->params[i].name, "ring-buffer");
-        desc->params[i].character = 'g';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.ui = 32768;
-        strcpy(desc->params[i].short_desc, "Fixed ringbuffer size");
-        strcpy(desc->params[i].long_desc, "Fixed ringbuffer size (if not set => automatic adaptative)");
+        value.i = 32768;
+        jack_driver_descriptor_add_parameter(desc, &filler, "ring-buffer", 'g', JackDriverParamInt, &value, NULL, "Fixed ringbuffer size", "Fixed ringbuffer size (if not set => automatic adaptative)");
 
-        i++;
-        strcpy (desc->params[i].name, "auto-connect");
-        desc->params[i].character = 'c';
-        desc->params[i].type = JackDriverParamBool;
-        desc->params[i].value.i = false;
-        strcpy (desc->params[i].short_desc, "Auto connect netmaster to system ports");
-        strcpy (desc->params[i].long_desc, desc->params[i].short_desc);
-
-        desc->nparams = i + 1;
+        value.i = false;
+        jack_driver_descriptor_add_parameter(desc, &filler, "auto-connect", 'c', JackDriverParamBool, &value, NULL, "Auto connect netmaster to system ports", "");
 
         return desc;
     }

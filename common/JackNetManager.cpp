@@ -92,7 +92,7 @@ namespace Jack
 
     JackNetMaster::~JackNetMaster()
     {
-        jack_log ( "JackNetMaster::~JackNetMaster, ID %u.", fParams.fID );
+        jack_log ( "JackNetMaster::~JackNetMaster, ID %u", fParams.fID );
 
         if ( fJackClient )
         {
@@ -113,7 +113,7 @@ namespace Jack
     bool JackNetMaster::Init(bool auto_connect)
     {
         //network init
-        if (!JackNetMasterInterface::Init()){
+        if (!JackNetMasterInterface::Init()) {
             jack_error("JackNetMasterInterface::Init() error..." );
             return false;
         }
@@ -128,7 +128,7 @@ namespace Jack
         jack_status_t status;
         if ( ( fJackClient = jack_client_open ( fClientName, JackNullOption, &status, NULL ) ) == NULL )
         {
-            jack_error ( "Can't open a new jack client." );
+            jack_error ( "Can't open a new jack client" );
             return false;
         }
 
@@ -140,7 +140,7 @@ namespace Jack
 
         if ( AllocPorts() != 0 )
         {
-            jack_error ( "Can't allocate jack ports." );
+            jack_error ( "Can't allocate jack ports" );
             goto fail;
         }
 
@@ -150,13 +150,13 @@ namespace Jack
         //finally activate jack client
         if ( jack_activate ( fJackClient ) != 0 )
         {
-            jack_error ( "Can't activate jack client." );
+            jack_error ( "Can't activate jack client" );
             goto fail;
         }
 
         if (auto_connect)
             ConnectPorts();
-        jack_info ( "New NetMaster started." );
+        jack_info ( "New NetMaster started" );
         return true;
 
     fail:
@@ -314,17 +314,17 @@ namespace Jack
                 case RELEASE_TIMEBASEMASTER :
                     timebase = jack_release_timebase ( fJackClient );
                     if ( timebase < 0 )
-                        jack_error ( "Can't release timebase master." );
+                        jack_error ( "Can't release timebase master" );
                     else
-                        jack_info ( "'%s' isn't the timebase master anymore.", fParams.fName );
+                        jack_info ( "'%s' isn't the timebase master anymore", fParams.fName );
                     break;
 
                 case TIMEBASEMASTER :
                     timebase = jack_set_timebase_callback ( fJackClient, 0, SetTimebaseCallback, this );
                     if ( timebase < 0 )
-                        jack_error ( "Can't set a new timebase master." );
+                        jack_error ( "Can't set a new timebase master" );
                     else
-                        jack_info ( "'%s' is the new timebase master.", fParams.fName );
+                        jack_info ( "'%s' is the new timebase master", fParams.fName );
                     break;
 
                 case CONDITIONAL_TIMEBASEMASTER :
@@ -332,9 +332,9 @@ namespace Jack
                     if ( timebase != EBUSY )
                     {
                         if ( timebase < 0 )
-                            jack_error ( "Can't set a new timebase master." );
+                            jack_error ( "Can't set a new timebase master" );
                         else
-                            jack_info ( "'%s' is the new timebase master.", fParams.fName );
+                            jack_info ( "'%s' is the new timebase master", fParams.fName );
                     }
                     break;
             }
@@ -347,22 +347,22 @@ namespace Jack
             {
                 case JackTransportStopped :
                     jack_transport_stop ( fJackClient );
-                    jack_info ( "'%s' stops transport.", fParams.fName );
+                    jack_info ( "'%s' stops transport", fParams.fName );
                     break;
 
                 case JackTransportStarting :
                     if ( jack_transport_reposition ( fJackClient, &fReturnTransportData.fPosition ) == EINVAL )
-                        jack_error ( "Can't set new position." );
+                        jack_error ( "Can't set new position" );
                     jack_transport_start ( fJackClient );
                     jack_info ( "'%s' starts transport frame = %d", fParams.fName, fReturnTransportData.fPosition.frame);
                     break;
 
                 case JackTransportNetStarting :
-                    jack_info ( "'%s' is ready to roll..", fParams.fName );
+                    jack_info ( "'%s' is ready to roll...", fParams.fName );
                     break;
 
                 case JackTransportRolling :
-                    jack_info ( "'%s' is rolling.", fParams.fName );
+                    jack_info ( "'%s' is rolling", fParams.fName );
                     break;
             }
         }
@@ -422,18 +422,26 @@ namespace Jack
 #endif
 
         //buffers
-        for ( port_index = 0; port_index < fParams.fSendMidiChannels; port_index++ )
-            fNetMidiCaptureBuffer->SetBuffer ( port_index, static_cast<JackMidiBuffer*> ( jack_port_get_buffer ( fMidiCapturePorts[port_index],
-                                               fParams.fPeriodSize ) ) );
-        for ( port_index = 0; port_index < fParams.fSendAudioChannels; port_index++ )
-            fNetAudioCaptureBuffer->SetBuffer ( port_index, static_cast<sample_t*> ( jack_port_get_buffer ( fAudioCapturePorts[port_index],
-                                                fParams.fPeriodSize ) ) );
-        for ( port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++ )
-            fNetMidiPlaybackBuffer->SetBuffer ( port_index, static_cast<JackMidiBuffer*> ( jack_port_get_buffer ( fMidiPlaybackPorts[port_index],
-                                                fParams.fPeriodSize ) ) );
-        for ( port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++ )
-            fNetAudioPlaybackBuffer->SetBuffer ( port_index, static_cast<sample_t*> ( jack_port_get_buffer ( fAudioPlaybackPorts[port_index],
-                                                 fParams.fPeriodSize ) ) );
+        for (port_index = 0; port_index < fParams.fSendMidiChannels; port_index++) {
+            fNetMidiCaptureBuffer->SetBuffer(port_index,
+                                            static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiCapturePorts[port_index],
+                                            fParams.fPeriodSize)));
+        }
+        for (port_index = 0; port_index < fParams.fSendAudioChannels; port_index++) {
+            fNetAudioCaptureBuffer->SetBuffer(port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[port_index],
+                                                fParams.fPeriodSize)));
+        }
+        for (port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++) {
+            fNetMidiPlaybackBuffer->SetBuffer(port_index,
+                                                static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiPlaybackPorts[port_index],
+                                                fParams.fPeriodSize)));
+        }
+        for (port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++) {
+            fNetAudioPlaybackBuffer->SetBuffer(port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioPlaybackPorts[port_index],
+                                                fParams.fPeriodSize)));
+        }
 
         if (IsSynched()) {  // only send if connection is "synched"
 
@@ -441,11 +449,11 @@ namespace Jack
             EncodeSyncPacket();
 
             //send sync
-            if ( SyncSend() == SOCKET_ERROR )
+            if (SyncSend() == SOCKET_ERROR)
                 return SOCKET_ERROR;
 
     #ifdef JACK_MONITOR
-            fNetTimeMon->Add ( ( ( ( float ) (GetMicroSeconds() - begin_time ) ) / ( float ) fPeriodUsecs ) * 100.f );
+            fNetTimeMon->Add((((float) (GetMicroSeconds() - begin_time)) / (float) fPeriodUsecs ) * 100.f);
     #endif
 
             //send data
@@ -453,7 +461,7 @@ namespace Jack
                 return SOCKET_ERROR;
 
     #ifdef JACK_MONITOR
-            fNetTimeMon->Add ( ( ( ( float ) (GetMicroSeconds() - begin_time ) ) / ( float ) fPeriodUsecs ) * 100.f );
+            fNetTimeMon->Add((((float) (GetMicroSeconds() - begin_time)) / (float) fPeriodUsecs) * 100.f);
     #endif
 
         } else {
@@ -526,11 +534,11 @@ namespace Jack
 
         //activate the client (for sync callback)
         if ( jack_activate ( fManagerClient ) != 0 )
-            jack_error ( "Can't activate the network manager client, transport disabled." );
+            jack_error ( "Can't activate the network manager client, transport disabled" );
 
         //launch the manager thread
         if ( jack_client_create_thread ( fManagerClient, &fManagerThread, 0, 0, NetManagerThread, this ) )
-            jack_error ( "Can't create the network manager control thread." );
+            jack_error ( "Can't create the network manager control thread" );
     }
 
     JackNetMasterManager::~JackNetMasterManager()
@@ -550,10 +558,15 @@ namespace Jack
     {
         const char **ports;
         int count = 0;
+        jack_port_t* port;
 
         ports = jack_get_ports(fManagerClient, NULL, NULL, flags);
         if (ports != NULL) {
-            while(ports[count]) count++;
+            while (ports[count]
+                    && (port = jack_port_by_name(fManagerClient, ports[count]))
+                    && (strcmp(jack_port_type(port), JACK_DEFAULT_AUDIO_TYPE) == 0)) {
+                count++;
+            }
             free(ports);
         }
         return count;
@@ -579,7 +592,7 @@ namespace Jack
     void* JackNetMasterManager::NetManagerThread ( void* arg )
     {
         JackNetMasterManager* master_manager = static_cast<JackNetMasterManager*> ( arg );
-        jack_info ( "Starting Jack Network Manager." );
+        jack_info ( "Starting Jack Network Manager" );
         jack_info ( "Listening on '%s:%d'", master_manager->fMulticastIP, master_manager->fSocket.GetPort() );
         master_manager->Run();
         return NULL;
@@ -641,7 +654,7 @@ namespace Jack
                 jack_error ( "Error in receive : %s", StrError ( NET_ERROR_CODE ) );
                 if ( ++attempt == 10 )
                 {
-                    jack_error ( "Can't receive on the socket, exiting net manager." );
+                    jack_error ( "Can't receive on the socket, exiting net manager" );
                     return;
                 }
             }
@@ -668,9 +681,9 @@ namespace Jack
         while ( fRunning );
     }
 
-    JackNetMaster* JackNetMasterManager::InitMaster ( session_params_t& params )
+    JackNetMaster* JackNetMasterManager::InitMaster(session_params_t& params)
     {
-        jack_log ( "JackNetMasterManager::InitMaster, Slave : %s", params.fName );
+        jack_log("JackNetMasterManager::InitMaster, Slave : %s", params.fName);
 
         //check MASTER <<==> SLAVE network protocol coherency
         if (params.fProtocolVersion != MASTER_PROTOCOL) {
@@ -694,7 +707,7 @@ namespace Jack
             jack_info("Takes physical %d outputs for client", params.fReturnAudioChannels);
         }
 
-        SetSlaveName (params);
+        SetSlaveName(params);
 
         //create a new master and add it to the list
         JackNetMaster* master = new JackNetMaster(fSocket, params, fMulticastIP);
@@ -718,7 +731,7 @@ namespace Jack
 
     master_list_it_t JackNetMasterManager::FindMaster ( uint32_t id )
     {
-        jack_log ( "JackNetMasterManager::FindMaster, ID %u.", id );
+        jack_log ( "JackNetMasterManager::FindMaster, ID %u", id );
 
         master_list_it_t it;
         for ( it = fMasterList.begin(); it != fMasterList.end(); it++ )
@@ -729,7 +742,7 @@ namespace Jack
 
     int JackNetMasterManager::KillMaster ( session_params_t* params )
     {
-        jack_log ( "JackNetMasterManager::KillMaster, ID %u.", params->fID );
+        jack_log ( "JackNetMasterManager::KillMaster, ID %u", params->fID );
 
         master_list_it_t master = FindMaster ( params->fID );
         if ( master != fMasterList.end() )
@@ -751,38 +764,20 @@ extern "C"
 
     SERVER_EXPORT jack_driver_desc_t* jack_get_descriptor()
     {
-        jack_driver_desc_t *desc;
-        desc = ( jack_driver_desc_t* ) calloc ( 1, sizeof ( jack_driver_desc_t ) );
+        jack_driver_desc_t * desc;
+        jack_driver_desc_filler_t filler;
+        jack_driver_param_value_t value;
 
-        strcpy ( desc->name, "netmanager" );                        // size MUST be less then JACK_DRIVER_NAME_MAX + 1
-        strcpy ( desc->desc, "netjack multi-cast master component" );  // size MUST be less then JACK_DRIVER_PARAM_DESC + 1
+        desc = jack_driver_descriptor_construct("netmanager", "netjack multi-cast master component", &filler);
 
-        desc->nparams = 3;
-        desc->params = ( jack_driver_param_desc_t* ) calloc ( desc->nparams, sizeof ( jack_driver_param_desc_t ) );
+        strcpy(value.str, DEFAULT_MULTICAST_IP );
+        jack_driver_descriptor_add_parameter(desc, &filler, "multicast_ip", 'a', JackDriverParamString, &value, NULL, "Multicast Address", NULL);
 
-        int i = 0;
-        strcpy ( desc->params[i].name, "multicast_ip" );
-        desc->params[i].character = 'a';
-        desc->params[i].type = JackDriverParamString;
-        strcpy ( desc->params[i].value.str, DEFAULT_MULTICAST_IP );
-        strcpy ( desc->params[i].short_desc, "Multicast Address" );
-        strcpy ( desc->params[i].long_desc, desc->params[i].short_desc );
+        value.i = DEFAULT_PORT;
+        jack_driver_descriptor_add_parameter(desc, &filler, "udp_net_port", 'p', JackDriverParamInt, &value, NULL, "UDP port", NULL);
 
-        i++;
-        strcpy ( desc->params[i].name, "udp_net_port" );
-        desc->params[i].character = 'p';
-        desc->params[i].type = JackDriverParamInt;
-        desc->params[i].value.i = DEFAULT_PORT;
-        strcpy ( desc->params[i].short_desc, "UDP port" );
-        strcpy ( desc->params[i].long_desc, desc->params[i].short_desc );
-
-        i++;
-        strcpy ( desc->params[i].name, "auto_connect" );
-        desc->params[i].character = 'c';
-        desc->params[i].type = JackDriverParamBool;
-        desc->params[i].value.i = false;
-        strcpy ( desc->params[i].short_desc, "Auto connect netmaster to system ports" );
-        strcpy ( desc->params[i].long_desc, desc->params[i].short_desc );
+        value.i = false;
+        jack_driver_descriptor_add_parameter(desc, &filler, "auto_connect", 'c', JackDriverParamBool, &value, NULL, "Auto connect netmaster to system ports", NULL);
 
         return desc;
     }

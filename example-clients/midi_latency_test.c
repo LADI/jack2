@@ -47,6 +47,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  * implementations for semaphores and command-line argument handling.
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <signal.h>
@@ -84,6 +85,8 @@ const char *SOURCE_SHUTDOWN = "handle_shutdown";
 const char *SOURCE_SIGNAL_SEMAPHORE = "signal_semaphore";
 const char *SOURCE_WAIT_SEMAPHORE = "wait_semaphore";
 
+char *alias1;
+char *alias2;
 jack_client_t *client;
 semaphore_t connect_semaphore;
 volatile int connections_established;
@@ -102,8 +105,8 @@ jack_nframes_t lowest_latency;
 jack_time_t lowest_latency_time;
 jack_midi_data_t *message_1;
 jack_midi_data_t *message_2;
-size_t messages_received;
-size_t messages_sent;
+int messages_received;
+int messages_sent;
 size_t message_size;
 jack_latency_range_t out_latency_range;
 jack_port_t *out_port;
@@ -118,8 +121,8 @@ const char *target_out_port_name;
 int timeout;
 jack_nframes_t total_latency;
 jack_time_t total_latency_time;
-size_t unexpected_messages;
-size_t xrun_count;
+int unexpected_messages;
+int xrun_count;
 
 #ifdef WIN32
 char semaphore_error_msg[1024];
@@ -517,9 +520,31 @@ update_connection(jack_port_t *remote_port, int connected,
             return current_port;
         }
         if (target_name) {
-            if (strcmp(target_name, jack_port_name(remote_port))) {
+            char *aliases[2];
+            if (! strcmp(target_name, jack_port_name(remote_port))) {
+                return remote_port;
+            }
+            aliases[0] = alias1;
+            aliases[1] = alias2;
+            switch (jack_port_get_aliases(remote_port, aliases)) {
+            case -1:
+                /* Sigh ... */
+                die("jack_port_get_aliases", "Failed to get port aliases");
+            case 2:
+                if (! strcmp(target_name, alias2)) {
+                    return remote_port;
+                }
+                /* Fallthrough on purpose */
+            case 1:
+                if (! strcmp(target_name, alias1)) {
+                    return remote_port;
+                }
+                /* Fallthrough on purpose */
+            case 0:
                 return NULL;
             }
+            /* This shouldn't happen. */
+            assert(0);
         }
         return remote_port;
     }
@@ -537,7 +562,6 @@ update_connection(jack_port_t *remote_port, int connected,
            connected, then we take the first port name in the array and use it
            as our remote port.  It's a dumb implementation. */
         current_port = jack_port_by_name(client, port_names[0]);
-
         jack_free(port_names);
         if (current_port == NULL) {
             /* Sigh */
@@ -587,8 +611,8 @@ wait_semaphore(semaphore_t semaphore, int block)
 int
 main(int argc, char **argv)
 {
-    size_t jitter_plot[101];
-    size_t latency_plot[101];
+    int jitter_plot[101];
+    int latency_plot[101];
     int long_index = 0;
     struct option long_options[] = {
         {"help", 0, NULL, 'h'},
@@ -597,6 +621,7 @@ main(int argc, char **argv)
         {"timeout", 1, NULL, 't'}
     };
     size_t name_arg_count;
+    size_t name_size;
     char *option_string = "hm:s:t:";
     int show_usage = 0;
     connections_established = 0;
@@ -656,11 +681,24 @@ main(int argc, char **argv)
         output_usage();
         return EXIT_FAILURE;
     }
+    name_size = jack_port_name_size();
+    alias1 = malloc(name_size * sizeof(char));
+    if (alias1 == NULL) {
+        error_message = strerror(errno);
+        error_source = "malloc";
+        goto show_error;
+    }
+    alias2 = malloc(name_size * sizeof(char));
+    if (alias2 == NULL) {
+        error_message = strerror(errno);
+        error_source = "malloc";
+        goto free_alias1;
+    }
     latency_values = malloc(sizeof(jack_nframes_t) * samples);
     if (latency_values == NULL) {
         error_message = strerror(errno);
         error_source = "malloc";
-        goto show_error;
+        goto free_alias2;
     }
     latency_time_values = malloc(sizeof(jack_time_t) * samples);
     if (latency_time_values == NULL) {
@@ -866,24 +904,24 @@ main(int argc, char **argv)
         printf("\nJitter Plot:\n");
         for (i = 0; i < 100; i++) {
             if (jitter_plot[i]) {
-                printf("%.1f - %.1f ms: %u\n", ((float) i) / 10.0,
+                printf("%.1f - %.1f ms: %d\n", ((float) i) / 10.0,
                        ((float) (i + 1)) / 10.0, jitter_plot[i]);
             }
         }
         if (jitter_plot[100]) {
-            printf("     > 10 ms: %u\n", jitter_plot[100]);
+            printf("     > 10 ms: %d\n", jitter_plot[100]);
         }
         printf("\nLatency Plot:\n");
         for (i = 0; i < 100; i++) {
             if (latency_plot[i]) {
-                printf("%.1f - %.1f ms: %u\n",
+                printf("%.1f - %.1f ms: %d\n",
                        latency_plot_offset + (((float) i) / 10.0),
                        latency_plot_offset + (((float) (i + 1)) / 10.0),
                        latency_plot[i]);
             }
         }
         if (latency_plot[100]) {
-            printf("     > %.1f ms: %u\n", latency_plot_offset + 10.0,
+            printf("     > %.1f ms: %d\n", latency_plot_offset + 10.0,
                    latency_plot[100]);
         }
     }
@@ -917,6 +955,10 @@ main(int argc, char **argv)
     free(latency_time_values);
  free_latency_values:
     free(latency_values);
+ free_alias2:
+    free(alias2);
+ free_alias1:
+    free(alias1);
     if (error_message != NULL) {
     show_error:
         output_error(error_source, error_message);
