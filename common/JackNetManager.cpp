@@ -313,28 +313,29 @@ namespace Jack
             {
                 case RELEASE_TIMEBASEMASTER :
                     timebase = jack_release_timebase ( fJackClient );
-                    if ( timebase < 0 )
-                        jack_error ( "Can't release timebase master" );
-                    else
-                        jack_info ( "'%s' isn't the timebase master anymore", fParams.fName );
+                    if (timebase < 0) {
+                        jack_error("Can't release timebase master");
+                    } else {
+                        jack_info("'%s' isn't the timebase master anymore", fParams.fName);
+                    }
                     break;
 
                 case TIMEBASEMASTER :
                     timebase = jack_set_timebase_callback ( fJackClient, 0, SetTimebaseCallback, this );
-                    if ( timebase < 0 )
-                        jack_error ( "Can't set a new timebase master" );
-                    else
-                        jack_info ( "'%s' is the new timebase master", fParams.fName );
+                    if (timebase < 0) {
+                        jack_error("Can't set a new timebase master");
+                    } else {
+                        jack_info("'%s' is the new timebase master", fParams.fName);
+                    }
                     break;
 
                 case CONDITIONAL_TIMEBASEMASTER :
                     timebase = jack_set_timebase_callback ( fJackClient, 1, SetTimebaseCallback, this );
-                    if ( timebase != EBUSY )
-                    {
-                        if ( timebase < 0 )
-                            jack_error ( "Can't set a new timebase master" );
+                    if (timebase != EBUSY) {
+                        if (timebase < 0)
+                            jack_error("Can't set a new timebase master");
                         else
-                            jack_info ( "'%s' is the new timebase master", fParams.fName );
+                            jack_info("'%s' is the new timebase master", fParams.fName);
                     }
                     break;
             }
@@ -403,18 +404,17 @@ namespace Jack
     }
 
 //process-----------------------------------------------------------------------------
-    int JackNetMaster::SetProcess ( jack_nframes_t nframes, void* arg )
+    int JackNetMaster::SetProcess(jack_nframes_t nframes, void* arg)
     {
         return static_cast<JackNetMaster*> ( arg )->Process();
     }
 
     int JackNetMaster::Process()
     {
-        if ( !fRunning )
-            return 0;
+        int res;
 
-        int port_index;
-        int res = 0;
+        if (!fRunning)
+            return 0;
 
 #ifdef JACK_MONITOR
         jack_time_t begin_time = GetMicroSeconds();
@@ -422,22 +422,22 @@ namespace Jack
 #endif
 
         //buffers
-        for (port_index = 0; port_index < fParams.fSendMidiChannels; port_index++) {
+        for (int port_index = 0; port_index < fParams.fSendMidiChannels; port_index++) {
             fNetMidiCaptureBuffer->SetBuffer(port_index,
                                             static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiCapturePorts[port_index],
                                             fParams.fPeriodSize)));
         }
-        for (port_index = 0; port_index < fParams.fSendAudioChannels; port_index++) {
+        for (int port_index = 0; port_index < fParams.fSendAudioChannels; port_index++) {
             fNetAudioCaptureBuffer->SetBuffer(port_index,
                                                 static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[port_index],
                                                 fParams.fPeriodSize)));
         }
-        for (port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++) {
+        for (int port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++) {
             fNetMidiPlaybackBuffer->SetBuffer(port_index,
                                                 static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiPlaybackPorts[port_index],
                                                 fParams.fPeriodSize)));
         }
-        for (port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++) {
+        for (int port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++) {
             fNetAudioPlaybackBuffer->SetBuffer(port_index,
                                                 static_cast<sample_t*>(jack_port_get_buffer(fAudioPlaybackPorts[port_index],
                                                 fParams.fPeriodSize)));
@@ -448,7 +448,6 @@ namespace Jack
             //encode the first packet
             EncodeSyncPacket();
 
-            //send sync
             if (SyncSend() == SOCKET_ERROR)
                 return SOCKET_ERROR;
 
@@ -457,7 +456,7 @@ namespace Jack
     #endif
 
             //send data
-            if ( DataSend() == SOCKET_ERROR )
+            if (DataSend() == SOCKET_ERROR)
                 return SOCKET_ERROR;
 
     #ifdef JACK_MONITOR
@@ -470,11 +469,31 @@ namespace Jack
 
         //receive sync
         res = SyncRecv();
-        if ( ( res == 0 ) || ( res == SOCKET_ERROR ) )
+        if ((res == 0) || (res == SOCKET_ERROR))
             return res;
 
+        /*
+        switch (SyncRecv()) {
+
+            case 0:
+                jack_error("Connection is not yet synched, skip cycle...");
+                return 0;
+
+            case SOCKET_ERROR:
+                jack_error("Connection is lost, quit master...");
+                //ask to the manager to properly remove the master
+                Exit();
+                //UGLY temporary way to be sure the thread does not call code possibly causing a deadlock in JackEngine.
+                ThreadExit();
+                break;
+
+            default:
+                break;
+        }
+        */
+
 #ifdef JACK_MONITOR
-        fNetTimeMon->Add ( ( ( ( float ) (GetMicroSeconds() - begin_time ) ) / ( float ) fPeriodUsecs ) * 100.f );
+        fNetTimeMon->Add ((((float) (GetMicroSeconds() - begin_time)) / (float) fPeriodUsecs) * 100.f);
 #endif
 
         //decode sync
@@ -482,11 +501,31 @@ namespace Jack
 
         //receive data
         res = DataRecv();
-        if ( ( res == 0 ) || ( res == SOCKET_ERROR ) )
+        if ((res == 0) || (res == SOCKET_ERROR))
             return res;
 
+        /*
+        switch (DataRecv()) {
+
+            case 0:
+                jack_error("Connection is not yet synched, skip cycle...");
+                return 0;
+
+            case SOCKET_ERROR:
+                jack_error("Connection is lost, quit master...");
+                //ask to the manager to properly remove the master
+                Exit();
+                //UGLY temporary way to be sure the thread does not call code possibly causing a deadlock in JackEngine.
+                ThreadExit();
+                break;
+
+            default:
+                break;
+        }
+        */
+
 #ifdef JACK_MONITOR
-        fNetTimeMon->AddLast ( ( ( ( float ) (GetMicroSeconds() - begin_time ) ) / ( float ) fPeriodUsecs ) * 100.f );
+        fNetTimeMon->AddLast((((float) (GetMicroSeconds() - begin_time)) / (float) fPeriodUsecs) * 100.f);
 #endif
         return 0;
     }
