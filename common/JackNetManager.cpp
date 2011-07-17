@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2008 Romain Moret at Grame
+Copyright (C) 2008-2011 Romain Moret at Grame
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackTime.h"
 
 using namespace std;
+
 
 namespace Jack
 {
@@ -422,25 +423,46 @@ namespace Jack
 #endif
 
         //buffers
-        for (int port_index = 0; port_index < fParams.fSendMidiChannels; port_index++) {
-            fNetMidiCaptureBuffer->SetBuffer(port_index,
-                                            static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiCapturePorts[port_index],
+        for (int midi_port_index = 0; midi_port_index < fParams.fSendMidiChannels; midi_port_index++) {
+            fNetMidiCaptureBuffer->SetBuffer(midi_port_index,
+                                            static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiCapturePorts[midi_port_index],
                                             fParams.fPeriodSize)));
         }
-        for (int port_index = 0; port_index < fParams.fSendAudioChannels; port_index++) {
-            fNetAudioCaptureBuffer->SetBuffer(port_index,
-                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[port_index],
+        for (int audio_port_index = 0; audio_port_index < fParams.fSendAudioChannels; audio_port_index++) {
+
+        #ifdef OPTIMIZED_PROTOCOL
+            if ((long)fNetAudioCaptureBuffer->GetBuffer(audio_port_index) == -1) {
+                // Port is connected on other side...
+                fNetAudioCaptureBuffer->SetBuffer(audio_port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer_nulled(fAudioCapturePorts[audio_port_index],
+                                                fParams.fPeriodSize)));
+            } else {
+                fNetAudioCaptureBuffer->SetBuffer(audio_port_index, NULL);
+            }
+        #else
+            fNetAudioCaptureBuffer->SetBuffer(audio_port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[audio_port_index],
+                                                fParams.fPeriodSize)));
+        #endif
+            // TODO
+        }
+
+        for (int midi_port_index = 0; midi_port_index < fParams.fReturnMidiChannels; midi_port_index++) {
+            fNetMidiPlaybackBuffer->SetBuffer(midi_port_index,
+                                                static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiPlaybackPorts[midi_port_index],
                                                 fParams.fPeriodSize)));
         }
-        for (int port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++) {
-            fNetMidiPlaybackBuffer->SetBuffer(port_index,
-                                                static_cast<JackMidiBuffer*>(jack_port_get_buffer(fMidiPlaybackPorts[port_index],
+        for (int audio_port_index = 0; audio_port_index < fParams.fReturnAudioChannels; audio_port_index++) {
+
+        #ifdef OPTIMIZED_PROTOCOL
+            fNetAudioPlaybackBuffer->SetBuffer(audio_port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer_nulled(fAudioPlaybackPorts[audio_port_index],
                                                 fParams.fPeriodSize)));
-        }
-        for (int port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++) {
-            fNetAudioPlaybackBuffer->SetBuffer(port_index,
-                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioPlaybackPorts[port_index],
+        #else
+            fNetAudioPlaybackBuffer->SetBuffer(audio_port_index,
+                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioPlaybackPorts[audio_port_index],
                                                 fParams.fPeriodSize)));
+        #endif
         }
 
         if (IsSynched()) {  // only send if connection is "synched"
@@ -538,14 +560,24 @@ namespace Jack
 
         fManagerClient = client;
         fManagerName = jack_get_client_name ( fManagerClient );
-        strcpy(fMulticastIP, DEFAULT_MULTICAST_IP);
-        fSocket.SetPort ( DEFAULT_PORT );
         fGlobalID = 0;
         fRunning = true;
         fAutoConnect = false;
 
         const JSList* node;
         const jack_driver_param_t* param;
+
+        // Possibly use env variable
+        const char* default_udp_port = getenv("JACK_NETJACK_PORT");
+        fSocket.SetPort((default_udp_port) ? atoi(default_udp_port) : DEFAULT_PORT);
+
+        const char* default_multicast_ip = getenv("JACK_NETJACK_MULTICAST");
+        if (default_multicast_ip) {
+            strcpy(fMulticastIP, default_multicast_ip);
+        } else {
+            strcpy(fMulticastIP, DEFAULT_MULTICAST_IP);
+        }
+
         for ( node = params; node; node = jack_slist_next ( node ) )
         {
             param = ( const jack_driver_param_t* ) node->data;

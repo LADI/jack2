@@ -1,6 +1,6 @@
 /*
 Copyright (C) 2001 Paul Davis
-Copyright (C) 2008 Romain Moret at Grame
+Copyright (C) 2008-2011 Romain Moret at Grame
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -92,12 +92,12 @@ namespace Jack
                 return true;
             }
 
-            int SetBufferSize ( jack_nframes_t buffer_size )
+            int SetBufferSize(jack_nframes_t buffer_size)
             {
                 return -1;
             }
 
-            int SetSampleRate ( jack_nframes_t sample_rate )
+            int SetSampleRate(jack_nframes_t sample_rate)
             {
                 return -1;
             }

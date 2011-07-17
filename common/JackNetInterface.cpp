@@ -1,6 +1,6 @@
 /*
 Copyright (C) 2001 Paul Davis
-Copyright (C) 2008 Romain Moret at Grame
+Copyright (C) 2008-2011 Romain Moret at Grame
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -390,12 +390,15 @@ namespace Jack
         PacketHeaderHToN(header, header);
 
         if (((tx_bytes = fSocket.Send(fTxBuffer, size, flags)) == SOCKET_ERROR) && fRunning) {
+            /*
             net_error_t error = fSocket.GetError();
             if (error == NET_CONN_ERROR) {
                 FatalError();
             } else {
                 jack_error("Error in master send : %s", StrError(NET_ERROR_CODE));
             }
+            */
+            FatalError();
         }
         return tx_bytes;
     }
@@ -414,10 +417,15 @@ namespace Jack
         fTxHeader.fCycle++;
         fTxHeader.fSubCycle = 0;
         fTxHeader.fDataType = 's';
-        fTxHeader.fIsLastPckt = (fParams.fSendMidiChannels == 0 && fParams.fSendAudioChannels == 0) ?  1 : 0;
+        fTxHeader.fIsLastPckt = (fParams.fSendMidiChannels == 0 && fParams.fSendAudioChannels == 0) ? 1 : 0;
         fTxHeader.fPacketSize = fParams.fMtu;
 
+        // Write active ports list
+        if (fNetAudioPlaybackBuffer)
+            fNetAudioPlaybackBuffer->ActivePortsToNetwork(fTxData, fTxHeader.fActivePorts);
+
         memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
+        //PacketHeaderDisplay(&fTxHeader);
         return Send(fTxHeader.fPacketSize, 0);
     }
 
@@ -446,14 +454,15 @@ namespace Jack
         //audio
         if (fParams.fSendAudioChannels > 0) {
             fTxHeader.fDataType = 'a';
-            data_size = fNetAudioCaptureBuffer->RenderFromJackPorts();
+            fNetAudioCaptureBuffer->RenderFromJackPorts();
             fTxHeader.fNumPacket = fNetAudioCaptureBuffer->GetNumPackets();
 
             for (subproc = 0; subproc < fTxHeader.fNumPacket; subproc++) {
                 fTxHeader.fSubCycle = subproc;
                 fTxHeader.fIsLastPckt = (subproc == (fTxHeader.fNumPacket - 1)) ? 1 : 0;
-                fTxHeader.fPacketSize = HEADER_SIZE + fNetAudioCaptureBuffer->RenderToNetwork(subproc, data_size);
+                fTxHeader.fPacketSize = HEADER_SIZE + fNetAudioCaptureBuffer->RenderToNetwork(subproc, fTxHeader.fActivePorts);
                 memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
+                //PacketHeaderDisplay(&fTxHeader);
                 if (Send(fTxHeader.fPacketSize, 0) == SOCKET_ERROR)
                     return SOCKET_ERROR;
             }
@@ -473,6 +482,10 @@ namespace Jack
         }
 
         fCycleOffset = fTxHeader.fCycle - rx_head->fCycle;
+
+        // Read active ports list
+        if (fNetAudioCaptureBuffer)
+            fNetAudioCaptureBuffer->ActivePortsFromNetwork(fRxData, rx_head->fActivePorts);
 
         switch (fParams.fNetworkMode)
         {
@@ -567,7 +580,8 @@ namespace Jack
                         fRxHeader.fCycle = rx_head->fCycle;
                         fRxHeader.fSubCycle = rx_head->fSubCycle;
                         fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
-                        fNetAudioPlaybackBuffer->RenderFromNetwork(rx_head->fCycle, rx_head->fSubCycle, rx_bytes - HEADER_SIZE);
+                        fRxHeader.fActivePorts = rx_head->fActivePorts;
+                        fNetAudioPlaybackBuffer->RenderFromNetwork(rx_head->fCycle, rx_head->fSubCycle, rx_bytes - HEADER_SIZE, fRxHeader.fActivePorts);
                         // Last audio packet is received, so finish rendering...
                         if (fRxHeader.fIsLastPckt)
                             fNetAudioPlaybackBuffer->RenderToJackPorts();
@@ -861,6 +875,7 @@ namespace Jack
         int rx_bytes = fSocket.Recv(fRxBuffer, size, flags);
         //handle errors
         if (rx_bytes == SOCKET_ERROR) {
+            /*
             net_error_t error = fSocket.GetError();
             //no data isn't really an error in realtime processing, so just return 0
             if (error == NET_NO_DATA) {
@@ -871,6 +886,8 @@ namespace Jack
             } else {
                 jack_error("Fatal error in slave receive : %s", StrError(NET_ERROR_CODE));
             }
+            */
+            FatalError();
         }
 
         packet_header_t* header = reinterpret_cast<packet_header_t*>(fRxBuffer);
@@ -892,6 +909,7 @@ namespace Jack
 
         //handle errors
         if (tx_bytes == SOCKET_ERROR) {
+            /*
             net_error_t error = fSocket.GetError();
             //if a network error occurs, this exception will restart the driver
             if (error == NET_CONN_ERROR) {
@@ -899,6 +917,8 @@ namespace Jack
             } else {
                 jack_error("Fatal error in slave send : %s", StrError(NET_ERROR_CODE));
             }
+            */
+            FatalError();
         }
         return tx_bytes;
     }
@@ -916,6 +936,10 @@ namespace Jack
                 return rx_bytes;
         }
         while ((strcmp(rx_head->fPacketType, "header") != 0) && (rx_head->fDataType != 's'));
+
+        // Read active ports list
+        if (fNetAudioPlaybackBuffer)
+            fNetAudioPlaybackBuffer->ActivePortsFromNetwork(fRxData, rx_head->fActivePorts);
 
         fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
         return rx_bytes;
@@ -953,7 +977,8 @@ namespace Jack
                         fRxHeader.fCycle = rx_head->fCycle;
                         fRxHeader.fSubCycle = rx_head->fSubCycle;
                         fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
-                        fNetAudioCaptureBuffer->RenderFromNetwork(rx_head->fCycle, rx_head->fSubCycle, rx_bytes - HEADER_SIZE);
+                        fRxHeader.fActivePorts = rx_head->fActivePorts;
+                        fNetAudioCaptureBuffer->RenderFromNetwork(rx_head->fCycle, rx_head->fSubCycle, rx_bytes - HEADER_SIZE, fRxHeader.fActivePorts);
                         // Last audio packet is received, so finish rendering...
                         if (fRxHeader.fIsLastPckt)
                             fNetAudioCaptureBuffer->RenderToJackPorts();
@@ -985,6 +1010,10 @@ namespace Jack
         fTxHeader.fIsLastPckt = (fParams.fReturnMidiChannels == 0 && fParams.fReturnAudioChannels == 0) ? 1 : 0;
         fTxHeader.fPacketSize = fParams.fMtu;
 
+        // Write active ports list
+        if (fNetAudioCaptureBuffer)
+            fNetAudioCaptureBuffer->ActivePortsToNetwork(fTxData, fTxHeader.fActivePorts);
+
         memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
         return Send(fTxHeader.fPacketSize, 0);
     }
@@ -1012,15 +1041,17 @@ namespace Jack
 
         //audio
         if (fParams.fReturnAudioChannels > 0) {
+
             fTxHeader.fDataType = 'a';
-            data_size = fNetAudioPlaybackBuffer->RenderFromJackPorts();
+            fNetAudioPlaybackBuffer->RenderFromJackPorts();
             fTxHeader.fNumPacket = fNetAudioPlaybackBuffer->GetNumPackets();
 
             for (subproc = 0; subproc < fTxHeader.fNumPacket; subproc++) {
                 fTxHeader.fSubCycle = subproc;
                 fTxHeader.fIsLastPckt = (subproc == (fTxHeader.fNumPacket - 1)) ? 1 : 0;
-                fTxHeader.fPacketSize = HEADER_SIZE + fNetAudioPlaybackBuffer->RenderToNetwork(subproc, data_size);
+                fTxHeader.fPacketSize = HEADER_SIZE + fNetAudioPlaybackBuffer->RenderToNetwork(subproc, fTxHeader.fActivePorts);
                 memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
+                //PacketHeaderDisplay(&fTxHeader);
                 if (Send(fTxHeader.fPacketSize, 0) == SOCKET_ERROR)
                     return SOCKET_ERROR;
             }

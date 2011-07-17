@@ -35,6 +35,51 @@ Chris Caudle
   Jackdmp changes log
 ---------------------------
 
+2011-07-16 Stephane Letz  <letz@grame.fr>
+
+	* Error in JackActivationCount::Signal now uses jack_log instead of jack_error.
+	* EXPORT macro renamed to LIB_EXPORT.
+
+2011-07-12 Stephane Letz  <letz@grame.fr>
+
+	* NetJack2 now only send data on network only is ports are connected both sides.
+
+2011-07-11 Stephane Letz  <letz@grame.fr>
+
+	* Add JACK_NETJACK_PORT and JACK_NETJACK_MULTICAST environment variables for NetJack2.
+
+2011-07-08 Stephane Letz  <letz@grame.fr>
+
+	* NetJack2 now only send data on network for connected ports.
+
+2011-07-03 Stephane Letz  <letz@grame.fr>
+
+	* More debug code in JackMMCSS class.
+
+2011-07-03 Stephane Letz  <letz@grame.fr>
+
+	* -l in JackCoreAudioDriver now display devices names and then quit.
+
+2011-07-01 Stephane Letz  <letz@grame.fr>
+
+	* Fix bugs in JackNetAdapter.
+
+2011-06-29 Stephane Letz  <letz@grame.fr>
+
+	* Special CATCH_CLOSE_EXCEPTION_RETURN to handle Close API calls. 
+
+2011-06-28 Stephane Letz  <letz@grame.fr>
+
+	* Another round of code improvements to handle completely buggy Digidesign CoreAudio user-land driver. 
+
+2011-06-20 Stephane Letz  <letz@grame.fr>
+
+	* Correct Dummy driver.
+
+2011-06-17 Stephane Letz  <letz@grame.fr>
+
+	* NetJack2 : connection error handling.
+
 2011-06-16 Stephane Letz  <letz@grame.fr>
 
 	* Changes in NetJack2 connection management: no more timeout, any transmission error considered as fatal.
