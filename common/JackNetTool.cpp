@@ -25,23 +25,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 class HardwareClock
 {
-public:
-	HardwareClock();
+    public:
 
-	void Reset();
-	void Update();
+        HardwareClock();
 
-	float GetDeltaTime() const;
-	double GetTime() const;
+        void Reset();
+        void Update();
 
-private:
-	double m_clockToSeconds;
+        float GetDeltaTime() const;
+        double GetTime() const;
 
-	uint64_t m_startAbsTime;
-	uint64_t m_lastAbsTime;
+    private:
 
-	double m_time;
-	float m_deltaTime;
+        double m_clockToSeconds;
+
+        uint64_t m_startAbsTime;
+        uint64_t m_lastAbsTime;
+
+        double m_time;
+        float m_deltaTime;
 };
 
 HardwareClock::HardwareClock()
@@ -228,9 +230,9 @@ namespace Jack
     }
 
      //network<->buffer
-    void NetFloatAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
+    int NetFloatAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
     {
-        fPortBuffer.RenderFromNetwork(fNetBuffer, cycle, sub_cycle, copy_size, port_num);
+        return fPortBuffer.RenderFromNetwork(fNetBuffer, cycle, sub_cycle, copy_size, port_num);
     }
 
     int NetFloatAudioBuffer::RenderToNetwork(int sub_cycle, uint32_t& port_num)
@@ -443,8 +445,10 @@ namespace Jack
     }
 
     //network<->buffer
-    void NetCeltAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
+    int NetCeltAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
     {
+        int res = 0;
+
         if (sub_cycle == fNumPackets - 1) {
             for (int port_index = 0; port_index < fNPorts; port_index++)
                 memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
@@ -453,10 +457,13 @@ namespace Jack
                 memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
         }
 
-        if (sub_cycle != fLastSubCycle + 1)
+        if (sub_cycle != fLastSubCycle + 1) {
             jack_error("Packet(s) missing from... %d %d", fLastSubCycle, sub_cycle);
+            res = NET_PACKET_ERROR;
+        }
 
         fLastSubCycle = sub_cycle;
+        return res;
     }
 
     int NetCeltAudioBuffer::RenderToNetwork(int sub_cycle, uint32_t& port_num)
@@ -573,8 +580,10 @@ namespace Jack
      }
 
      //network<->buffer
-    void NetIntAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
+    int NetIntAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, size_t copy_size, uint32_t port_num)
     {
+        int res = 0;
+
         if (sub_cycle == fNumPackets - 1) {
             for (int port_index = 0; port_index < fNPorts; port_index++)
                 memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
@@ -583,10 +592,13 @@ namespace Jack
                 memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
         }
 
-        if (sub_cycle != fLastSubCycle + 1)
+        if (sub_cycle != fLastSubCycle + 1) {
             jack_error("Packet(s) missing from... %d %d", fLastSubCycle, sub_cycle);
+            res = NET_PACKET_ERROR;
+        }
 
         fLastSubCycle = sub_cycle;
+        return res;
     }
 
     int NetIntAudioBuffer::RenderToNetwork(int sub_cycle, uint32_t& port_num)
@@ -678,6 +690,7 @@ namespace Jack
         dst_params->fPeriodSize = htonl(src_params->fPeriodSize);
         dst_params->fSampleEncoder = htonl(src_params->fSampleEncoder);
         dst_params->fSlaveSyncMode = htonl(src_params->fSlaveSyncMode);
+        dst_params->fNetworkLatency = htonl(src_params->fNetworkLatency);
     }
 
     SERVER_EXPORT void SessionParamsNToH(session_params_t* src_params, session_params_t* dst_params)
@@ -695,6 +708,7 @@ namespace Jack
         dst_params->fPeriodSize = ntohl(src_params->fPeriodSize);
         dst_params->fSampleEncoder = ntohl(src_params->fSampleEncoder);
         dst_params->fSlaveSyncMode = ntohl(src_params->fSlaveSyncMode);
+        dst_params->fNetworkLatency = ntohl(src_params->fNetworkLatency);
     }
 
     SERVER_EXPORT void SessionParamsDisplay(session_params_t* params)
@@ -713,19 +727,6 @@ namespace Jack
                 break;
         }
 
-        char mode[8];
-        switch (params->fNetworkMode)
-        {
-            case 's' :
-                strcpy(mode, "slow");
-                break;
-            case 'n' :
-                strcpy(mode, "normal");
-                break;
-            case 'f' :
-                strcpy(mode, "fast");
-                break;
-        }
         jack_info("**************** Network parameters ****************");
         jack_info("Name : %s", params->fName);
         jack_info("Protocol revision : %d", params->fProtocolVersion);
@@ -738,6 +739,7 @@ namespace Jack
         jack_info("Return channels (audio - midi) : %d - %d", params->fReturnAudioChannels, params->fReturnMidiChannels);
         jack_info("Sample rate : %u frames per second", params->fSampleRate);
         jack_info("Period size : %u frames per period", params->fPeriodSize);
+        jack_info("Network latency : %u cycles", params->fNetworkLatency);
         switch (params->fSampleEncoder) {
             case (JackFloatEncoder):
                 jack_info("SampleEncoder : %s", "Float");
@@ -751,7 +753,6 @@ namespace Jack
                 break;
         };
         jack_info("Slave mode : %s", (params->fSlaveSyncMode) ? "sync" : "async");
-        jack_info("Network mode : %s", mode);
         jack_info("****************************************************");
     }
 
@@ -931,14 +932,12 @@ namespace Jack
         WORD wVersionRequested = MAKEWORD(2, 2);
         WSADATA wsaData;
 
-        if (WSAStartup(wVersionRequested, &wsaData) != 0)
-        {
+        if (WSAStartup(wVersionRequested, &wsaData) != 0) {
             jack_error("WSAStartup error : %s", strerror(NET_ERROR_CODE));
             return -1;
         }
 
-        if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
-        {
+        if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
             jack_error("Could not find a useable version of Winsock.dll\n");
             WSACleanup();
             return -1;

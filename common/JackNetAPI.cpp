@@ -35,13 +35,6 @@ extern "C"
 
     #define MASTER_NAME_SIZE 256
 
-    enum JackNetMode {
-
-        JackFastMode = 'f',
-        JackNormalMode = 'n',
-        JackSlowMode = 's',
-    };
-
     enum JackNetEncoder {
 
         JackFloatEncoder = 0,
@@ -59,7 +52,7 @@ extern "C"
         int time_out;   // in millisecond, -1 means in infinite
         int encoder;
         int kbps;       // KB per second for CELT encoder
-        char mode;
+        int latency;
 
     } jack_slave_t;
 
@@ -251,7 +244,7 @@ struct JackNetExtMaster : public JackNetMasterInterface {
         result->midi_input = fParams.fSendMidiChannels;
         result->midi_output = fParams.fReturnMidiChannels;
         result->mtu = fParams.fMtu;
-        result->mode = fParams.fNetworkMode;
+        result->latency = fParams.fNetworkLatency;
         return 0;
 
     error:
@@ -298,70 +291,66 @@ struct JackNetExtMaster : public JackNetMasterInterface {
 
     void AllocPorts()
     {
-        int port_index;
-
-        // Set buffers
+         // Set buffers
         if (fParams.fSendAudioChannels > 0) {
             fAudioCaptureBuffer = new float*[fParams.fSendAudioChannels];
-            for (port_index = 0; port_index < fParams.fSendAudioChannels; port_index++) {
-               fAudioCaptureBuffer[port_index] = new float[fParams.fPeriodSize];
-               fNetAudioCaptureBuffer->SetBuffer(port_index, fAudioCaptureBuffer[port_index]);
+            for (int audio_port_index = 0; audio_port_index < fParams.fSendAudioChannels; audio_port_index++) {
+                fAudioCaptureBuffer[audio_port_index] = new float[fParams.fPeriodSize];
+                fNetAudioCaptureBuffer->SetBuffer(audio_port_index, fAudioCaptureBuffer[audio_port_index]);
             }
         }
 
         if (fParams.fSendMidiChannels > 0) {
             fMidiCaptureBuffer = new JackMidiBuffer*[fParams.fSendMidiChannels];
-            for (port_index = 0; port_index < fParams.fSendMidiChannels; port_index++) {
-               fMidiCaptureBuffer[port_index] = (JackMidiBuffer*)new float[fParams.fPeriodSize];
-               fNetMidiCaptureBuffer->SetBuffer(port_index, fMidiCaptureBuffer[port_index]);
+            for (int midi_port_index = 0; midi_port_index < fParams.fSendMidiChannels; midi_port_index++) {
+                fMidiCaptureBuffer[midi_port_index] = (JackMidiBuffer*)new float[fParams.fPeriodSize];
+                fNetMidiCaptureBuffer->SetBuffer(midi_port_index, fMidiCaptureBuffer[midi_port_index]);
             }
         }
 
         if (fParams.fReturnAudioChannels > 0) {
             fAudioPlaybackBuffer = new float*[fParams.fReturnAudioChannels];
-            for (port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++) {
-               fAudioPlaybackBuffer[port_index] = new float[fParams.fPeriodSize];
-               fNetAudioPlaybackBuffer->SetBuffer(port_index, fAudioPlaybackBuffer[port_index]);
+            for (int audio_port_index = 0; audio_port_index < fParams.fReturnAudioChannels; audio_port_index++) {
+                fAudioPlaybackBuffer[audio_port_index] = new float[fParams.fPeriodSize];
+                fNetAudioPlaybackBuffer->SetBuffer(audio_port_index, fAudioPlaybackBuffer[audio_port_index]);
             }
         }
 
         if (fParams.fReturnMidiChannels > 0) {
             fMidiPlaybackBuffer = new JackMidiBuffer*[fParams.fReturnMidiChannels];
-            for (port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++) {
-               fMidiPlaybackBuffer[port_index] = (JackMidiBuffer*)new float[fParams.fPeriodSize];
-               fNetMidiPlaybackBuffer->SetBuffer(port_index, fMidiPlaybackBuffer[port_index]);
+            for (int midi_port_index = 0; midi_port_index < fParams.fReturnMidiChannels; midi_port_index++) {
+                fMidiPlaybackBuffer[midi_port_index] = (JackMidiBuffer*)new float[fParams.fPeriodSize];
+                fNetMidiPlaybackBuffer->SetBuffer(midi_port_index, fMidiPlaybackBuffer[midi_port_index]);
             }
         }
     }
 
     void FreePorts()
     {
-        int port_index;
-
         if (fAudioPlaybackBuffer) {
-            for (port_index = 0; port_index < fParams.fSendAudioChannels; port_index++)
-                delete[] fAudioPlaybackBuffer[port_index];
+            for (int audio_port_index = 0; audio_port_index < fParams.fSendAudioChannels; audio_port_index++)
+                delete[] fAudioPlaybackBuffer[audio_port_index];
             delete[] fAudioPlaybackBuffer;
             fAudioPlaybackBuffer = NULL;
         }
 
         if (fMidiPlaybackBuffer) {
-            for (port_index = 0; port_index < fParams.fSendMidiChannels; port_index++)
-                delete[] (fMidiPlaybackBuffer[port_index]);
+            for (int midi_port_index = 0; midi_port_index < fParams.fSendMidiChannels; midi_port_index++)
+                delete[] (fMidiPlaybackBuffer[midi_port_index]);
             delete[] fMidiPlaybackBuffer;
             fMidiPlaybackBuffer = NULL;
         }
 
         if (fAudioCaptureBuffer) {
-            for (port_index = 0; port_index < fParams.fReturnAudioChannels; port_index++)
-                delete[] fAudioCaptureBuffer[port_index];
+            for (int audio_port_index = 0; audio_port_index < fParams.fReturnAudioChannels; audio_port_index++)
+                delete[] fAudioCaptureBuffer[audio_port_index];
             delete[] fAudioCaptureBuffer;
             fAudioCaptureBuffer = NULL;
         }
 
         if (fMidiCaptureBuffer) {
-            for (port_index = 0; port_index < fParams.fReturnMidiChannels; port_index++)
-                delete[] fMidiCaptureBuffer[port_index];
+            for (int midi_port_index = 0; midi_port_index < fParams.fReturnMidiChannels; midi_port_index++)
+                delete[] fMidiCaptureBuffer[midi_port_index];
             delete[] fMidiCaptureBuffer;
             fMidiCaptureBuffer = NULL;
         }
@@ -372,12 +361,12 @@ struct JackNetExtMaster : public JackNetMasterInterface {
         try {
             assert(audio_input == fParams.fReturnAudioChannels);
 
-            for (int port_index = 0; port_index < audio_input; port_index++) {
-                fNetAudioPlaybackBuffer->SetBuffer(port_index, audio_input_buffer[port_index]);
+            for (int audio_port_index = 0; audio_port_index < audio_input; audio_port_index++) {
+                fNetAudioPlaybackBuffer->SetBuffer(audio_port_index, audio_input_buffer[audio_port_index]);
             }
 
-            for (int port_index = 0; port_index < midi_input; port_index++) {
-                fNetMidiPlaybackBuffer->SetBuffer(port_index, ((JackMidiBuffer**)midi_input_buffer)[port_index]);
+            for (int midi_port_index = 0; midi_port_index < midi_input; midi_port_index++) {
+                fNetMidiPlaybackBuffer->SetBuffer(midi_port_index, ((JackMidiBuffer**)midi_input_buffer)[midi_port_index]);
             }
 
             if (SyncRecv() == SOCKET_ERROR)
@@ -397,12 +386,12 @@ struct JackNetExtMaster : public JackNetMasterInterface {
         try {
              assert(audio_output == fParams.fSendAudioChannels);
 
-             for (int port_index = 0;  port_index < audio_output; port_index++) {
-                 fNetAudioCaptureBuffer->SetBuffer(port_index, audio_output_buffer[port_index]);
+             for (int audio_port_index = 0; audio_port_index < audio_output; audio_port_index++) {
+                 fNetAudioCaptureBuffer->SetBuffer(audio_port_index, audio_output_buffer[audio_port_index]);
              }
 
-             for (int port_index = 0;  port_index < midi_output; port_index++) {
-                 fNetMidiCaptureBuffer->SetBuffer(port_index, ((JackMidiBuffer**)midi_output_buffer)[port_index]);
+             for (int midi_port_index = 0; midi_port_index < midi_output; midi_port_index++) {
+                 fNetMidiCaptureBuffer->SetBuffer(midi_port_index, ((JackMidiBuffer**)midi_output_buffer)[midi_port_index]);
              }
 
              EncodeSyncPacket();
@@ -476,7 +465,7 @@ struct JackNetExtSlave : public JackNetSlaveInterface, public JackRunnableInterf
         fParams.fReturnAudioChannels = request->audio_output;
         fParams.fSendMidiChannels = request->midi_input;
         fParams.fReturnMidiChannels = request->midi_output;
-        fParams.fNetworkMode = request->mode;
+        fParams.fNetworkLatency = request->latency;
         fParams.fSampleEncoder = request->encoder;
         fParams.fKBps = request->kbps;
         fParams.fSlaveSyncMode = 1;

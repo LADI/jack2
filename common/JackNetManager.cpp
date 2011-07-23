@@ -19,6 +19,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackNetManager.h"
 #include "JackArgParser.h"
 #include "JackTime.h"
+#include "JackServerGlobals.h"
+#include "JackLockedEngine.h"
 
 using namespace std;
 
@@ -62,18 +64,7 @@ namespace Jack
         plot_name = string ( fParams.fName );
         plot_name += string ( "_master" );
         plot_name += string ( ( fParams.fSlaveSyncMode ) ? "_sync" : "_async" );
-        switch ( fParams.fNetworkMode )
-        {
-            case 's' :
-                plot_name += string ( "_slow" );
-                break;
-            case 'n' :
-                plot_name += string ( "_normal" );
-                break;
-            case 'f' :
-                plot_name += string ( "_fast" );
-                break;
-        }
+        plot_name += string ( "_latency" );
         fNetTimeMon = new JackGnuPlotMonitor<float> ( 128, 4, plot_name );
         string net_time_mon_fields[] =
         {
@@ -194,21 +185,8 @@ namespace Jack
             if ( ( fAudioPlaybackPorts[i] = jack_port_register ( fJackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput | JackPortIsTerminal, 0 ) ) == NULL )
                 return -1;
             //port latency
-            switch ( fParams.fNetworkMode )
-            {
-                case 'f' :
-                    range.min = range.max = (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fAudioPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-                case 'n' :
-                    range.min = range.max = port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fAudioPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-                case 's' :
-                    range.min = range.max = 2 * port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fAudioPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-            }
+            range.min = range.max = fParams.fNetworkLatency * port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
+            jack_port_set_latency_range(fAudioPlaybackPorts[i], JackPlaybackLatency, &range);
         }
 
         //midi
@@ -227,21 +205,8 @@ namespace Jack
             if ( ( fMidiPlaybackPorts[i] = jack_port_register ( fJackClient, name, JACK_DEFAULT_MIDI_TYPE,  JackPortIsOutput | JackPortIsTerminal, 0 ) ) == NULL )
                 return -1;
             //port latency
-            switch ( fParams.fNetworkMode )
-            {
-                case 'f' :
-                    range.min = range.max = (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fMidiPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-                case 'n' :
-                    range.min = range.max = port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fMidiPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-                case 's' :
-                    range.min = range.max = 2 * port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
-                    jack_port_set_latency_range(fMidiPlaybackPorts[i], JackPlaybackLatency, &range);
-                    break;
-            }
+            range.min = range.max = fParams.fNetworkLatency * port_latency + (fParams.fSlaveSyncMode) ? 0 : port_latency;
+            jack_port_set_latency_range(fMidiPlaybackPorts[i], JackPlaybackLatency, &range);
         }
         return 0;
     }
@@ -407,7 +372,11 @@ namespace Jack
 //process-----------------------------------------------------------------------------
     int JackNetMaster::SetProcess(jack_nframes_t nframes, void* arg)
     {
-        return static_cast<JackNetMaster*> ( arg )->Process();
+        try {
+            return static_cast<JackNetMaster*>(arg)->Process();
+        } catch (JackNetException& e) {
+            return 0;
+        }
     }
 
     int JackNetMaster::Process()
@@ -431,7 +400,7 @@ namespace Jack
         for (int audio_port_index = 0; audio_port_index < fParams.fSendAudioChannels; audio_port_index++) {
 
         #ifdef OPTIMIZED_PROTOCOL
-            if ((long)fNetAudioCaptureBuffer->GetBuffer(audio_port_index) == -1) {
+            if ((intptr_t)fNetAudioCaptureBuffer->GetBuffer(audio_port_index) == -1) {
                 // Port is connected on other side...
                 fNetAudioCaptureBuffer->SetBuffer(audio_port_index,
                                                 static_cast<sample_t*>(jack_port_get_buffer_nulled(fAudioCapturePorts[audio_port_index],
@@ -441,8 +410,8 @@ namespace Jack
             }
         #else
             fNetAudioCaptureBuffer->SetBuffer(audio_port_index,
-                                                static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[audio_port_index],
-                                                fParams.fPeriodSize)));
+                                            static_cast<sample_t*>(jack_port_get_buffer(fAudioCapturePorts[audio_port_index],
+                                            fParams.fPeriodSize)));
         #endif
             // TODO
         }
@@ -523,8 +492,12 @@ namespace Jack
 
         //receive data
         res = DataRecv();
-        if ((res == 0) || (res == SOCKET_ERROR))
+        if ((res == 0) || (res == SOCKET_ERROR)) {
             return res;
+        } else if (res == NET_PACKET_ERROR) {
+            // Well not a real XRun, but...
+            JackServerGlobals::fInstance->GetEngine()->NotifyXRun(GetMicroSeconds(), 0);
+        }
 
         /*
         switch (DataRecv()) {
