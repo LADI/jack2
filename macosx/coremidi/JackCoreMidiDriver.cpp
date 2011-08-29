@@ -632,13 +632,16 @@ JackCoreMidiDriver::Write()
 extern "C" {
 #endif
 
+    // singleton kind of driver
+    static Jack::JackDriverClientInterface* driver = NULL;
+
     SERVER_EXPORT jack_driver_desc_t * driver_get_descriptor()
     {
         jack_driver_desc_t * desc;
         jack_driver_desc_filler_t filler;
         jack_driver_param_value_t value;
 
-        desc = jack_driver_descriptor_construct("coremidi", "Apple CoreMIDI API based MIDI backend", &filler);
+        desc = jack_driver_descriptor_construct("coremidi", JackDriverSlave, "Apple CoreMIDI API based MIDI backend", &filler);
 
         value.ui  = 0;
         jack_driver_descriptor_add_parameter(desc, &filler, "inchannels", 'i', JackDriverParamUInt, &value, NULL, "CoreMIDI virtual bus", NULL);
@@ -669,11 +672,17 @@ extern "C" {
                 }
         }
 
-        Jack::JackDriverClientInterface* driver = new Jack::JackCoreMidiDriver("system_midi", "coremidi", engine, table);
-        if (driver->Open(1, 1, virtual_in, virtual_out, false, "in", "out", 0, 0) == 0) {
-            return driver;
+        // singleton kind of driver
+        if (!driver) {
+            driver = new Jack::JackCoreMidiDriver("system_midi", "coremidi", engine, table);
+            if (driver->Open(1, 1, virtual_in, virtual_out, false, "in", "out", 0, 0) == 0) {
+                return driver;
+            } else {
+                delete driver;
+                return NULL;
+            }
         } else {
-            delete driver;
+            jack_info("JackCoreMidiDriver already allocated, cannot be loaded twice");
             return NULL;
         }
     }

@@ -357,11 +357,14 @@ extern "C"
 {
 #endif
 
+     // singleton kind of driver
+    static Jack::JackDriverClientInterface* driver = NULL;
+
     SERVER_EXPORT jack_driver_desc_t * driver_get_descriptor()
     {
         jack_driver_desc_t * desc;
 
-        return jack_driver_descriptor_construct("winmme", "WinMME API based MIDI backend", NULL);
+        return jack_driver_descriptor_construct("winmme", JackDriverSlave, "WinMME API based MIDI backend", NULL);
     }
 
     SERVER_EXPORT Jack::JackDriverClientInterface* driver_initialize(Jack::JackLockedEngine* engine, Jack::JackSynchro* table, const JSList* params)
@@ -406,13 +409,20 @@ extern "C"
         }
         */
 
-        Jack::JackDriverClientInterface* driver = new Jack::JackWinMMEDriver("system_midi", "winmme", engine, table);
-        if (driver->Open(1, 1, 0, 0, false, "in", "out", 0, 0) == 0) {
-            return driver;
+        // singleton kind of driver
+        if (!driver) {
+            driver = new Jack::JackWinMMEDriver("system_midi", "winmme", engine, table);
+            if (driver->Open(1, 1, 0, 0, false, "in", "out", 0, 0) == 0) {
+                return driver;
+            } else {
+                delete driver;
+                return NULL;
+            }
         } else {
-            delete driver;
+            jack_info("JackWinMMEDriver already allocated, cannot be loaded twice");
             return NULL;
         }
+
     }
 
 #ifdef __cplusplus
@@ -436,3 +446,4 @@ jack_connect system_midi:capture_2 system:midi_playback_1
 jack_connect system_midi:capture_1  system_midi:playback_1
 
 */
+
