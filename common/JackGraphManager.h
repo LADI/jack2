@@ -36,6 +36,7 @@ namespace Jack
 \brief Graph manager: contains the connection manager and the port array.
 */
 
+PRE_PACKED_STRUCTURE
 class SERVER_EXPORT JackGraphManager : public JackShmMem, public JackAtomicState<JackConnectionManager>
 {
 
@@ -113,7 +114,7 @@ class SERVER_EXPORT JackGraphManager : public JackShmMem, public JackAtomicState
         int GetOutputRefNum(jack_port_id_t port_index);
 
         // Buffer management
-        void* GetBuffer(jack_port_id_t port_index, jack_nframes_t frames, bool nulled = false);
+        void* GetBuffer(jack_port_id_t port_index, jack_nframes_t frames);
 
         // Activation management
         void RunCurrentGraph();

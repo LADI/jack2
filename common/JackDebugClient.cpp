@@ -333,7 +333,7 @@ int JackDebugClient::SetFreeWheel(int onoff)
          *fStream << "!!! ERROR !!! : Freewheel setup seems incorrect : set = ON while FW is already ON " << endl;
     if (!onoff && !fFreewheel)
          *fStream << "!!! ERROR !!! : Freewheel setup seems incorrect : set = OFF while FW is already OFF " << endl;
-    fFreewheel = onoff;
+    fFreewheel = onoff ? true : false;
     return fClient->SetFreeWheel(onoff);
 }
 

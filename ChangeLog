@@ -36,6 +36,28 @@ John Emmas
   Jackdmp changes log
 ---------------------------
 
+2011-11-07 Stephane Letz  <letz@grame.fr>
+
+	* John Emmas first auto-launch server on Windows patch.
+	* John Emmas second auto-launch server on Windows patch.
+
+2011-11-06 Stephane Letz  <letz@grame.fr>
+
+	* Enable local access in NetJack2 code.
+
+2011-11-04 Stephane Letz  <letz@grame.fr>
+
+	* Fix jack_set_port_name API.
+
+2011-11-03 Stephane Letz  <letz@grame.fr>
+
+	* Add missing jack_client_get_uuid API.
+	* John Emmas Windows server launching patch (1).
+
+2011-10-28 Stephane Letz  <letz@grame.fr>
+
+	* John Emmas POST_PACKED_STRUCTURE patch.
+
 2011-10-27 Stephane Letz  <letz@grame.fr>
 
 	* Gabriel Beddingfield patch (r4541) reverted.  

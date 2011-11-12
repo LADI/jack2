@@ -143,6 +143,31 @@ static int semid = -1;
 
 #ifdef WIN32
 
+#include <psapi.h>
+#include <lmcons.h>
+
+static BOOL check_process_running(DWORD process_id)
+{
+    DWORD aProcesses[2048], cbNeeded, cProcesses;
+    unsigned int i;
+
+    // Enumerate all processes
+    if (!EnumProcesses(aProcesses, sizeof(aProcesses), &cbNeeded)) {
+        return FALSE;
+    }
+
+    // Calculate how many process identifiers were returned.
+    cProcesses = cbNeeded / sizeof(DWORD);
+
+    for (i = 0; i < cProcesses; i++) {
+         if (aProcesses[i] == process_id) {
+            // Process process_id is running...
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 static int
 semaphore_init () {return 0;}
 
@@ -289,8 +314,16 @@ jack_shm_validate_registry ()
 static void
 jack_set_server_prefix (const char *server_name)
 {
-	snprintf (jack_shm_server_prefix, sizeof (jack_shm_server_prefix),
+#ifdef WIN32
+    char buffer[UNLEN+1]={0};
+    DWORD len = UNLEN+1;
+    GetUserName(buffer, &len);
+    snprintf (jack_shm_server_prefix, sizeof (jack_shm_server_prefix),
+		  "jack-%s:%s:", buffer, server_name);
+#else
+    snprintf (jack_shm_server_prefix, sizeof (jack_shm_server_prefix),
 		  "jack-%d:%s:", GetUID(), server_name);
+#endif
 }
 
 /* gain server addressability to shared memory registration segment
@@ -481,7 +514,12 @@ jack_register_server (const char *server_name, int new_registry)
 		}
 
 		/* see if server still exists */
-	#ifndef WIN32 // steph TO CHECK
+    #ifdef WIN32
+        if (check_process_running(jack_shm_header->server[i].pid)) {
+            res = EEXIST;	/* other server running */
+			goto unlock;
+        }
+	#else
 		if (kill (jack_shm_header->server[i].pid, 0) == 0)  {
 			res = EEXIST;	/* other server running */
 			goto unlock;
@@ -572,7 +610,7 @@ jack_cleanup_shm ()
 
 			/* see if allocator still exists */
 		#ifdef WIN32 // steph
-			jack_info("TODO: kill API not available !!");
+			//jack_info("TODO: kill API not available !!");
 		#else
 			if (kill (r->allocator, 0)) {
 				if (errno == ESRCH) {
@@ -1249,3 +1287,4 @@ jack_attach_shm (jack_shm_info_t* si)
 }
 
 #endif /* !USE_POSIX_SHM */
+

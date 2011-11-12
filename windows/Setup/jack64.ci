@@ -3,7 +3,7 @@
    <output> .</>
    <exename> Jack_v1.9.8_64_setup.exe</>
    <digitsign> </>
-   <appname> Jack v1.9.8</>
+   <appname> Jack</>
    <password> </>
    <addlang> </>
    <icon> Default - 2</>
@@ -79,7 +79,7 @@
 <_><src>..\Release64\bin\jack_midi_latency_test.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release64\bin\jackd.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release64\bin\libsamplerate_x86_64.dll</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
-<_><src>..\Release64\bin\portaudio_x86_64.dll</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
+<_><src>..\Release64\bin\portaudio_x86_64.dll</><dest>win</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release64\bin\jack\jack_net.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release64\bin\jack\jack_netone.dll</><dest>inst</><custom>jack</><ifexist>overnewer</><recurs>0</></>
 <_><src>..\Release64\bin\jack_netsource.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
@@ -112,6 +112,7 @@
 <_><src>.\src\64bits\JackRouter.ini</><dest>inst</><custom>64bits</><ifexist>overnewer</><recurs>0</></>
 <_><src>.\src\64bits\msvcr100.dll</><dest>inst</><custom>64bits</><ifexist>overnewer</><recurs>0</></>
 <_><src>.\src\64bits\msvcp100.dll</><dest>inst</><custom>64bits</><ifexist>overnewer</><recurs>0</></>
+<_><src>.\src\64bits\portaudio_x86_64.lib</><dest>inst</><custom>lib</><ifexist>overnewer</><recurs>0</></>
 <_><src>.\qjackctl\mingwm10.dll</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>.\qjackctl\qjackctl.exe</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
 <_><src>.\qjackctl\QtCore4.dll</><dest>inst</><custom></><ifexist>overnewer</><recurs>0</></>
