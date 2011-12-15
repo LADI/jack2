@@ -30,8 +30,6 @@ JackWinMMEDriver::JackWinMMEDriver(const char *name, const char *alias,
                                    JackSynchro *table):
     JackMidiDriver(name, alias, engine, table)
 {
-    fCaptureChannels = 0;
-    fPlaybackChannels = 0;
     input_ports = 0;
     output_ports = 0;
     period = 0;
@@ -329,6 +327,8 @@ JackWinMMEDriver::Stop()
 {
     int result = 0;
 
+    JackMidiDriver::Stop();
+
     jack_info("JackWinMMEDriver::Stop - disabling input ports.");
 
     for (int i = 0; i < fCaptureChannels; i++) {
@@ -357,7 +357,7 @@ extern "C"
 {
 #endif
 
-     // singleton kind of driver
+    // singleton kind of driver
     static Jack::JackDriverClientInterface* driver = NULL;
 
     SERVER_EXPORT jack_driver_desc_t * driver_get_descriptor()

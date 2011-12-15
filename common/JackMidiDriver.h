@@ -37,12 +37,6 @@ class SERVER_EXPORT JackMidiDriver : public JackDriver
 
      protected:
 
-        int fCaptureChannels;
-        int fPlaybackChannels;
-
-        jack_port_id_t fCapturePortList[DRIVER_PORT_NUM];
-        jack_port_id_t fPlaybackPortList[DRIVER_PORT_NUM];
-
         JackMidiBuffer* GetInputBuffer(int port_index);
         JackMidiBuffer* GetOutputBuffer(int port_index);
 

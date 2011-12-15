@@ -271,7 +271,7 @@ namespace Jack
         for (int port_index = 0; port_index < fNPorts; port_index++) {
             // Write the active port number
             if (fPortBuffer[port_index]) {
-                *active_port_address = port_index;
+                *active_port_address = htonl(port_index);
                 active_port_address++;
                 active_ports++;
                 assert(active_ports < 256);
@@ -291,7 +291,7 @@ namespace Jack
 
         for (uint port_index = 0; port_index < port_num; port_index++) {
             // Use -1 when port is actually connected on other side
-            int active_port = *active_port_address;
+            int active_port = ntohl(*active_port_address);
             if (active_port >= 0 && active_port < fNPorts) {
                 fConnectedPorts[active_port] = true;
             } else {
@@ -379,7 +379,6 @@ namespace Jack
 
     //jack<->buffer
 
-    /*
     int NetFloatAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, uint32_t port_num)
     {
         // Cleanup all JACK ports at the beginning of the cycle
@@ -388,53 +387,11 @@ namespace Jack
         }
 
         if (port_num > 0)  {
-
-            /// Setup rendering parameters
-            int sub_period_size, sub_period_bytes_size;
-            if (port_num == 0) {
-                sub_period_size = fPeriodSize;
-            } else {
-                jack_nframes_t period = (int) powf(2.f, (int)(log(float(fPacketSize) / (port_num * sizeof(sample_t))) / log(2.)));
-                sub_period_size = (period > fPeriodSize) ? fPeriodSize : period;
-            }
-            sub_period_bytes_size = sub_period_size * sizeof(sample_t) + sizeof(uint32_t); // The port number in coded on 4 bytes
-
-            for (uint32_t port_index = 0; port_index < port_num; port_index++) {
-                // Only copy to active ports : read the active port number then audio data
-                uint32_t* active_port_address = (uint32_t*)(fNetBuffer + port_index * sub_period_bytes_size);
-                uint32_t active_port = (uint32_t)(*active_port_address);
-                printf("active_port %d\n", active_port);
-                if (fPortBuffer[active_port]) {
-                    memcpy(fPortBuffer[active_port] + sub_cycle * sub_period_size, (char*)(active_port_address + 1), sub_period_bytes_size - sizeof(uint32_t));
-                    //RenderFromNetwork((char*)(active_port_address + 1), active_port, sub_cycle, sub_period_bytes_size - sizeof(uint32_t));
-                }
-            }
-        }
-
-        return CheckPacket(cycle, sub_cycle);
-    }
-    */
-
-    int NetFloatAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, uint32_t port_num)
-    {
-        // Cleanup all JACK ports at the beginning of the cycle
-        if (sub_cycle == 0) {
-            Cleanup();
-        }
-
-        if (port_num > 0)  {
-
             UpdateParams(port_num);
-
             for (uint32_t port_index = 0; port_index < port_num; port_index++) {
                 // Only copy to active ports : read the active port number then audio data
                 int* active_port_address = (int*)(fNetBuffer + port_index * fSubPeriodBytesSize);
-                int active_port = *active_port_address;
-                /*
-                if (fPortBuffer[active_port]) {
-                    memcpy(fPortBuffer[active_port] + sub_cycle * fSubPeriodSize, (char*)(active_port_address + 1), fSubPeriodBytesSize - sizeof(uint32_t));
-                }
-                */
+                int active_port = ntohl(*active_port_address);
                 RenderFromNetwork((char*)(active_port_address + 1), active_port, sub_cycle);
             }
         }
@@ -451,8 +408,7 @@ namespace Jack
             // Only copy from active ports : write the active port number then audio data
             if (fPortBuffer[port_index]) {
                 int* active_port_address = (int*)(fNetBuffer + active_ports * fSubPeriodBytesSize);
-                *active_port_address = port_index;
-                //memcpy((char*)(active_port_address + 1), fPortBuffer[port_index] + sub_cycle * fSubPeriodSize, fSubPeriodBytesSize - sizeof(uint32_t));
+                *active_port_address = htonl(port_index);
                 RenderToNetwork((char*)(active_port_address + 1), port_index, sub_cycle);
                 active_ports++;
             }
@@ -460,6 +416,48 @@ namespace Jack
 
         return port_num * fSubPeriodBytesSize;
     }
+
+#ifdef __BIG_ENDIAN__
+
+    static inline jack_default_audio_sample_t SwapFloat(jack_default_audio_sample_t f)
+    {
+          union
+          {
+            jack_default_audio_sample_t f;
+            unsigned char b[4];
+          } dat1, dat2;
+
+          dat1.f = f;
+          dat2.b[0] = dat1.b[3];
+          dat2.b[1] = dat1.b[2];
+          dat2.b[2] = dat1.b[1];
+          dat2.b[3] = dat1.b[0];
+          return dat2.f;
+    }
+
+    void NetFloatAudioBuffer::RenderFromNetwork(char* net_buffer, int active_port, int sub_cycle)
+    {
+        if (fPortBuffer[active_port]) {
+            jack_default_audio_sample_t* src = (jack_default_audio_sample_t*)(net_buffer);
+            jack_default_audio_sample_t* dst = (jack_default_audio_sample_t*)(fPortBuffer[active_port] + sub_cycle * fSubPeriodSize);
+            for (unsigned int sample = 0; sample < (fSubPeriodBytesSize -  sizeof(int)) / sizeof(jack_default_audio_sample_t); sample++) {
+                dst[sample] = SwapFloat(src[sample]);
+            }
+        }
+    }
+
+    void NetFloatAudioBuffer::RenderToNetwork(char* net_buffer, int active_port, int sub_cycle)
+    {
+        for (int port_index = 0; port_index < fNPorts; port_index++ ) {
+            jack_default_audio_sample_t* src = (jack_default_audio_sample_t*)(fPortBuffer[active_port] + sub_cycle * fSubPeriodSize);
+            jack_default_audio_sample_t* dst = (jack_default_audio_sample_t*)(net_buffer);
+            for (unsigned int sample = 0; sample < (fSubPeriodBytesSize - sizeof(int)) / sizeof(jack_default_audio_sample_t); sample++) {
+                dst[sample] = SwapFloat(src[sample]);
+            }
+        }
+    }
+
+#else
 
     void NetFloatAudioBuffer::RenderFromNetwork(char* net_buffer, int active_port, int sub_cycle)
     {
@@ -473,6 +471,7 @@ namespace Jack
         memcpy(net_buffer, fPortBuffer[active_port] + sub_cycle * fSubPeriodSize, fSubPeriodBytesSize - sizeof(int));
     }
 
+#endif
     // Celt audio buffer *********************************************************************************
 
 #if HAVE_CELT
@@ -553,6 +552,7 @@ namespace Jack
             fCompressedBuffer = new unsigned char* [fNPorts];
             for (int port_index = 0; port_index < fNPorts; port_index++) {
                 fCompressedBuffer[port_index] = new unsigned char[fCompressedSizeByte];
+                memset(fCompressedBuffer[port_index], 0, fCompressedSizeByte * sizeof(char));
             }
 
             int res1 = (fNPorts * fCompressedSizeByte) % PACKET_AVAILABLE_SIZE(params);
@@ -630,12 +630,16 @@ namespace Jack
         float buffer[fPeriodSize];
 
         for (int port_index = 0; port_index < fNPorts; port_index++) {
-            memcpy(buffer, fPortBuffer[port_index], fPeriodSize * sizeof(sample_t));
-#if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
+            if (fPortBuffer[port_index]) {
+                memcpy(buffer, fPortBuffer[port_index], fPeriodSize * sizeof(sample_t));
+            } else {
+                memset(buffer, 0, fPeriodSize * sizeof(sample_t));
+            }
+        #if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
             int res = celt_encode_float(fCeltEncoder[port_index], buffer, fPeriodSize, fCompressedBuffer[port_index], fCompressedSizeByte);
-#else
+        #else
             int res = celt_encode_float(fCeltEncoder[port_index], buffer, NULL, fCompressedBuffer[port_index], fCompressedSizeByte);
-#endif
+        #endif
             if (res != fCompressedSizeByte) {
                 jack_error("celt_encode_float error fCompressedSizeByte = %d res = %d", fCompressedSizeByte, res);
             }
@@ -648,13 +652,15 @@ namespace Jack
     void NetCeltAudioBuffer::RenderToJackPorts()
     {
         for (int port_index = 0; port_index < fNPorts; port_index++) {
-#if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
-            int res = celt_decode_float(fCeltDecoder[port_index], fCompressedBuffer[port_index], fCompressedSizeByte, fPortBuffer[port_index], fPeriodSize);
-#else
-            int res = celt_decode_float(fCeltDecoder[port_index], fCompressedBuffer[port_index], fCompressedSizeByte, fPortBuffer[port_index]);
-#endif
-            if (res != CELT_OK) {
-                jack_error("celt_decode_float error fCompressedSizeByte = %d res = %d", fCompressedSizeByte, res);
+            if (fPortBuffer[port_index]) {
+            #if HAVE_CELT_API_0_8 || HAVE_CELT_API_0_11
+                int res = celt_decode_float(fCeltDecoder[port_index], fCompressedBuffer[port_index], fCompressedSizeByte, fPortBuffer[port_index], fPeriodSize);
+            #else
+                int res = celt_decode_float(fCeltDecoder[port_index], fCompressedBuffer[port_index], fCompressedSizeByte, fPortBuffer[port_index]);
+            #endif
+                if (res != CELT_OK) {
+                    jack_error("celt_decode_float error fCompressedSizeByte = %d res = %d", fCompressedSizeByte, res);
+                }
             }
         }
 
@@ -664,14 +670,21 @@ namespace Jack
     //network<->buffer
     int NetCeltAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, uint32_t port_num)
     {
-        // Last packet of the cycle
-        if (sub_cycle == fNumPackets - 1) {
-            for (int port_index = 0; port_index < fNPorts; port_index++) {
-                memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
-            }
-        } else {
-            for (int port_index = 0; port_index < fNPorts; port_index++) {
-                memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
+        // Cleanup all JACK ports at the beginning of the cycle
+        if (sub_cycle == 0) {
+            Cleanup();
+        }
+
+        if (port_num > 0)  {
+            // Last packet of the cycle
+            if (sub_cycle == fNumPackets - 1) {
+                for (int port_index = 0; port_index < fNPorts; port_index++) {
+                    memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
+                }
+            } else {
+                for (int port_index = 0; port_index < fNPorts; port_index++) {
+                    memcpy(fCompressedBuffer[port_index] + sub_cycle * fSubPeriodBytesSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
+                }
             }
         }
 
@@ -707,6 +720,7 @@ namespace Jack
         fIntBuffer = new short* [fNPorts];
         for (int port_index = 0; port_index < fNPorts; port_index++) {
             fIntBuffer[port_index] = new short[fPeriodSize];
+            memset(fIntBuffer[port_index], 0, fPeriodSize * sizeof(short));
         }
 
         int res1 = (fNPorts * fCompressedSizeByte) % PACKET_AVAILABLE_SIZE(params);
@@ -757,8 +771,10 @@ namespace Jack
     int NetIntAudioBuffer::RenderFromJackPorts()
     {
         for (int port_index = 0; port_index < fNPorts; port_index++) {
-            for (uint frame = 0; frame < fPeriodSize; frame++) {
-                fIntBuffer[port_index][frame] = short(fPortBuffer[port_index][frame] * 32768.f);
+            if (fPortBuffer[port_index]) {
+                for (uint frame = 0; frame < fPeriodSize; frame++) {
+                    fIntBuffer[port_index][frame] = short(fPortBuffer[port_index][frame] * 32768.f);
+                }
             }
         }
 
@@ -770,8 +786,10 @@ namespace Jack
     {
         float coef = 1.f / 32768.f;
         for (int port_index = 0; port_index < fNPorts; port_index++) {
-            for (uint frame = 0; frame < fPeriodSize; frame++) {
-                fPortBuffer[port_index][frame] = float(fIntBuffer[port_index][frame] * coef);
+            if (fPortBuffer[port_index]) {
+                for (uint frame = 0; frame < fPeriodSize; frame++) {
+                    fPortBuffer[port_index][frame] = float(fIntBuffer[port_index][frame] * coef);
+                }
             }
         }
 
@@ -781,13 +799,20 @@ namespace Jack
     //network<->buffer
     int NetIntAudioBuffer::RenderFromNetwork(int cycle, int sub_cycle, uint32_t port_num)
     {
-        if (sub_cycle == fNumPackets - 1) {
-            for (int port_index = 0; port_index < fNPorts; port_index++) {
-                memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
-            }
-        } else {
-            for (int port_index = 0; port_index < fNPorts; port_index++) {
-                memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
+        // Cleanup all JACK ports at the beginning of the cycle
+        if (sub_cycle == 0) {
+            Cleanup();
+        }
+
+        if (port_num > 0)  {
+            if (sub_cycle == fNumPackets - 1) {
+                for (int port_index = 0; port_index < fNPorts; port_index++) {
+                    memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fLastSubPeriodBytesSize, fLastSubPeriodBytesSize);
+                }
+            } else {
+                for (int port_index = 0; port_index < fNPorts; port_index++) {
+                    memcpy(fIntBuffer[port_index] + sub_cycle * fSubPeriodSize, fNetBuffer + port_index * fSubPeriodBytesSize, fSubPeriodBytesSize);
+                }
             }
         }
 
@@ -826,6 +851,7 @@ namespace Jack
         dst_params->fSampleRate = htonl(src_params->fSampleRate);
         dst_params->fPeriodSize = htonl(src_params->fPeriodSize);
         dst_params->fSampleEncoder = htonl(src_params->fSampleEncoder);
+        dst_params->fKBps = htonl(src_params->fKBps);
         dst_params->fSlaveSyncMode = htonl(src_params->fSlaveSyncMode);
         dst_params->fNetworkLatency = htonl(src_params->fNetworkLatency);
     }
@@ -844,6 +870,7 @@ namespace Jack
         dst_params->fSampleRate = ntohl(src_params->fSampleRate);
         dst_params->fPeriodSize = ntohl(src_params->fPeriodSize);
         dst_params->fSampleEncoder = ntohl(src_params->fSampleEncoder);
+        dst_params->fKBps = ntohl(src_params->fKBps);
         dst_params->fSlaveSyncMode = ntohl(src_params->fSlaveSyncMode);
         dst_params->fNetworkLatency = ntohl(src_params->fNetworkLatency);
     }

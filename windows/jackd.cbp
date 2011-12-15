@@ -19,7 +19,7 @@
 					<Add option="-Wl,-subsystem,windows" />
 					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
-					<Add option="-D_CONSOLE" />
+					<Add option="-D_WINDOWS" />
 					<Add option="-D_MBCS" />
 					<Add directory="." />
 					<Add directory="..\windows" />
@@ -64,10 +64,9 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-Wall" />
-					<Add option="-Wl,-subsystem,windows" />
 					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
-					<Add option="-D_CONSOLE" />
+					<Add option="-D_WINDOWS" />
 					<Add option="-D_MBCS" />
 					<Add option="-DJACK_MONITOR" />
 					<Add directory="." />
@@ -94,7 +93,7 @@
 					<Add option="-Wl,-subsystem,windows" />
 					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
-					<Add option="-D_CONSOLE" />
+					<Add option="-D_WINDOWS" />
 					<Add option="-D_MBCS" />
 					<Add directory="." />
 					<Add directory="..\windows" />
@@ -149,10 +148,9 @@
 					<Add option="-O2" />
 					<Add option="-Wall" />
 					<Add option="-m32" />
-					<Add option="-Wl,-subsystem,windows" />
 					<Add option="-DWIN32" />
 					<Add option="-DNDEBUG" />
-					<Add option="-D_CONSOLE" />
+					<Add option="-D_WINDOWS" />
 					<Add option="-D_MBCS" />
 					<Add option="-DJACK_MONITOR" />
 					<Add directory="." />

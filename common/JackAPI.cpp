@@ -25,9 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackClientControl.h"
 #include "JackGlobals.h"
 #include "JackTime.h"
-#include "JackCompilerDeps.h"
 #include "JackPortType.h"
-#include "JackPlatformPlug.h"
 #include <math.h>
 
 #ifdef __CLIENTDEBUG__
@@ -59,6 +57,7 @@ extern "C"
     jack_client_t * jack_client_new_aux(const char* client_name,
             jack_options_t options,
             jack_status_t *status);
+
     LIB_EXPORT jack_client_t * jack_client_open(const char* client_name,
             jack_options_t options,
             jack_status_t *status, ...);
@@ -1494,7 +1493,7 @@ LIB_EXPORT int jack_client_name_size(void)
 
 LIB_EXPORT int jack_port_name_size(void)
 {
-    return JACK_PORT_NAME_SIZE;
+    return REAL_JACK_PORT_NAME_SIZE;
 }
 
 LIB_EXPORT int jack_port_type_size(void)
@@ -1756,14 +1755,16 @@ LIB_EXPORT int jack_client_max_real_time_priority(jack_client_t* ext_client)
         return -1;
     } else {
         JackEngineControl* control = GetEngineControl();
-       return (control->fRealTime) ? control->fMaxClientPriority : -1;
+        return (control->fRealTime) ? control->fMaxClientPriority : -1;
     }
 }
 
 LIB_EXPORT int jack_acquire_real_time_scheduling(jack_native_thread_t thread, int priority)
 {
     JackEngineControl* control = GetEngineControl();
-    return (control ? JackThread::AcquireRealTimeImp(thread, priority, GetEngineControl()->fPeriod, GetEngineControl()->fComputation, GetEngineControl()->fConstraint) : -1);
+    return (control
+        ? JackThread::AcquireRealTimeImp(thread, priority, control->fPeriod, control->fComputation, control->fConstraint)
+        : -1);
 }
 
 LIB_EXPORT int jack_client_create_thread(jack_client_t* client,
@@ -1776,7 +1777,11 @@ LIB_EXPORT int jack_client_create_thread(jack_client_t* client,
 #ifdef __CLIENTDEBUG__
     JackGlobals::CheckContext("jack_client_create_thread");
 #endif
-    return JackThread::StartImp(thread, priority, realtime, routine, arg);
+    JackEngineControl* control = GetEngineControl();
+    int res = JackThread::StartImp(thread, priority, realtime, routine, arg);
+    return (res == 0)
+        ? ((realtime ? JackThread::AcquireRealTimeImp(*thread, priority, control->fPeriod, control->fComputation, control->fConstraint) : res))
+        : res;
 }
 
 LIB_EXPORT int jack_drop_real_time_scheduling(jack_native_thread_t thread)
@@ -2085,19 +2090,23 @@ LIB_EXPORT void jack_session_commands_free(jack_session_command_t *cmds)
     JackGlobals::CheckContext("jack_session_commands_free");
 #endif
 
-    if (!cmds)
+    if (!cmds) {
         return;
+    }
 
     int i = 0;
     while (1) {
-        if (cmds[i].client_name)
+        if (cmds[i].client_name) {
             free ((char *)cmds[i].client_name);
-        if (cmds[i].command)
+        }
+        if (cmds[i].command) {
             free ((char *)cmds[i].command);
-        if (cmds[i].uuid)
+        }
+        if (cmds[i].uuid) {
             free ((char *)cmds[i].uuid);
-        else
+        } else {
             break;
+        }
 
         i += 1;
     }

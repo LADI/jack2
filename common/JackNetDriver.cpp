@@ -19,7 +19,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackNetDriver.h"
 #include "JackEngineControl.h"
 #include "JackLockedEngine.h"
-#include "JackGraphManager.h"
 #include "JackWaitThreadedDriver.h"
 
 using namespace std;
@@ -245,16 +244,16 @@ namespace Jack
 
         JackPort* port;
         jack_port_id_t port_index;
-        char name[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
-        char alias[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
+        char name[REAL_JACK_PORT_NAME_SIZE];
+        char alias[REAL_JACK_PORT_NAME_SIZE];
         int audio_port_index;
         int midi_port_index;
         jack_latency_range_t range;
 
         //audio
         for (audio_port_index = 0; audio_port_index < fCaptureChannels; audio_port_index++) {
-            snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", fAliasName, fCaptureDriverName, audio_port_index + 1);
-            snprintf(name, sizeof(name) - 1, "%s:capture_%d", fClientControl.fName, audio_port_index + 1);
+            snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, audio_port_index + 1);
+            snprintf(name, sizeof(name), "%s:capture_%d", fClientControl.fName, audio_port_index + 1);
             if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE,
                              CaptureDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", name);
@@ -271,8 +270,8 @@ namespace Jack
         }
 
         for (audio_port_index = 0; audio_port_index < fPlaybackChannels; audio_port_index++) {
-            snprintf(alias, sizeof(alias) - 1, "%s:%s:in%d", fAliasName, fPlaybackDriverName, audio_port_index + 1);
-            snprintf(name, sizeof(name) - 1, "%s:playback_%d",fClientControl.fName, audio_port_index + 1);
+            snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, audio_port_index + 1);
+            snprintf(name, sizeof(name), "%s:playback_%d",fClientControl.fName, audio_port_index + 1);
             if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE,
                              PlaybackDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", name);
@@ -290,8 +289,8 @@ namespace Jack
 
         //midi
         for (midi_port_index = 0; midi_port_index < fParams.fSendMidiChannels; midi_port_index++) {
-            snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", fAliasName, fCaptureDriverName, midi_port_index + 1);
-            snprintf(name, sizeof (name) - 1, "%s:midi_capture_%d", fClientControl.fName, midi_port_index + 1);
+            snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, midi_port_index + 1);
+            snprintf(name, sizeof (name), "%s:midi_capture_%d", fClientControl.fName, midi_port_index + 1);
             if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_MIDI_TYPE,
                              CaptureDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", name);
@@ -307,8 +306,8 @@ namespace Jack
         }
 
         for (midi_port_index = 0; midi_port_index < fParams.fReturnMidiChannels; midi_port_index++) {
-            snprintf(alias, sizeof(alias) - 1, "%s:%s:in%d", fAliasName, fPlaybackDriverName, midi_port_index + 1);
-            snprintf(name, sizeof(name) - 1, "%s:midi_playback_%d", fClientControl.fName, midi_port_index + 1);
+            snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, midi_port_index + 1);
+            snprintf(name, sizeof(name), "%s:midi_playback_%d", fClientControl.fName, midi_port_index + 1);
             if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_MIDI_TYPE,
                              PlaybackDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("driver: cannot register port for %s", name);
@@ -362,10 +361,8 @@ namespace Jack
 
     void JackNetDriver::SaveConnections()
     {
+        JackDriver::SaveConnections();
         const char** connections;
-        fConnections.clear();
-
-        JackTimedDriver::SaveConnections();
 
         for (int i = 0; i < fParams.fSendMidiChannels; ++i) {
             if (fCapturePortList[i] && (connections = fGraphManager->GetConnections(fMidiCapturePortList[i])) != 0) {
@@ -640,7 +637,7 @@ namespace Jack
             int mtu = DEFAULT_MTU;
             // Desactivated for now...
             uint transport_sync = 0;
-            jack_nframes_t period_size = 256;
+            jack_nframes_t period_size = 1024;
             jack_nframes_t sample_rate = 48000;
             int audio_capture_ports = -1;
             int audio_playback_ports = -1;

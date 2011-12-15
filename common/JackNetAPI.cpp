@@ -20,12 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <assert.h>
 #include <stdarg.h>
 #include "JackNetInterface.h"
-#include "JackPlatformPlug.h"
 #include "JackError.h"
-#include "JackTime.h"
 #include "JackException.h"
 #include "JackAudioAdapterInterface.h"
-
 
 #ifdef __cplusplus
 extern "C"
@@ -297,7 +294,7 @@ struct JackNetExtMaster : public JackNetMasterInterface {
 
     void AllocPorts()
     {
-         // Set buffers
+        // Set buffers
         if (fParams.fSendAudioChannels > 0) {
             fAudioCaptureBuffer = new float*[fParams.fSendAudioChannels];
             for (int audio_port_index = 0; audio_port_index < fParams.fSendAudioChannels; audio_port_index++) {
@@ -363,7 +360,7 @@ struct JackNetExtMaster : public JackNetMasterInterface {
     }
 
     int Read(int audio_input, float** audio_input_buffer, int midi_input, void** midi_input_buffer)
-     {
+    {
         try {
             assert(audio_input == fParams.fReturnAudioChannels);
 
@@ -650,7 +647,7 @@ struct JackNetExtSlave : public JackNetSlaveInterface, public JackRunnableInterf
         UInt64 computation = JackTools::ComputationMicroSec(fParams.fPeriodSize) * 1000;
         fThread.SetParams(period, computation, constraint);
 
-        return (fThread.AcquireRealTime(80) == 0);      // TODO: get a value from the server
+        return (fThread.AcquireSelfRealTime(80) == 0);      // TODO: get a value from the server
     }
 
     bool Execute()
@@ -1001,7 +998,7 @@ static void jack_format_and_log(int level, const char *prefix, const char *fmt, 
     }
 
     vsnprintf(buffer + len, sizeof(buffer) - len, fmt, ap);
-    printf(buffer);
+    printf("%s", buffer);
     printf("\n");
 }
 

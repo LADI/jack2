@@ -510,7 +510,7 @@ JackFreebobDriver::freebob_driver_midi_init(freebob_driver_t *driver)
                 continue;
             }
 
-            freebob_streaming_get_capture_stream_name(dev, chn, buf, sizeof(buf) - 1);
+            freebob_streaming_get_capture_stream_name(dev, chn, buf, sizeof(buf));
             printMessage("Register MIDI IN port %s", buf);
 
             m->input_ports[i]->seq_port_nr = snd_seq_create_simple_port(m->seq_handle, buf,
@@ -567,7 +567,7 @@ JackFreebobDriver::freebob_driver_midi_init(freebob_driver_t *driver)
                 continue;
             }
 
-            freebob_streaming_get_playback_stream_name(dev, chn, buf, sizeof(buf) - 1);
+            freebob_streaming_get_playback_stream_name(dev, chn, buf, sizeof(buf));
             printMessage("Register MIDI OUT port %s", buf);
 
             m->output_ports[i]->seq_port_nr = snd_seq_create_simple_port(m->seq_handle, buf,
@@ -669,8 +669,8 @@ int JackFreebobDriver::Attach()
     JackPort* port;
     jack_port_id_t port_index;
 
-    char buf[JACK_PORT_NAME_SIZE];
-    char portname[JACK_PORT_NAME_SIZE];
+    char buf[REAL_JACK_PORT_NAME_SIZE];
+    char portname[REAL_JACK_PORT_NAME_SIZE];
     jack_latency_range_t range;
 
     freebob_driver_t* driver = (freebob_driver_t*)fDriver;
@@ -723,8 +723,8 @@ int JackFreebobDriver::Attach()
 
     for (unsigned int i = 0; i < driver->capture_nchannels; i++) {
 
-        freebob_streaming_get_capture_stream_name(driver->dev, i, portname, sizeof(portname) - 1);
-        snprintf(buf, sizeof(buf) - 1, "%s:%s", fClientControl.fName, portname);
+        freebob_streaming_get_capture_stream_name(driver->dev, i, portname, sizeof(portname));
+        snprintf(buf, sizeof(buf), "%s:%s", fClientControl.fName, portname);
 
         if (freebob_streaming_get_capture_stream_type(driver->dev, i) != freebob_stream_type_audio) {
             printMessage ("Don't register capture port %s", buf);
@@ -753,8 +753,8 @@ int JackFreebobDriver::Attach()
 
     for (unsigned int i = 0; i < driver->playback_nchannels; i++) {
 
-        freebob_streaming_get_playback_stream_name(driver->dev, i, portname, sizeof(portname) - 1);
-        snprintf(buf, sizeof(buf) - 1, "%s:%s", fClientControl.fName, portname);
+        freebob_streaming_get_playback_stream_name(driver->dev, i, portname, sizeof(portname));
+        snprintf(buf, sizeof(buf), "%s:%s", fClientControl.fName, portname);
 
         if (freebob_streaming_get_playback_stream_type(driver->dev, i) != freebob_stream_type_audio) {
             printMessage ("Don't register playback port %s", buf);

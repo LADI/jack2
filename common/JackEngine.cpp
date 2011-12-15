@@ -249,11 +249,11 @@ void JackEngine::NotifyClient(int refnum, int event, int sync, const char* messa
             /*
                 Important for internal clients : unlock before calling the notification callbacks.
             */
-            bool res = fMutex.Unlock();
+            bool res = Unlock();
             if (client->ClientNotify(refnum, client->GetClientControl()->fName, event, sync, message, value1, value2) < 0)
                 jack_error("NotifyClient fails name = %s event = %ld val1 = %ld val2 = %ld", client->GetClientControl()->fName, event, value1, value2);
             if (res)
-                fMutex.Lock();
+                Lock();
 
         } else {
             jack_log("JackEngine::NotifyClient: no callback for event = %ld", event);
@@ -1000,7 +1000,7 @@ int JackEngine::PortDisconnect(int refnum, jack_port_id_t src, jack_port_id_t ds
 
 int JackEngine::PortRename(int refnum, jack_port_id_t port, const char* name)
 {
-    char old_name[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
+    char old_name[REAL_JACK_PORT_NAME_SIZE];
     strcpy(old_name, fGraphManager->GetPort(port)->GetName());
     fGraphManager->GetPort(port)->SetName(name);
     NotifyPortRename(port, old_name);

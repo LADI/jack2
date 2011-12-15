@@ -35,10 +35,7 @@ namespace Jack
 {
 
 JackAudioDriver::JackAudioDriver(const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table)
-        : JackDriver(name, alias, engine, table),
-        fCaptureChannels(0),
-        fPlaybackChannels(0),
-        fWithMonitorPorts(false)
+        : JackDriver(name, alias, engine, table)
 {}
 
 JackAudioDriver::~JackAudioDriver()
@@ -143,15 +140,15 @@ int JackAudioDriver::Attach()
 {
     JackPort* port;
     jack_port_id_t port_index;
-    char name[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
-    char alias[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
+    char name[REAL_JACK_PORT_NAME_SIZE];
+    char alias[REAL_JACK_PORT_NAME_SIZE];
     int i;
 
     jack_log("JackAudioDriver::Attach fBufferSize = %ld fSampleRate = %ld", fEngineControl->fBufferSize, fEngineControl->fSampleRate);
 
     for (i = 0; i < fCaptureChannels; i++) {
-        snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
-        snprintf(name, sizeof(name) - 1, "%s:capture_%d", fClientControl.fName, i + 1);
+        snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
+        snprintf(name, sizeof(name), "%s:capture_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE, CaptureDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
             return -1;
@@ -163,8 +160,8 @@ int JackAudioDriver::Attach()
     }
 
     for (i = 0; i < fPlaybackChannels; i++) {
-        snprintf(alias, sizeof(alias) - 1, "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
-        snprintf(name, sizeof(name) - 1, "%s:playback_%d", fClientControl.fName, i + 1);
+        snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
+        snprintf(name, sizeof(name), "%s:playback_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE, PlaybackDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
             return -1;
@@ -177,7 +174,7 @@ int JackAudioDriver::Attach()
         // Monitor ports
         if (fWithMonitorPorts) {
             jack_log("Create monitor port");
-            snprintf(name, sizeof(name) - 1, "%s:monitor_%u", fClientControl.fName, i + 1);
+            snprintf(name, sizeof(name), "%s:monitor_%u", fClientControl.fName, i + 1);
             if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, fEngineControl->fBufferSize, &port_index) < 0) {
                 jack_error("Cannot register monitor port for %s", name);
                 return -1;
@@ -444,43 +441,5 @@ void JackAudioDriver::HandleLatencyCallback(int status)
 		}
 	}
 }
-
-void JackAudioDriver::SaveConnections()
-{
-    const char** connections;
-    fConnections.clear();
-
-    for (int i = 0; i < fCaptureChannels; ++i) {
-        if (fCapturePortList[i] && (connections = fGraphManager->GetConnections(fCapturePortList[i])) != 0) {
-            for (int j = 0; connections[j]; j++) {
-                fConnections.push_back(make_pair(fGraphManager->GetPort(fCapturePortList[i])->GetName(), connections[j]));
-                jack_info("Save connection: %s %s", fGraphManager->GetPort(fCapturePortList[i])->GetName(), connections[j]);
-            }
-            free(connections);
-        }
-    }
-
-    for (int i = 0; i < fPlaybackChannels; ++i) {
-        if (fPlaybackPortList[i] && (connections = fGraphManager->GetConnections(fPlaybackPortList[i])) != 0) {
-            for (int j = 0; connections[j]; j++) {
-                fConnections.push_back(make_pair(connections[j], fGraphManager->GetPort(fPlaybackPortList[i])->GetName()));
-                jack_info("Save connection: %s %s", connections[j], fGraphManager->GetPort(fPlaybackPortList[i])->GetName());
-            }
-            free(connections);
-        }
-    }
-}
-
-void JackAudioDriver::RestoreConnections()
-{
-    list<pair<string, string> >::const_iterator it;
-
-    for (it = fConnections.begin(); it != fConnections.end(); it++) {
-        pair<string, string> connection = *it;
-        jack_info("Restore connection: %s %s", connection.first.c_str(), connection.second.c_str());
-        fEngine->PortConnect(fClientControl.fRefNum, connection.first.c_str(), connection.second.c_str());
-    }
-}
-
 
 } // end of namespace

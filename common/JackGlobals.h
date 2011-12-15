@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #define __JackGlobals__
 
 #include "JackPlatformPlug.h"
+#include "JackSystemDeps.h"
 #include "JackConstants.h"
 
 #ifdef __CLIENTDEBUG__
@@ -39,7 +40,7 @@ struct JackGlobals {
     static jack_tls_key fRealTime;
     static jack_tls_key fKeyLogFunction;
     static JackMutex* fOpenMutex;
-    static bool fServerRunning;
+    static volatile bool fServerRunning;
     static JackClient* fClientTable[];
     static bool fVerbose;
 #ifndef WIN32

@@ -27,13 +27,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackException.h"
 #include <assert.h>
 
+using namespace std;
+
 namespace Jack
 {
 
 JackMidiDriver::JackMidiDriver(const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table)
-        : JackDriver(name, alias, engine, table),
-        fCaptureChannels(0),
-        fPlaybackChannels(0)
+        : JackDriver(name, alias, engine, table)
 {}
 
 JackMidiDriver::~JackMidiDriver()
@@ -58,15 +58,15 @@ int JackMidiDriver::Attach()
 {
     JackPort* port;
     jack_port_id_t port_index;
-    char name[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
-    char alias[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
+    char name[REAL_JACK_PORT_NAME_SIZE];
+    char alias[REAL_JACK_PORT_NAME_SIZE];
     int i;
 
     jack_log("JackMidiDriver::Attach fBufferSize = %ld fSampleRate = %ld", fEngineControl->fBufferSize, fEngineControl->fSampleRate);
 
     for (i = 0; i < fCaptureChannels; i++) {
-        snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
-        snprintf(name, sizeof(name) - 1, "%s:capture_%d", fClientControl.fName, i + 1);
+        snprintf(alias, sizeof(alias), "%s:%s:out%d", fAliasName, fCaptureDriverName, i + 1);
+        snprintf(name, sizeof(name), "%s:capture_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_MIDI_TYPE, CaptureDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
             return -1;
@@ -78,8 +78,8 @@ int JackMidiDriver::Attach()
     }
 
     for (i = 0; i < fPlaybackChannels; i++) {
-        snprintf(alias, sizeof(alias) - 1, "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
-        snprintf(name, sizeof(name) - 1, "%s:playback_%d", fClientControl.fName, i + 1);
+        snprintf(alias, sizeof(alias), "%s:%s:in%d", fAliasName, fPlaybackDriverName, i + 1);
+        snprintf(name, sizeof(name), "%s:playback_%d", fClientControl.fName, i + 1);
         if (fEngine->PortRegister(fClientControl.fRefNum, name, JACK_DEFAULT_MIDI_TYPE, PlaybackDriverFlags, fEngineControl->fBufferSize, &port_index) < 0) {
             jack_error("driver: cannot register port for %s", name);
             return -1;
@@ -149,12 +149,12 @@ int JackMidiDriver::ProcessReadSync()
 
     // Read input buffers for the current cycle
     if (Read() < 0) {
-        jack_error("JackMidiDriver::ProcessReadSync: read error, skip cycle");
+        jack_error("JackMidiDriver::ProcessReadSync: read error");
         res = -1;
     }
 
     if (fGraphManager->ResumeRefNum(&fClientControl, fSynchroTable) < 0) {
-        jack_error("JackMidiDriver::ProcessReadSync - ResumeRefNum error");
+        jack_error("JackMidiDriver::ProcessReadSync: ResumeRefNum error");
         res = -1;
     }
 
@@ -168,13 +168,13 @@ int JackMidiDriver::ProcessWriteSync()
     if (fGraphManager->SuspendRefNum(&fClientControl, fSynchroTable,
                                      DRIVER_TIMEOUT_FACTOR *
                                      fEngineControl->fTimeOutUsecs) < 0) {
-        jack_error("JackMidiDriver::ProcessWriteSync - SuspendRefNum error");
+        jack_error("JackMidiDriver::ProcessWriteSync: SuspendRefNum error");
         res = -1;
     }
 
     // Write output buffers from the current cycle
     if (Write() < 0) {
-        jack_error("JackMidiDriver::ProcessWriteSync - Write error");
+        jack_error("JackMidiDriver::ProcessWriteSync: write error");
         res = -1;
     }
 
@@ -187,18 +187,18 @@ int JackMidiDriver::ProcessReadAsync()
 
     // Read input buffers for the current cycle
     if (Read() < 0) {
-        jack_error("JackMidiDriver::ProcessReadAsync: read error, skip cycle");
+        jack_error("JackMidiDriver::ProcessReadAsync: read error");
         res = -1;
     }
 
     // Write output buffers from the previous cycle
     if (Write() < 0) {
-        jack_error("JackMidiDriver::ProcessReadAsync - Write error");
+        jack_error("JackMidiDriver::ProcessReadAsync: write error");
         res = -1;
     }
 
     if (fGraphManager->ResumeRefNum(&fClientControl, fSynchroTable) < 0) {
-        jack_error("JackMidiDriver::ProcessReadAsync - ResumeRefNum error");
+        jack_error("JackMidiDriver::ProcessReadAsync: ResumeRefNum error");
         res = -1;
     }
 

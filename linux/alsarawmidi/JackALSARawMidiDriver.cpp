@@ -38,10 +38,8 @@ JackALSARawMidiDriver::JackALSARawMidiDriver(const char *name,
     JackMidiDriver(name, alias, engine, table)
 {
     thread = new JackThread(this);
-    fCaptureChannels = 0;
     fds[0] = -1;
     fds[1] = -1;
-    fPlaybackChannels = 0;
     input_ports = 0;
     output_ports = 0;
     output_port_timeouts = 0;
@@ -569,6 +567,7 @@ int
 JackALSARawMidiDriver::Stop()
 {
     jack_info("JackALSARawMidiDriver::Stop - stopping 'alsarawmidi' driver.");
+    JackMidiDriver::Stop();
 
     if (fds[1] != -1) {
         close(fds[1]);

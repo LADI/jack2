@@ -36,6 +36,20 @@ John Emmas
   Jackdmp changes log
 ---------------------------
 
+2011-11-25 Stephane Letz  <letz@grame.fr>
+
+	* More robust dynamic port management in JACK/CoreMidi bridge.
+	* Correct jack_port_name_size API.
+
+2011-11-24 Stephane Letz  <letz@grame.fr>
+
+	* Dynamic port management in JACK/CoreMidi bridge.
+	* Correct jack_client_create_thread (when realtime in on).
+
+2011-11-21 Stephane Letz  <letz@grame.fr>
+
+	* John Emmas third auto-launch server on Windows patch.
+
 2011-11-07 Stephane Letz  <letz@grame.fr>
 
 	* John Emmas first auto-launch server on Windows patch.
@@ -167,7 +181,7 @@ John Emmas
 
 2011-06-11 Stephane Letz  <letz@grame.fr>
 
-	* Special version of jack_attach_shm/jack_release_shm on client side for POSIX shared mem, to solve a memory leak issue.
+	* Special version of jack_attach_shm/jack_release_shm on client side for POSIX shared memory, to solve a memory leak issue.
 
 2011-06-10 Stephane Letz  <letz@grame.fr>
 

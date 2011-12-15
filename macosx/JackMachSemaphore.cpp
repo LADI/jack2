@@ -26,13 +26,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 namespace Jack
 {
 
-mach_port_t JackMachSemaphore::fBootPort = 0;
-
-void JackMachSemaphore::BuildName(const char* client_name, const char* server_name, char* res)
+void JackMachSemaphore::BuildName(const char* client_name, const char* server_name, char* res, int size)
 {
     char ext_client_name[JACK_CLIENT_NAME_SIZE + 1];
     JackTools::RewriteName(client_name, ext_client_name);
-    sprintf(res, "jack_mach_sem.%d_%s_%s", JackTools::GetUID(), server_name, ext_client_name);
+    snprintf(res, size, "jack_mach_sem.%d_%s_%s", JackTools::GetUID(), server_name, ext_client_name);
 }
 
 bool JackMachSemaphore::Signal()
@@ -42,8 +40,9 @@ bool JackMachSemaphore::Signal()
         return false;
     }
 
-    if (fFlush)
+    if (fFlush) {
         return true;
+    }
 
     kern_return_t res;
     if ((res = semaphore_signal(fSemaphore)) != KERN_SUCCESS) {
@@ -59,8 +58,9 @@ bool JackMachSemaphore::SignalAll()
         return false;
     }
 
-    if (fFlush)
+    if (fFlush) {
         return true;
+    }
 
     kern_return_t res;
     // When signaled several times, do not accumulate signals...
@@ -105,7 +105,7 @@ bool JackMachSemaphore::TimedWait(long usec)
 // Server side : publish the semaphore in the global namespace
 bool JackMachSemaphore::Allocate(const char* name, const char* server_name, int value)
 {
-    BuildName(name, server_name, fName);
+    BuildName(name, server_name, fName, sizeof(fName));
     mach_port_t task = mach_task_self();
     kern_return_t res;
 
@@ -149,16 +149,8 @@ bool JackMachSemaphore::Allocate(const char* name, const char* server_name, int 
 // Client side : get the published semaphore from server
 bool JackMachSemaphore::ConnectInput(const char* name, const char* server_name)
 {
-    BuildName(name, server_name, fName);
+    BuildName(name, server_name, fName, sizeof(fName));
     kern_return_t res;
-
-    // Temporary...  A REVOIR
-    /*
-    if (fSemaphore > 0) {
-    	jack_log("Already connected name = %s", name);
-    	return true;
-    }
-    */
 
     if (fBootPort == 0) {
         if ((res = task_get_bootstrap_port(mach_task_self(), &fBootPort)) != KERN_SUCCESS) {
@@ -202,7 +194,7 @@ void JackMachSemaphore::Destroy()
     kern_return_t res;
 
     if (fSemaphore > 0) {
-        jack_log("JackMachSemaphore::Destroy");
+        jack_log("JackMachSemaphore::Destroy name = %s", fName);
         if ((res = semaphore_destroy(mach_task_self(), fSemaphore)) != KERN_SUCCESS) {
             jack_error("JackMachSemaphore::Destroy can't destroy semaphore err = %s", mach_error_string(res));
         }

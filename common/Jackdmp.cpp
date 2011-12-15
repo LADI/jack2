@@ -185,7 +185,7 @@ jackctl_get_parameter(
     return NULL;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     jackctl_server_t * server_ctl;
     const JSList * server_parameters;

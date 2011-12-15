@@ -61,12 +61,12 @@ void* JackShmMem::operator new(size_t size)
     snprintf(name, sizeof(name), "/jack_shared%d", fSegmentNum++);
 
     if (jack_shmalloc(name, size, &info)) {
-        jack_error("cannot create shared memory segment of size = %d", size, strerror(errno));
+        jack_error("Cannot create shared memory segment of size = %d", size, strerror(errno));
         goto error;
     }
 
     if (jack_attach_shm(&info)) {
-        jack_error("cannot attach shared memory segment name = %s err = %s", name, strerror(errno));
+        jack_error("Cannot attach shared memory segment name = %s err = %s", name, strerror(errno));
         jack_destroy_shm(&info);
         goto error;
     }
@@ -111,7 +111,7 @@ void LockMemoryImp(void* ptr, size_t size)
     if (CHECK_MLOCK((char*)ptr, size)) {
         jack_log("Succeeded in locking %u byte memory area", size);
     } else {
-        jack_error("Cannot lock down memory area (%s)", strerror(errno));
+        jack_error("Cannot lock down %u byte memory area (%s)", size, strerror(errno));
     }
 }
 
@@ -121,7 +121,7 @@ void InitLockMemoryImp(void* ptr, size_t size)
         memset(ptr, 0, size);
         jack_log("Succeeded in locking %u byte memory area", size);
     } else {
-        jack_error("Cannot lock down memory area (%s)", strerror(errno));
+        jack_error("Cannot lock down %u byte memory area (%s)", size, strerror(errno));
     }
 }
 
@@ -130,7 +130,7 @@ void UnlockMemoryImp(void* ptr, size_t size)
     if (CHECK_MUNLOCK((char*)ptr, size)) {
         jack_log("Succeeded in unlocking %u byte memory area", size);
     } else {
-        jack_error("Cannot unlock down memory area (%s)", strerror(errno));
+        jack_error("Cannot unlock down %u byte memory area (%s)", size, strerror(errno));
     }
 }
 

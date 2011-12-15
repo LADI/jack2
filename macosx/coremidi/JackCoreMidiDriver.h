@@ -26,10 +26,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackCoreMidiVirtualInputPort.h"
 #include "JackCoreMidiVirtualOutputPort.h"
 #include "JackMidiDriver.h"
+#include "JackThread.h"
 
 namespace Jack {
 
-    class JackCoreMidiDriver: public JackMidiDriver {
+    class JackCoreMidiDriver: public JackMidiDriver, public JackRunnableInterface, public JackLockAble {
 
     private:
 
@@ -55,6 +56,13 @@ namespace Jack {
         double time_ratio;
         JackCoreMidiVirtualInputPort **virtual_input_ports;
         JackCoreMidiVirtualOutputPort **virtual_output_ports;
+
+        bool OpenAux();
+        int CloseAux();
+
+        void Restart();
+
+        JackThread fThread;    /*! Thread to execute the Process function */
 
     public:
 
@@ -87,8 +95,17 @@ namespace Jack {
         int
         Write();
 
+        int ProcessRead();
+        int ProcessWrite();
+
+        // JackRunnableInterface interface
+        bool Init();
+        bool Execute();
+
     };
 
 }
+
+#define WAIT_COUNTER 100
 
 #endif

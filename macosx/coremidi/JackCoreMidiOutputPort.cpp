@@ -40,7 +40,7 @@ JackCoreMidiOutputPort::JackCoreMidiOutputPort(double time_ratio,
     std::auto_ptr<JackMidiAsyncQueue> thread_queue_ptr(thread_queue);
     thread = new JackThread(this);
     std::auto_ptr<JackThread> thread_ptr(thread);
-    sprintf(semaphore_name, "coremidi_%p", this);
+    snprintf(semaphore_name, sizeof(semaphore_name), "coremidi_%p", this);
     thread_queue_semaphore = sem_open(semaphore_name, O_CREAT, 0777, 0);
     if (thread_queue_semaphore == (sem_t *) SEM_FAILED) {
         throw std::runtime_error(strerror(errno));
@@ -54,7 +54,7 @@ JackCoreMidiOutputPort::JackCoreMidiOutputPort(double time_ratio,
 JackCoreMidiOutputPort::~JackCoreMidiOutputPort()
 {
     delete thread;
-    sem_destroy(thread_queue_semaphore);
+    sem_close(thread_queue_semaphore);
     sem_unlink(semaphore_name);
     delete read_queue;
     delete thread_queue;
@@ -167,7 +167,7 @@ JackCoreMidiOutputPort::Init()
 {
     set_threaded_log_function();
 
-    // OSX only, values read in RT CoreMidi thread
+    // OSX only, values read in RT CoreMIDI thread
     UInt64 period = 0;
     UInt64 computation = 250 * 1000;
     UInt64 constraint = 500 * 1000;
