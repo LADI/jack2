@@ -46,6 +46,7 @@ def build(bld):
         'JackConnectionManager.cpp',
         'ringbuffer.c',
         'JackError.cpp',
+	'JackException.cpp',
         'JackFrameTimer.cpp',
         'JackGraphManager.cpp',
         'JackPort.cpp',
@@ -55,6 +56,7 @@ def build(bld):
         'JackMidiAPI.cpp',
         'JackEngineControl.cpp',
         'JackShmMem.cpp',
+	'JackGenericClientChannel.cpp',
         'shm.c',
         'JackGlobals.cpp',
         'JackDebugClient.cpp',
@@ -72,8 +74,8 @@ def build(bld):
         common_libsources += [
             '../posix/JackPosixThread.cpp',
             '../posix/JackPosixSemaphore.cpp',
-            '../posix/JackFifo.cpp',
-            '../posix/JackProcessSync.cpp',
+            '../posix/JackPosixProcessSync.cpp',
+	    '../posix/JackPosixMutex.cpp',
             '../posix/JackSocket.cpp',
             '../linux/JackLinuxTime.c',
             ]
@@ -85,7 +87,8 @@ def build(bld):
         common_libsources += [
            '../posix/JackPosixThread.cpp',
            '../posix/JackFifo.cpp',
-           '../posix/JackProcessSync.cpp',
+           '../posix/JackPosixProcessSync.cpp',
+           '../posix/JackPosixMutex.cpp',
            '../posix/JackSocket.cpp',
            '../solaris/JackSolarisTime.c',
            ]
@@ -94,7 +97,7 @@ def build(bld):
 
     if bld.env['IS_MACOSX']:
         common_libsources += [
-            '../posix/JackProcessSync.cpp',
+            '../posix/JackPosixProcessSync.cpp',
             '../posix/JackPosixThread.cpp',
             '../macosx/JackMachThread.cpp',
             '../macosx/JackMachSemaphore.cpp',
@@ -132,6 +135,7 @@ def build(bld):
         'JackNetTool.cpp',
         'JackNetInterface.cpp',
         'JackArgParser.cpp',
+    	'JackRequestDecoder.cpp',
         'JackMidiAsyncQueue.cpp',
         'JackMidiAsyncWaitQueue.cpp',
         'JackMidiBufferReadQueue.cpp',
@@ -197,6 +201,7 @@ def build(bld):
             'JackNetAPI.cpp',
             'JackNetInterface.cpp',
             'JackNetTool.cpp',
+	    'JackException.cpp',
             'JackAudioAdapterInterface.cpp',
             'JackLibSampleRateResampler.cpp',
             'JackResampler.cpp',
