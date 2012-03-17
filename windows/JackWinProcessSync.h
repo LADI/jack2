@@ -26,7 +26,7 @@ namespace Jack
 {
 
 /*!
-\brief  A synchronization primitive built using a condition variable.
+\brief A synchronization primitive built using a condition variable.
 */
 
 class JackWinProcessSync : public JackWinMutex
