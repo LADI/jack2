@@ -111,7 +111,7 @@ bool JackMessageBuffer::Execute()
                 /* and we're done */
                 fGuard.Signal();
             }
-
+            
             /* releasing the mutex reduces contention */
             fGuard.Unlock();
             Flush();
@@ -169,26 +169,29 @@ int JackMessageBuffer::SetInitCallback(JackThreadInitCallback callback, void *ar
         fInitArg = arg;
         fInit = callback;
         
+    #ifndef WIN32
+        // wake msg buffer thread 
+        fGuard.Signal();
+        // wait for it to be done  
+        fGuard.Wait();
+        // and we're done 
+        fGuard.Unlock();
+    #else
         /*
         The condition variable emulation code does not work reliably on Windows (lost signal).
         So use a "hackish" way to signal/wait for the result.
-        Probaly better in the long term : use pthread-win32 (http://sourceware.org/pthreads-win32/)
-        // wake msg buffer thread 
-        fGuard.Signal()
-        // wait for it to be done  
-        fGuard.Wait();
+        Probaly better in the long term : use pthread-win32 (http://sourceware.org/pthreads-win32/`
         */
-
+        fGuard.Unlock();
         int count = 0;
         while (fInit && ++count < 1000) {
             /* wake msg buffer thread */
             fGuard.Signal();
             JackSleep(1000);
         }
-               
-        /* and we're done */
-        fGuard.Unlock();
         if (count == 1000) goto error;
+    #endif
+    
         return 0;
     }
     
