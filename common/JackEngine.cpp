@@ -585,6 +585,23 @@ int JackEngine::GetClientPID(const char* name)
     return 0;
 }
 
+int JackEngine::GetOriginalClientName(char* name)
+{
+    for (int i = 0; i < CLIENT_NUM; i++) {
+        JackClientInterface* client = fClientTable[i];
+        if (client && (strcmp(client->GetClientControl()->fName, name) == 0)) {
+            if (client->GetClientControl()->fOrigLen <= 0 ||
+                (size_t)client->GetClientControl()->fOrigLen > strlen(name)) {
+                return -1;
+            }
+
+            return name[client->GetClientControl()->fOrigLen] = 0;
+        }
+    }
+
+    return -1;
+}
+
 int JackEngine::GetClientRefNum(const char* name)
 {
     for (int i = 0; i < CLIENT_NUM; i++) {
@@ -598,7 +615,7 @@ int JackEngine::GetClientRefNum(const char* name)
 }
 
 // Used for external clients
-int JackEngine::ClientExternalOpen(const char* name, int pid, int uuid, int* ref, int* shared_engine, int* shared_client, int* shared_graph_manager)
+int JackEngine::ClientExternalOpen(const char* name, int pid, int origlen, int uuid, int* ref, int* shared_engine, int* shared_client, int* shared_graph_manager)
 {
     char real_name[JACK_CLIENT_NAME_SIZE + 1];
 
@@ -614,9 +631,10 @@ int JackEngine::ClientExternalOpen(const char* name, int pid, int uuid, int* ref
             strncpy(real_name, name, JACK_CLIENT_NAME_SIZE);
         }
         EnsureUUID(uuid);
+        origlen = (int)strlen(real_name);
     }
 
-    jack_log("JackEngine::ClientExternalOpen: uuid = %d, name = %s ", uuid, real_name);
+    jack_log("JackEngine::ClientExternalOpen: pid = %d, origlen = %d, uuid = %d, name = %s ", pid, origlen, uuid, real_name);
 
     int refnum = AllocateRefnum();
     if (refnum < 0) {
@@ -631,7 +649,7 @@ int JackEngine::ClientExternalOpen(const char* name, int pid, int uuid, int* ref
         goto error;
     }
 
-    if (client->Open(real_name, pid, refnum, uuid, shared_client) < 0) {
+    if (client->Open(real_name, pid, origlen, refnum, uuid, shared_client) < 0) {
         jack_error("Cannot open client");
         goto error;
     }

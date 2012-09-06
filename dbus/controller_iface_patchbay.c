@@ -54,6 +54,7 @@ struct jack_graph_client
 {
     uint64_t id;
     char * name;
+    char * orig_name;
     int pid;
     struct list_head siblings;
     struct list_head ports;
@@ -376,11 +377,26 @@ jack_controller_patchbay_create_client(
         goto fail_free_client;
     }
 
+    client_ptr->orig_name = malloc(client_name_len + 1);
+    if (client_ptr->orig_name == NULL)
+    {
+        jack_error("malloc() failed to allocate memory for client name.");
+        goto fail_free_name;
+    }
+
     memcpy(client_ptr->name, client_name, client_name_len);
+    memcpy(client_ptr->orig_name, client_name, client_name_len);
     client_ptr->name[client_name_len] = 0;
+    client_ptr->orig_name[client_name_len] = 0;
 
     client_ptr->pid = jack_get_client_pid(client_ptr->name);
-    jack_info("New client '%s' with PID %d", client_ptr->name, client_ptr->pid);
+    if (client_ptr->pid != 0 &&
+        jack_get_client_original_name(client_ptr->orig_name) != 0)
+    {
+        jack_error("jack_get_client_original_name() failed for client \"%s\"", client_ptr->name);
+    }
+
+    jack_info("New client '%s' ('%s') with PID %d", client_ptr->name, client_ptr->orig_name, client_ptr->pid);
 
     client_ptr->id = patchbay_ptr->next_client_id++;
     INIT_LIST_HEAD(&client_ptr->ports);
@@ -394,10 +410,10 @@ jack_controller_patchbay_create_client(
     pthread_mutex_unlock(&patchbay_ptr->lock);
 
     return client_ptr;
-
+fail_free_name:
+    free(client_ptr->name);
 fail_free_client:
     free(client_ptr);
-
 fail:
     return NULL;
 }
@@ -1494,6 +1510,46 @@ unlock:
     pthread_mutex_unlock(&patchbay_ptr->lock);
 }
 
+static
+void
+jack_controller_dbus_get_client_original_name(
+    struct jack_dbus_method_call * call)
+{
+    dbus_uint64_t client_id;
+    struct jack_graph_client *client_ptr;
+    message_arg_t arg;
+
+/*     jack_info("jack_controller_dbus_get_client_original_name() called."); */
+
+    if (!jack_dbus_get_method_args(
+            call,
+            DBUS_TYPE_UINT64,
+            &client_id,
+            DBUS_TYPE_INVALID))
+    {
+        /* The method call had invalid arguments meaning that
+         * jack_dbus_get_method_args() has constructed an error for us.
+         */
+        return;
+    }
+
+    pthread_mutex_lock(&patchbay_ptr->lock);
+
+    client_ptr = jack_controller_patchbay_find_client_by_id(patchbay_ptr, client_id);
+    if (client_ptr == NULL)
+    {
+        jack_dbus_error(call, JACK_DBUS_ERROR_INVALID_ARGS, "cannot find client %" PRIu64, client_id);
+        goto unlock;
+    }
+
+    arg.string = client_ptr->orig_name;
+
+    jack_dbus_construct_method_return_single(call, DBUS_TYPE_STRING, arg);
+
+unlock:
+    pthread_mutex_unlock(&patchbay_ptr->lock);
+}
+
 #undef controller_ptr
 #define controller_ptr ((struct jack_controller *)context)
 
@@ -1862,6 +1918,11 @@ JACK_DBUS_METHOD_ARGUMENTS_BEGIN(GetClientPID)
     JACK_DBUS_METHOD_ARGUMENT("process_id", DBUS_TYPE_INT64_AS_STRING, true)
 JACK_DBUS_METHOD_ARGUMENTS_END
 
+JACK_DBUS_METHOD_ARGUMENTS_BEGIN(GetClientOriginalName)
+    JACK_DBUS_METHOD_ARGUMENT("client_id", DBUS_TYPE_UINT64_AS_STRING, false)
+    JACK_DBUS_METHOD_ARGUMENT("name", DBUS_TYPE_STRING_AS_STRING, true)
+JACK_DBUS_METHOD_ARGUMENTS_END
+
 JACK_DBUS_METHODS_BEGIN
     JACK_DBUS_METHOD_DESCRIBE(GetAllPorts, jack_controller_dbus_get_all_ports)
     JACK_DBUS_METHOD_DESCRIBE(GetGraph, jack_controller_dbus_get_graph)
@@ -1871,6 +1932,7 @@ JACK_DBUS_METHODS_BEGIN
     JACK_DBUS_METHOD_DESCRIBE(DisconnectPortsByID, jack_controller_dbus_disconnect_ports_by_id)
     JACK_DBUS_METHOD_DESCRIBE(DisconnectPortsByConnectionID, jack_controller_dbus_disconnect_ports_by_connection_id)
     JACK_DBUS_METHOD_DESCRIBE(GetClientPID, jack_controller_dbus_get_client_pid)
+    JACK_DBUS_METHOD_DESCRIBE(GetClientOriginalName, jack_controller_dbus_get_client_original_name)
 JACK_DBUS_METHODS_END
 
 JACK_DBUS_SIGNAL_ARGUMENTS_BEGIN(GraphChanged)

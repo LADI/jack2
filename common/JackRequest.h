@@ -241,20 +241,23 @@ struct JackClientOpenRequest : public JackRequest
     int fPID;
     int fUUID;
     char fName[JACK_CLIENT_NAME_SIZE + 1];
+    int fOrigLen;
 
     JackClientOpenRequest()
     {}
-    JackClientOpenRequest(const char* name, int pid, int uuid): JackRequest(JackRequest::kClientOpen)
+    JackClientOpenRequest(const char* name, int pid, int origlen, int uuid): JackRequest(JackRequest::kClientOpen)
     {
         snprintf(fName, sizeof(fName), "%s", name);
         fPID = pid;
         fUUID = uuid;
+        fOrigLen = origlen;
     }
 
     int Read(detail::JackChannelTransactionInterface* trans)
     {
         CheckSize();
         CheckRes(trans->Read(&fPID, sizeof(int)));
+        CheckRes(trans->Read(&fOrigLen, sizeof(int)));
         CheckRes(trans->Read(&fUUID, sizeof(int)));
         return trans->Read(&fName, sizeof(fName));
     }
@@ -263,11 +266,12 @@ struct JackClientOpenRequest : public JackRequest
     {
         CheckRes(JackRequest::Write(trans, Size()));
         CheckRes(trans->Write(&fPID, sizeof(int)));
+        CheckRes(trans->Write(&fOrigLen, sizeof(int)));
         CheckRes(trans->Write(&fUUID, sizeof(int)));
         return trans->Write(&fName, sizeof(fName));
     }
 
-    int Size() { return 2 * sizeof(int) + sizeof(fName); }
+    int Size() { return 3 * sizeof(int) + sizeof(fName); }
     
 };
 

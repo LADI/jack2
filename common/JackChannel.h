@@ -124,7 +124,7 @@ class JackClientChannelInterface
 
         virtual void ClientCheck(const char* name, int uuid, char* name_res, int protocol, int options, int* status, int* result, int open)
         {}
-        virtual void ClientOpen(const char* name, int pid, int uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
+        virtual void ClientOpen(const char* name, int pid, int origlen, int uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
         {}
         virtual void ClientOpen(const char* name, int* ref, JackEngineControl** shared_engine, JackGraphManager** shared_manager, JackClientInterface* client, int* result)
         {}

@@ -202,6 +202,23 @@ int jack_deactivate (jack_client_t *client) JACK_OPTIONAL_WEAK_EXPORT;
 int jack_get_client_pid (const char *name) JACK_OPTIONAL_WEAK_EXPORT;
 
 /**
+ * Get original client name.
+ *
+ * Copy the actual client name to a buffer and supply the buffer to
+ * this function.
+ * Upon successful return, the name buffer will be updated to contain
+ * client name that originally requested by the client app.
+ *
+ * If client name was reserved with jack_reserve_client_name() or if
+ * was not changed because of name collision, the name buffer is unchanged.
+ *
+ * @param name - buffer of at least jack_client_name_size() characters
+ *
+ * @return 0 on success, otherwise a non-zero error code
+ */
+int jack_get_client_original_name (char *name) JACK_OPTIONAL_WEAK_EXPORT;
+
+/**
  * @return the pthread ID of the thread running the JACK client side
  * real-time code.
  */

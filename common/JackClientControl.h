@@ -44,28 +44,29 @@ struct JackClientControl : public JackShmMemAble
     volatile bool fTransportTimebase;  /* Will be true when timebase cb is called with new_pos on */
     int fRefNum;
     int fPID;
+    int fOrigLen;
     bool fActive;
 
     int fSessionID;
     char fSessionCommand[JACK_SESSION_COMMAND_SIZE];
     jack_session_flags_t fSessionFlags;
 
-    JackClientControl(const char* name, int pid, int refnum, int uuid)
+    JackClientControl(const char* name, int pid, int origlen, int refnum, int uuid)
     {
-        Init(name, pid, refnum, uuid);
+        Init(name, pid, origlen, refnum, uuid);
     }
 
     JackClientControl(const char* name)
     {
-        Init(name, 0, -1, -1);
+        Init(name, 0, -1, -1, -1);
     }
 
     JackClientControl()
     {
-        Init("", 0, -1, -1);
+        Init("", 0, -1, -1, -1);
     }
 
-    void Init(const char* name, int pid, int refnum, int uuid)
+    void Init(const char* name, int pid, int origlen, int refnum, int uuid)
     {
         strcpy(fName, name);
         for (int i = 0; i < kMaxNotification; i++)
@@ -80,6 +81,7 @@ struct JackClientControl : public JackShmMemAble
         fCallback[kStopFreewheelCallback] = true;
         fRefNum = refnum;
         fPID = pid;
+        fOrigLen = origlen;
         fTransportState = JackTransportStopped;
         fTransportSync = false;
         fTransportTimebase = false;
