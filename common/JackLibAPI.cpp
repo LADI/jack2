@@ -32,8 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 using namespace Jack;
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
     jack_client_t * jack_client_new_aux (const char *client_name,
@@ -45,6 +44,7 @@ extern "C"
             jack_status_t *status, ...);
     LIB_EXPORT int jack_client_close (jack_client_t *client);
     LIB_EXPORT int jack_get_client_pid (const char *name);
+    LIB_EXPORT int jack_get_client_original_name (char *name);
 
 
 #ifdef __cplusplus
@@ -213,3 +213,8 @@ LIB_EXPORT int jack_get_client_pid(const char *name)
     return 0;
 }
 
+LIB_EXPORT int jack_get_client_original_name (char *name)
+{
+    jack_error("jack_get_client_original_name : not implemented on library side");
+    return -1;
+}

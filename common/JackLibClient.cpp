@@ -102,7 +102,7 @@ int JackLibClient::Open(const char* server_name, const char* name, int uuid, jac
     }
 
     // Require new client
-    fChannel->ClientOpen(name_res, JackTools::GetPID(), uuid, &shared_engine, &shared_client, &shared_graph, &result);
+    fChannel->ClientOpen(name_res, JackTools::GetPID(), (int)strlen(name), uuid, &shared_engine, &shared_client, &shared_graph, &result);
     if (result < 0) {
         jack_error("Cannot open %s client", name_res);
         goto error;

@@ -40,6 +40,7 @@ extern "C"
             jack_status_t *status, ...);
     SERVER_EXPORT int jack_client_close (jack_client_t *client);
     SERVER_EXPORT int jack_get_client_pid (const char *name);
+    SERVER_EXPORT int jack_get_client_original_name (char *name);
 
 #ifdef __cplusplus
 }
@@ -199,3 +200,9 @@ SERVER_EXPORT int jack_get_client_pid(const char *name)
         : 0;
 }
 
+SERVER_EXPORT int jack_get_client_original_name(char *name)
+{
+    return (JackServerGlobals::fInstance != NULL)
+        ? JackServerGlobals::fInstance->GetEngine()->GetOriginalClientName(name)
+        : -1;
+}
