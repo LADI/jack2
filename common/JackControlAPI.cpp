@@ -1181,7 +1181,7 @@ SERVER_EXPORT bool jackctl_parameter_has_enum_constraint(jackctl_parameter *para
 SERVER_EXPORT uint32_t jackctl_parameter_get_enum_constraints_count(jackctl_parameter *parameter_ptr)
 {
     if (!parameter_ptr) {
-        return NULL;
+        return 0;
     }
 
     if (!jackctl_parameter_has_enum_constraint(parameter_ptr))
@@ -1435,7 +1435,6 @@ SERVER_EXPORT bool jackctl_server_switch_master(jackctl_server * server_ptr, jac
     if (server_ptr && server_ptr->engine) {
         JSList * paramlist;
         if (!jackctl_create_param_list(driver_ptr->parameters, &paramlist)) return false;
-        jackctl_destroy_param_list(paramlist);
         bool ret = (server_ptr->engine->SwitchMaster(driver_ptr->desc_ptr, paramlist) == 0);
         jackctl_destroy_param_list(paramlist);
         return ret;
