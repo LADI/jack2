@@ -113,8 +113,9 @@ JackALSARawMidiPort::JackALSARawMidiPort(snd_rawmidi_info_t *info,
         func = "CreateNonBlockingPipe";
         goto close;
     }
-    snprintf(alias, sizeof(alias), "system:%d-%d %s %d %s", card + 1,
-             device + 1, snd_rawmidi_info_get_name(info), subdevice + 1,
+    snprintf(alias, sizeof(alias), "%s %d-%d-%d:%s",
+             snd_rawmidi_info_get_name(info),
+             card + 1, device + 1, subdevice + 1,
              alias_suffix);
     snprintf(name, sizeof(name), "%s%zu", name_prefix, index + 1);
     this->io_mask = io_mask;
