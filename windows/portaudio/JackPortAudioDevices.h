@@ -55,8 +55,10 @@ class PortAudioDevices
         void PrintSupportedStandardSampleRates(const PaStreamParameters* inputParameters, const PaStreamParameters* outputParameters);
         int GetInputDeviceFromName(const char* name, PaDeviceIndex& device, int& in_max);
         int GetOutputDeviceFromName(const char* name, PaDeviceIndex& device, int& out_max);
+        int GetPreferredBufferSize(PaDeviceIndex id);
         void DisplayDevicesNames();
         bool IsDuplex(PaDeviceIndex id);
+        bool IsASIO(PaDeviceIndex id);
 
 };
 
