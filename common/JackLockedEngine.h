@@ -41,7 +41,7 @@ catch (...) {
 */
 
 #define CATCH_EXCEPTION_RETURN                      \
-    } catch(std::bad_alloc& e) {                    \
+    } catch (std::bad_alloc& e) {                    \
         jack_error("Memory allocation error...");   \
         return -1;                                  \
     } catch (...) {                                 \
@@ -50,10 +50,10 @@ catch (...) {
     }                                               \
 
 #define CATCH_CLOSE_EXCEPTION_RETURN                      \
-    } catch(std::bad_alloc& e) {                    \
+    } catch (std::bad_alloc& e) {                    \
         jack_error("Memory allocation error...");   \
         return -1;                                  \
-    } catch(JackTemporaryException& e) {                       \
+    } catch (JackTemporaryException& e) {                       \
         jack_error("JackTemporaryException : now quits...");   \
         JackTools::KillServer();                     \
         return 0;                                   \
@@ -63,7 +63,7 @@ catch (...) {
     }
 
 #define CATCH_EXCEPTION                      \
-    } catch(std::bad_alloc& e) {                    \
+    } catch (std::bad_alloc& e) {                    \
         jack_error("Memory allocation error...");   \
     } catch (...) {                                 \
         jack_error("Unknown error...");             \
@@ -102,6 +102,14 @@ class SERVER_EXPORT JackLockedEngine
             TRY_CALL
             return fEngine.Close();
             CATCH_EXCEPTION_RETURN
+        }
+        
+        void ShutDown()
+        {
+            // No lock needed
+            TRY_CALL
+            fEngine.ShutDown();
+            CATCH_EXCEPTION
         }
 
         // Client management
@@ -319,13 +327,13 @@ class SERVER_EXPORT JackLockedEngine
 
         void NotifyQuit()
         {
+            // No lock needed
             TRY_CALL
-            JackLock lock(&fEngine);
             return fEngine.NotifyQuit();
             CATCH_EXCEPTION
         }
 
-        void SessionNotify(int refnum, const char* target, jack_session_event_type_t type, const char *path, JackChannelTransaction *socket, JackSessionNotifyResult** result)
+        void SessionNotify(int refnum, const char* target, jack_session_event_type_t type, const char *path, detail::JackChannelTransactionInterface *socket, JackSessionNotifyResult** result)
         {
             TRY_CALL
             JackLock lock(&fEngine);
@@ -333,42 +341,42 @@ class SERVER_EXPORT JackLockedEngine
             CATCH_EXCEPTION
         }
 
-        void SessionReply(int refnum)
+        int SessionReply(int refnum)
         {
             TRY_CALL
             JackLock lock(&fEngine);
-            fEngine.SessionReply(refnum);
-            CATCH_EXCEPTION
+            return fEngine.SessionReply(refnum);
+            CATCH_EXCEPTION_RETURN
         }
 
-        void GetUUIDForClientName(const char *client_name, char *uuid_res, int *result)
+        int GetUUIDForClientName(const char *client_name, char *uuid_res)
         {
             TRY_CALL
             JackLock lock(&fEngine);
-            fEngine.GetUUIDForClientName(client_name, uuid_res, result);
-            CATCH_EXCEPTION
+            return fEngine.GetUUIDForClientName(client_name, uuid_res);
+            CATCH_EXCEPTION_RETURN
         }
-        void GetClientNameForUUID(const char *uuid, char *name_res, int *result)
+        int GetClientNameForUUID(const char *uuid, char *name_res)
         {
             TRY_CALL
             JackLock lock(&fEngine);
-            fEngine.GetClientNameForUUID(uuid, name_res, result);
-            CATCH_EXCEPTION
+            return fEngine.GetClientNameForUUID(uuid, name_res);
+            CATCH_EXCEPTION_RETURN
         }
-        void ReserveClientName(const char *name, const char *uuid, int *result)
+        int ReserveClientName(const char *name, const char *uuid)
         {
             TRY_CALL
             JackLock lock(&fEngine);
-            fEngine.ReserveClientName(name, uuid, result);
-            CATCH_EXCEPTION
+            return fEngine.ReserveClientName(name, uuid);
+            CATCH_EXCEPTION_RETURN
         }
 
-        void ClientHasSessionCallback(const char *name, int *result)
+        int ClientHasSessionCallback(const char *name)
         {
             TRY_CALL
             JackLock lock(&fEngine);
-            fEngine.ClientHasSessionCallback(name, result);
-            CATCH_EXCEPTION
+            return fEngine.ClientHasSessionCallback(name);
+            CATCH_EXCEPTION_RETURN
         }
 };
 

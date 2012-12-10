@@ -26,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackCoreMidiOutputPort.h"
 #include "JackMidiUtil.h"
 #include "JackTime.h"
+#include "JackError.h"
 
 using Jack::JackCoreMidiOutputPort;
 
@@ -80,7 +81,11 @@ JackCoreMidiOutputPort::Execute()
         packet = MIDIPacketListAdd(packet_list, PACKET_BUFFER_SIZE, packet,
                                    timestamp, size, data);
         if (packet) {
-            while (GetMicroSeconds() < send_time) {
+            do {
+                if (GetMicroSeconds() >= send_time) {
+                    event = 0;
+                    break;
+                }
                 event = GetCoreMidiEvent(false);
                 if (! event) {
                     break;
@@ -89,10 +94,7 @@ JackCoreMidiOutputPort::Execute()
                                            packet,
                                            GetTimeStampFromFrames(event->time),
                                            event->size, event->buffer);
-                if (! packet) {
-                    break;
-                }
-            }
+            } while (packet);
             SendPacketList(packet_list);
         } else {
 

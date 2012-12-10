@@ -98,9 +98,14 @@ int JackInternalClient::Open(const char* server_name, const char* name, int uuid
     return 0;
 
 error:
-    fChannel->Stop();
     fChannel->Close();
     return -1;
+}
+
+void JackInternalClient::ShutDown()
+{
+    jack_log("JackInternalClient::ShutDown");
+    JackClient::ShutDown();
 }
 
 JackGraphManager* JackInternalClient::GetGraphManager() const
@@ -193,10 +198,12 @@ JackLoadableInternalClient2::JackLoadableInternalClient2(JackServer* server, Jac
 
 JackLoadableInternalClient::~JackLoadableInternalClient()
 {
-    if (fFinish != NULL)
+    if (fFinish != NULL) {
         fFinish(fProcessArg);
-    if (fHandle != NULL)
+    }
+    if (fHandle != NULL) {
         UnloadJackModule(fHandle);
+    }
 }
 
 int JackLoadableInternalClient1::Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status)

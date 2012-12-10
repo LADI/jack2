@@ -16,6 +16,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include "JackCompilerDeps.h"
+#include "driver_interface.h"
 #include "JackNetDriver.h"
 #include "JackEngineControl.h"
 #include "JackLockedEngine.h"
@@ -27,7 +29,7 @@ namespace Jack
 {
     JackNetDriver::JackNetDriver(const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table,
                                 const char* ip, int udp_port, int mtu, int midi_input_ports, int midi_output_ports,
-                                char* net_name, uint transport_sync, int network_latency, int celt_encoding)
+                                char* net_name, uint transport_sync, int network_latency, int celt_encoding, int opus_encoding)
             : JackWaiterDriver(name, alias, engine, table), JackNetSlaveInterface(ip, udp_port)
     {
         jack_log("JackNetDriver::JackNetDriver ip %s, port %d", ip, udp_port);
@@ -43,6 +45,9 @@ namespace Jack
         if (celt_encoding > 0) {
             fParams.fSampleEncoder = JackCeltEncoder;
             fParams.fKBps = celt_encoding;
+        } else if (opus_encoding > 0) {
+            fParams.fSampleEncoder = JackOpusEncoder;
+            fParams.fKBps = opus_encoding;
         } else {
             fParams.fSampleEncoder = JackFloatEncoder;
             //fParams.fSampleEncoder = JackIntEncoder;
@@ -509,7 +514,7 @@ namespace Jack
         DecodeSyncPacket();
 
 #ifdef JACK_MONITOR
-        fNetTimeMon->Add((float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
+        fNetTimeMon->Add(float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
 #endif
         //audio, midi or sync if driver is late
         int res = DataRecv();
@@ -524,7 +529,7 @@ namespace Jack
         JackDriver::CycleTakeBeginTime();
 
 #ifdef JACK_MONITOR
-        fNetTimeMon->Add((float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
+        fNetTimeMon->Add(float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
 #endif
 
         return 0;
@@ -555,7 +560,7 @@ namespace Jack
         }
 
 #ifdef JACK_MONITOR
-        fNetTimeMon->AddLast((float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
+        fNetTimeMon->AddLast(float(GetMicroSeconds() - fRcvSyncUst) / float(fEngineControl->fPeriodUsecs) * 100.f);
 #endif
 
         //sync
@@ -588,6 +593,7 @@ namespace Jack
     extern "C"
     {
 #endif
+
         SERVER_EXPORT jack_driver_desc_t* driver_get_descriptor()
         {
             jack_driver_desc_t * desc;
@@ -597,7 +603,7 @@ namespace Jack
             desc = jack_driver_descriptor_construct("net", JackDriverMaster, "netjack slave backend component", &filler);
 
             strcpy(value.str, DEFAULT_MULTICAST_IP);
-            jack_driver_descriptor_add_parameter(desc, &filler, "multicast-ip", 'a', JackDriverParamString, &value, NULL, "Multicast Address", NULL);
+            jack_driver_descriptor_add_parameter(desc, &filler, "multicast-ip", 'a', JackDriverParamString, &value, NULL, "Multicast address, or explicit IP of the master", NULL);
 
             value.i = DEFAULT_PORT;
             jack_driver_descriptor_add_parameter(desc, &filler, "udp-net-port", 'p', JackDriverParamInt, &value, NULL, "UDP port", NULL);
@@ -617,11 +623,18 @@ namespace Jack
             value.i = -1;
             jack_driver_descriptor_add_parameter(desc, &filler, "celt", 'c', JackDriverParamInt, &value, NULL, "Set CELT encoding and number of kBits per channel", NULL);
 #endif
+#if HAVE_OPUS
+            value.i = -1;
+            jack_driver_descriptor_add_parameter(desc, &filler, "opus", 'O', JackDriverParamInt, &value, NULL, "Set Opus encoding and number of kBits per channel", NULL);
+#endif
             strcpy(value.str, "'hostname'");
             jack_driver_descriptor_add_parameter(desc, &filler, "client-name", 'n', JackDriverParamString, &value, NULL, "Name of the jack client", NULL);
 
+/*  
+Deactivated for now..
             value.ui = 0U;
             jack_driver_descriptor_add_parameter(desc, &filler, "transport-sync", 't', JackDriverParamUInt, &value, NULL, "Sync transport with master's", NULL);
+*/
 
             value.ui = 5U;
             jack_driver_descriptor_add_parameter(desc, &filler, "latency", 'l', JackDriverParamUInt, &value, NULL, "Network latency", NULL);
@@ -644,6 +657,7 @@ namespace Jack
             int midi_input_ports = 0;
             int midi_output_ports = 0;
             int celt_encoding = -1;
+            int opus_encoding = -1;
             bool monitor = false;
             int network_latency = 5;
             const JSList* node;
@@ -693,12 +707,20 @@ namespace Jack
                         celt_encoding = param->value.i;
                         break;
                     #endif
+                    #if HAVE_OPUS
+                    case 'O':
+                        opus_encoding = param->value.i;
+                        break;
+                    #endif
                     case 'n' :
                         strncpy(net_name, param->value.str, JACK_CLIENT_NAME_SIZE);
                         break;
+                    /*
+                    Deactivated for now..
                     case 't' :
                         transport_sync = param->value.ui;
                         break;
+                    */
                     case 'l' :
                         network_latency = param->value.ui;
                         if (network_latency > NETWORK_MAX_LATENCY) {
@@ -715,7 +737,7 @@ namespace Jack
                         new Jack::JackNetDriver("system", "net_pcm", engine, table, multicast_ip, udp_port, mtu,
                                                 midi_input_ports, midi_output_ports,
                                                 net_name, transport_sync,
-                                                network_latency, celt_encoding));
+                                                network_latency, celt_encoding, opus_encoding));
                 if (driver->Open(period_size, sample_rate, 1, 1, audio_capture_ports, audio_playback_ports, monitor, "from_master_", "to_master_", 0, 0) == 0) {
                     return driver;
                 } else {

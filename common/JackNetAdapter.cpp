@@ -102,6 +102,14 @@ namespace Jack
                     }
                     break;
             #endif
+            #if HAVE_OPUS
+                case 'O':
+                    if (param->value.i > 0) {
+                        fParams.fSampleEncoder = JackOpusEncoder;
+                        fParams.fKBps = param->value.i;
+                    }
+                    break;
+            #endif
                 case 'l' :
                     fParams.fNetworkLatency = param->value.i;
                     if (fParams.fNetworkLatency > NETWORK_MAX_LATENCY) {
@@ -260,6 +268,7 @@ namespace Jack
                 }
             return false;
         } catch (JackNetException& e) {
+            // Otherwise just restart...
             e.PrintMessage();
             jack_info("NetAdapter is restarted");
             Reset();
@@ -403,7 +412,7 @@ extern "C"
         desc = jack_driver_descriptor_construct("netadapter", JackDriverNone, "netjack net <==> audio backend adapter", &filler);
 
         strcpy(value.str, DEFAULT_MULTICAST_IP);
-        jack_driver_descriptor_add_parameter(desc, &filler, "multicast-ip", 'a', JackDriverParamString, &value, NULL, "Multicast Address", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "multicast-ip", 'a', JackDriverParamString, &value, NULL, "Multicast address, or explicit IP of the master", NULL);
 
         value.i = DEFAULT_PORT;
         jack_driver_descriptor_add_parameter(desc, &filler, "udp-net-port", 'p', JackDriverParamInt, &value, NULL, "UDP port", NULL);
@@ -413,11 +422,16 @@ extern "C"
 
         value.i = 2;
         jack_driver_descriptor_add_parameter(desc, &filler, "input-ports", 'C', JackDriverParamInt, &value, NULL, "Number of audio input ports", NULL);
-        jack_driver_descriptor_add_parameter(desc, &filler, "output-ports", 'C', JackDriverParamInt, &value, NULL, "Number of audio output ports", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "output-ports", 'P', JackDriverParamInt, &value, NULL, "Number of audio output ports", NULL);
 
     #if HAVE_CELT
         value.i = -1;
         jack_driver_descriptor_add_parameter(desc, &filler, "celt", 'c', JackDriverParamInt, &value, NULL, "Set CELT encoding and number of kBits per channel", NULL);
+    #endif
+
+    #if HAVE_OPUS
+        value.i = -1;
+        jack_driver_descriptor_add_parameter(desc, &filler, "opus", 'O', JackDriverParamInt, &value, NULL, "Set Opus encoding and number of kBits per channel", NULL);
     #endif
 
         strcpy(value.str, "'hostname'");
@@ -462,7 +476,7 @@ extern "C"
             }
 
         } catch (...) {
-            jack_info("NetAdapter allocation error");
+            jack_info("netadapter allocation error");
             return 1;
         }
     }

@@ -40,14 +40,15 @@ enum JackNetEncoder {
     JackFloatEncoder = 0,   // samples are transmitted as float
     JackIntEncoder = 1,     // samples are transmitted as 16 bits integer
     JackCeltEncoder = 2,    // samples are transmitted using CELT codec (http://www.celt-codec.org/)
+    JackOpusEncoder = 3,    // samples are transmitted using OPUS codec (http://www.opus-codec.org/)
 };
 
 typedef struct {
 
-    int audio_input;    // from master or to slave (-1 for get master audio physical outputs)
-    int audio_output;   // to master or from slave (-1 for get master audio physical inputs)
-    int midi_input;     // from master or to slave (-1 for get master MIDI physical outputs)
-    int midi_output;    // to master or from slave (-1 for get master MIDI physical inputs)
+    int audio_input;    // from master or to slave (-1 to take master audio physical inputs)
+    int audio_output;   // to master or from slave (-1 to take master audio physical outputs)
+    int midi_input;     // from master or to slave (-1 to take master MIDI physical inputs)
+    int midi_output;    // to master or from slave (-1 to take master MIDI physical outputs)
     int mtu;            // network Maximum Transmission Unit
     int time_out;       // in second, -1 means in infinite
     int encoder;        // encoder type (one of JackNetEncoder)
@@ -58,10 +59,10 @@ typedef struct {
 
 typedef struct {
 
-    int audio_input;                    // master audio physical outputs
-    int audio_output;                   // master audio physical inputs
-    int midi_input;                     // master MIDI physical outputs
-    int midi_output;                    // master MIDI physical inputs
+    int audio_input;                    // master audio physical outputs (-1 to take slave wanted audio inputs)
+    int audio_output;                   // master audio physical inputs (-1 to take slave wanted audio outputs)
+    int midi_input;                     // master MIDI physical outputs (-1 to take slave wanted MIDI inputs)
+    int midi_output;                    // master MIDI physical inputs (-1 to take slave wanted MIDI outputs)
     jack_nframes_t buffer_size;         // mater buffer size
     jack_nframes_t sample_rate;         // mater sample rate
     char master_name[MASTER_NAME_SIZE]; // master machine name

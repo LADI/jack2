@@ -166,9 +166,8 @@ static jack_client_t* jack_client_open_aux(const char* client_name, jack_options
 
 LIB_EXPORT jack_client_t* jack_client_open(const char* ext_client_name, jack_options_t options, jack_status_t* status, ...)
 {
-#ifdef __CLIENTDEBUG__
-        JackGlobals::CheckContext("jack_client_open");
-#endif
+    JackGlobals::CheckContext("jack_client_open");
+
     try {
         assert(JackGlobals::fOpenMutex);
         JackGlobals::fOpenMutex->Lock();
@@ -178,7 +177,7 @@ LIB_EXPORT jack_client_t* jack_client_open(const char* ext_client_name, jack_opt
         va_end(ap);
         JackGlobals::fOpenMutex->Unlock();
         return res;
-    } catch(std::bad_alloc& e) {
+    } catch (std::bad_alloc& e) {
         jack_error("Memory allocation error...");
         return NULL;
     } catch (...) {
@@ -189,9 +188,8 @@ LIB_EXPORT jack_client_t* jack_client_open(const char* ext_client_name, jack_opt
 
 LIB_EXPORT int jack_client_close(jack_client_t* ext_client)
 {
-#ifdef __CLIENTDEBUG__
     JackGlobals::CheckContext("jack_client_close");
-#endif
+
     assert(JackGlobals::fOpenMutex);
     JackGlobals::fOpenMutex->Lock();
     int res = -1;

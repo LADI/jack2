@@ -31,10 +31,178 @@ David Garcia Garzon
 Valerio Pilo
 Chris Caudle
 John Emmas
+Robin Gareus
 
 ---------------------------
   Jackdmp changes log
 ---------------------------
+
+2012-11-21 Stephane Letz  <letz@grame.fr>
+
+	* Correct JackPortAudioDriver::Open : special case for ASIO drivers.
+
+2012-10-20 Stephane Letz  <letz@grame.fr>
+
+	* Correct JackEngine::NotifyGraphReorder : graph-order callback now notified after port latencies update.
+
+2012-09-22 Robin Gareus <robin@gareus.org>
+
+	* netjack/opus: don't re-init en/decoders.
+
+2012-09-18 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* Use string ids in the alsa device list.
+
+2012-09-10 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* controlapi: fix double free on master switch.
+
+2012-09-10 Robin Gareus <robin@gareus.org>
+
+	* netjack1/netone opus support.
+	* netjack1/2 Opus: use only 2bytes for encoded-length.
+	* wscript: add header defines and libs for example-clients/netsource.
+	* fix duplicate prog.includes.
+
+2012-09-05 Stephane Letz  <letz@grame.fr>
+
+	* More robust channel mapping handling in JackCoreAudioDriver.
+
+2012-09-05 Robin Gareus <robin@gareus.org>
+
+	* Add opus support to NetJack2.
+
+2012-08-21 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* jack_control: fix epr command.
+
+2012-08-21 Stephane Letz  <letz@grame.fr>
+
+	* Update JackCoreAudioDriver and JackCoreAudioAdapter with more recent API.
+
+2012-08-03 Stephane Letz  <letz@grame.fr>
+
+	* Change framework installation hierarchy for OSX Mountain Lion.
+
+2012-08-02 Stephane Letz  <letz@grame.fr>
+
+	* Devin Anderson patch for Jack/CoreMIDI duplicated messages.
+
+2012-07-24 Stephane Letz  <letz@grame.fr>
+
+	* Fix in ALSA adapter.
+
+2012-05-26 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* Fix alsa driver parameter order.
+	* Control API: Enforce driver/internal parameter order.
+
+2012-05-24 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* Extend jack_control to have parameter reset commands.
+
+2012-03-24 Adrian Knoth  <adi@drcomp.erfurt.thur.de>
+
+	* Align buffers to 32 byte boundaries to allow AVX processing.
+
+2012-03-21 Stephane Letz  <letz@grame.fr>
+
+	* New jack_get_cycle_times() implementation from Fons Adriennsen.
+
+2012-03-17 Nedko Arnaudov  <nedko@arnaudov.name>
+
+	* Update waf.
+
+2012-03-17 Adrian Knoth  <adi@drcomp.erfurt.thur.de>
+
+	* [firewire] Introduce UpdateLatencies() in FFADO backend.
+	* [firewire] Allow FFADO backend to change the buffer size.
+
+2012-03-16 Stephane Letz  <letz@grame.fr>
+
+	* Rework JackMessageBuffer.
+
+2012-03-15 Stephane Letz  <letz@grame.fr>
+
+	* POST_PACKED_STRUCTURE used for jack_latency_range_t type.
+
+2012-03-09 Stephane Letz  <letz@grame.fr>
+
+	* Remove JACK_32_64 flag, so POST_PACKED_STRUCTURE now always used.
+
+2012-02-10 Stephane Letz  <letz@grame.fr>
+
+	* Improve libjacknet master mode.
+
+2012-02-09 Stephane Letz  <letz@grame.fr>
+
+	* In control API, UNIX like sigset_t replaced by more abstract jackctl_sigmask_t * opaque struct.
+
+2012-02-01 Stephane Letz  <letz@grame.fr>
+
+	* Check server API callback from notification thread.
+	* Use a time-out in notification channel write function.
+	* Fix lock management in JackEngine.
+
+2012-01-29 Stephane Letz  <letz@grame.fr>
+
+	* A bit more robust JackMessageBuffer implementation (in progress).
+
+2012-01-27 Stephane Letz  <letz@grame.fr>
+
+	* Rename JackProcessSync in JackPosixProcessSync.
+
+2012-01-26 Stephane Letz  <letz@grame.fr>
+
+	* Add EndTime function (especially for Windows).
+
+2012-01-25 Stephane Letz  <letz@grame.fr>
+
+	* Fix NetJack2 initialisation bug.
+
+2012-01-24 Stephane Letz  <letz@grame.fr>
+
+	* Improve ShutDown in NetManager.
+	* Correct ShutDown in JackInternalClient and JackLibClient.
+
+2012-01-20 Stephane Letz  <letz@grame.fr>
+
+	* Experimental system port alias use in Windows JackRouter.
+
+2012-01-19 Stephane Letz  <letz@grame.fr>
+
+	* Implement shutdown for in server clients.
+	* Better time-out management in NetJack2.
+
+2012-01-13 Stephane Letz  <letz@grame.fr>
+
+	* More robust server/client protocol.
+
+2012-01-11 Stephane Letz  <letz@grame.fr>
+
+	* Factorize code the server/client request in JackRequestDecoder class.
+
+2012-01-06 Stephane Letz  <letz@grame.fr>
+
+	* Cleanup drivers and internals loading code.
+	* jackctl_driver_params_parse API moved in public control.h.
+	* More general drivers/internals loading model on Windows.
+
+2012-01-06 Stephane Letz  <letz@grame.fr>
+
+	* Fix for compilation on Solaris.
+
+2012-01-04 Stephane Letz  <letz@grame.fr>
+
+	* Fix library symbols export issue.
+
+2012-01-02 Stephane Letz  <letz@grame.fr>
+
+	* Adrian Knoth fix in midiseq.c.
+
+2011-12-20 Stephane Letz  <letz@grame.fr>
+
+	* Version 1.9.9 started. 
 
 2011-11-25 Stephane Letz  <letz@grame.fr>
 
