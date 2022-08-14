@@ -21,10 +21,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define __JACKNETMANAGER_H__
 
 #include "JackNetInterface.h"
-#include "thread.h"
 #include "jack.h"
-#include "jslist.h"
 #include <list>
+#include <map>
 
 namespace Jack
 {
@@ -34,16 +33,20 @@ namespace Jack
     \Brief This class describes a Net Master
     */
 
+    typedef std::list<std::pair<std::string, std::string> > connections_list_t;
+
     class JackNetMaster : public JackNetMasterInterface
     {
             friend class JackNetMasterManager;
 
         private:
-      
+
             static int SetProcess(jack_nframes_t nframes, void* arg);
             static int SetBufferSize(jack_nframes_t nframes, void* arg);
+            static int SetSampleRate(jack_nframes_t nframes, void* arg);
             static void SetTimebaseCallback(jack_transport_state_t state, jack_nframes_t nframes, jack_position_t* pos, int new_pos, void* arg);
             static void SetConnectCallback(jack_port_id_t a, jack_port_id_t b, int connect, void* arg);
+            static void LatencyCallback(jack_latency_callback_mode_t mode, void* arg);
 
             //jack client
             jack_client_t* fClient;
@@ -77,6 +80,9 @@ namespace Jack
             void ConnectPorts();
             void ConnectCallback(jack_port_id_t a, jack_port_id_t b, int connect);
 
+            void SaveConnections(connections_list_t& connections);
+            void LoadConnections(const connections_list_t& connections);
+
         public:
 
             JackNetMaster(JackNetSocket& socket, session_params_t& params, const char* multicast_ip);
@@ -87,6 +93,7 @@ namespace Jack
 
     typedef std::list<JackNetMaster*> master_list_t;
     typedef master_list_t::iterator master_list_it_t;
+    typedef std::map <std::string, connections_list_t> master_connections_list_t;
 
     /**
     \Brief This class describer the Network Manager
@@ -108,16 +115,18 @@ namespace Jack
             JackNetSocket fSocket;
             jack_native_thread_t fThread;
             master_list_t fMasterList;
+            master_connections_list_t fMasterConnectionList;
             uint32_t fGlobalID;
             bool fRunning;
             bool fAutoConnect;
+            bool fAutoSave;
 
             void Run();
             JackNetMaster* InitMaster(session_params_t& params);
             master_list_it_t FindMaster(uint32_t client_id);
             int KillMaster(session_params_t* params);
             int SyncCallback(jack_transport_state_t state, jack_position_t* pos);
-            int CountIO(int flags);
+            int CountIO(const char* type, int flags);
             void ShutDown();
 
         public:

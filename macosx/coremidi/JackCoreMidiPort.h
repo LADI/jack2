@@ -21,6 +21,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define __JackCoreMidiPort__
 
 #include <CoreMIDI/CoreMIDI.h>
+#include <set>
 
 #include "JackConstants.h"
 
@@ -30,14 +31,12 @@ namespace Jack {
 
     private:
 
-        char alias[REAL_JACK_PORT_NAME_SIZE];
+        char alias[REAL_JACK_PORT_NAME_SIZE+1];
+        char name[REAL_JACK_PORT_NAME_SIZE+1];
+        char device_name[REAL_JACK_PORT_NAME_SIZE+1];
         bool initialized;
-        char name[REAL_JACK_PORT_NAME_SIZE];
 
     protected:
-
-        MIDIEndpointRef
-        GetEndpoint();
 
         void
         Initialize(const char *alias_name, const char *client_name,
@@ -46,6 +45,11 @@ namespace Jack {
 
         double time_ratio;
         MIDIEndpointRef endpoint;
+         
+        MIDIEndpointRef
+        GetEndpoint();
+        
+        static std::set<MIDIEndpointRef> endpoint_list;
 
     public:
 
@@ -59,6 +63,11 @@ namespace Jack {
 
         const char *
         GetName();
+
+        const char *
+        GetDeviceName();
+
+        static bool IsInternalPort(MIDIObjectRef port_aux);
 
     };
 

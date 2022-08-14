@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include <jack/jack.h>
 #include <jack/transport.h>
@@ -35,7 +36,7 @@ showtime ()
 	transport_state = jack_transport_query (client, &current);
 	frame_time = jack_frame_time (client);
 
-	printf ("frame = %u  frame_time = %u usecs = %lld \t",  current.frame, frame_time, current.usecs);
+	printf ("frame = %u  frame_time = %u usecs = %" PRIu64 "\t",  current.frame, frame_time, current.usecs);
 
 	switch (transport_state) {
 	case JackTransportStopped:
@@ -86,9 +87,12 @@ main (int argc, char *argv[])
 		return 1;
 	}
 
+#ifndef WIN32
 	signal (SIGQUIT, signal_handler);
-	signal (SIGTERM, signal_handler);
 	signal (SIGHUP, signal_handler);
+#endif
+
+	signal (SIGTERM, signal_handler);
 	signal (SIGINT, signal_handler);
 
 	/* tell the JACK server to call `jack_shutdown()' if

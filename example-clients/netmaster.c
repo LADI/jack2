@@ -17,6 +17,7 @@
 */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
 #ifndef WIN32
@@ -100,8 +101,8 @@ main (int argc, char *argv[])
 	}
 
     int i;
-    jack_master_t request = { 4, 4, -1, -1, buffer_size, sample_rate, "master" };
-    //jack_master_t request = { -1, -1, -1, -1, buffer_size, sample_rate, "master" };
+    //jack_master_t request = { 4, 4, -1, -1, buffer_size, sample_rate, "master", -1 };
+    jack_master_t request = { -1, -1, -1, -1, buffer_size, sample_rate, "net_master", 6, true };
     jack_slave_t result;
     float** audio_input_buffer;
     float** audio_output_buffer;
@@ -109,7 +110,7 @@ main (int argc, char *argv[])
 
     printf("Waiting for a slave...\n");
 
-    if ((net = jack_net_master_open(multicast_ip, udp_port, "net_master", &request, &result))  == 0) {
+    if ((net = jack_net_master_open(multicast_ip, udp_port, &request, &result))  == 0) {
         fprintf(stderr, "NetJack master can not be opened\n");
 		return 1;
 	}
@@ -146,7 +147,13 @@ main (int argc, char *argv[])
     WARNING !! : this code is given for demonstration purpose. For proper timing bevahiour
     it has to be called in a real-time context (which is *not* the case here...)
     */
-
+    
+    //usleep(5*1000000);
+    printf("Wait...\n");
+    //sleep(10);
+    usleep(1000000);
+    printf("Wait...OK\n");
+  
   	while (1) {
 
         // Copy input to output
@@ -154,17 +161,33 @@ main (int argc, char *argv[])
         for (i = 0; i < result.audio_input; i++) {
             memcpy(audio_output_buffer[i], audio_input_buffer[i], buffer_size * sizeof(float));
         }
-
+   
+        /*
         if (jack_net_master_send(net, result.audio_output, audio_output_buffer, 0, NULL) < 0) {
             printf("jack_net_master_send failure, exiting\n");
             break;
         }
-
+        
+        usleep(10000);
+         
         if (jack_net_master_recv(net, result.audio_input, audio_input_buffer, 0, NULL) < 0) {
             printf("jack_net_master_recv failure, exiting\n");
             break;
         }
-
+        */
+        
+        if (jack_net_master_send_slice(net, result.audio_output, audio_output_buffer, 0, NULL, BUFFER_SIZE/2) < 0) {
+            printf("jack_net_master_send failure, exiting\n");
+            break;
+        }
+        
+        usleep(10000);
+         
+        if (jack_net_master_recv_slice(net, result.audio_input, audio_input_buffer, 0, NULL, BUFFER_SIZE/2) < 0) {
+            printf("jack_net_master_recv failure, exiting\n");
+            break;
+        }
+        
         usleep(wait_usec);
 	};
 

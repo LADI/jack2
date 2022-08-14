@@ -55,34 +55,40 @@ class SERVER_EXPORT JackServer
         JackLockedEngine* fEngine;
         JackEngineControl* fEngineControl;
         JackGraphManager* fGraphManager;
-        JackServerChannel fChannel;
+        JackServerChannel fRequestChannel;
         JackConnectionManager fConnectionState;
         JackSynchro fSynchroTable[CLIENT_NUM];
         bool fFreewheel;
 
-        int InternalClientLoadAux(JackLoadableInternalClient* client, const char* so_name, const char* client_name, int options, int* int_ref, int uuid, int* status);
+        int InternalClientLoadAux(JackLoadableInternalClient* client, const char* so_name, const char* client_name, int options, int* int_ref, jack_uuid_t uuid, int* status);
 
     public:
 
-        JackServer(bool sync, bool temporary, int timeout, bool rt, int priority, int port_max, bool verbose, jack_timer_type_t clock, JackSelfConnectMode self_connect_mode, const char* server_name);
+        JackServer(bool sync, bool temporary, int timeout, bool rt, int priority, int port_max, bool verbose, jack_timer_type_t clock, char self_connect_mode, const char* server_name);
         ~JackServer();
 
+        // Server control
         int Open(jack_driver_desc_t* driver_desc, JSList* driver_params);
         int Close();
 
         int Start();
         int Stop();
+
         bool IsRunning();
 
         // RT thread
         void Notify(int refnum, int notify, int value);
 
-        // Command thread : API
+        // From request thread : API
         int SetBufferSize(jack_nframes_t buffer_size);
         int SetFreewheel(bool onoff);
-        int InternalClientLoad1(const char* client_name, const char* so_name, const char* objet_data, int options, int* int_ref, int uuid, int* status);
-        int InternalClientLoad2(const char* client_name, const char* so_name, const JSList * parameters, int options, int* int_ref, int uuid, int* status);
-        void ClientKill(int refnum);
+
+        // Internals clients
+        int InternalClientLoad1(const char* client_name, const char* so_name, const char* objet_data, int options, int* int_ref, jack_uuid_t uuid, int* status);
+        int InternalClientLoad2(const char* client_name, const char* so_name, const JSList * parameters, int options, int* int_ref, jack_uuid_t uuid, int* status);
+
+        // Internal session file
+        int LoadInternalSessionFile(const char* file);
 
         // Transport management
         int ReleaseTimebase(int refnum);

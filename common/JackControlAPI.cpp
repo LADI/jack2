@@ -47,12 +47,16 @@
 
 using namespace Jack;
 
-#define SELF_CONNECT_MODE_ALLOW_CHAR                  ' '
-#define SELF_CONNECT_MODE_FAIL_EXTERNAL_ONLY_CHAR     'E'
-#define SELF_CONNECT_MODE_IGNORE_EXTERNAL_ONLY_CHAR   'e'
-#define SELF_CONNECT_MODE_FAIL_ALL_CHAR               'A'
-#define SELF_CONNECT_MODE_IGNORE_ALL_CHAR             'a'
-#define SELF_CONNECT_MODES_COUNT              5
+/* JackEngine::CheckPortsConnect() has some assumptions about char values */
+static struct jack_constraint_enum_char_descriptor self_connect_mode_constraint_descr_array[] =
+{
+    { ' ', "Don't restrict self connect requests" },
+    { 'E', "Fail self connect requests to external ports only" },
+    { 'e', "Ignore self connect requests to external ports only" },
+    { 'A', "Fail all self connect requests" },
+    { 'a', "Ignore all self connect requests" },
+    { 0 }
+};
 
 struct jackctl_server
 {
@@ -105,8 +109,6 @@ struct jackctl_server
     /* char enum, self connect mode mode */
     union jackctl_parameter_value self_connect_mode;
     union jackctl_parameter_value default_self_connect_mode;
-    jack_driver_param_value_enum_t self_connect_mode_possible_values[SELF_CONNECT_MODES_COUNT];
-    jack_driver_param_constraint_desc_t self_connect_mode_constraint;
 };
 
 struct jackctl_driver
@@ -139,6 +141,18 @@ struct jackctl_parameter
     char id;
     jack_driver_param_constraint_desc_t * constraint_ptr;
 };
+
+const char * jack_get_self_connect_mode_description(char mode)
+{
+    struct jack_constraint_enum_char_descriptor * descr_ptr;
+
+    for (descr_ptr = self_connect_mode_constraint_descr_array;
+         descr_ptr->value;
+         descr_ptr++)
+        if (descr_ptr->value == mode) return descr_ptr->short_desc;
+
+    return NULL;
+}
 
 static
 struct jackctl_parameter *
@@ -205,6 +219,7 @@ jackctl_free_driver_parameters(
     while (driver_ptr->parameters)
     {
         next_node_ptr = driver_ptr->parameters->next;
+        jack_constraint_free(((jackctl_parameter *)driver_ptr->parameters->data)->constraint_ptr);
         free(driver_ptr->parameters->data);
         free(driver_ptr->parameters);
         driver_ptr->parameters = next_node_ptr;
@@ -512,6 +527,7 @@ jackctl_server_free_parameters(
     while (server_ptr->parameters)
     {
         next_node_ptr = server_ptr->parameters->next;
+        jack_constraint_free(((jackctl_parameter *)server_ptr->parameters->data)->constraint_ptr);
         free(server_ptr->parameters->data);
         free(server_ptr->parameters);
         server_ptr->parameters = next_node_ptr;
@@ -626,7 +642,12 @@ jackctl_setup_signals(
     sigaddset(&sigmask.signals, SIGQUIT);
     sigaddset(&sigmask.signals, SIGPIPE);
     sigaddset(&sigmask.signals, SIGTERM);
+#ifndef __ANDROID__
+    /* android's bionic c doesn't provide pthread_cancel() and related functions.
+     * to solve this issue, use pthread_kill() & SIGUSR1 instead.
+     */
     sigaddset(&sigmask.signals, SIGUSR1);
+#endif
     sigaddset(&sigmask.signals, SIGUSR2);
 
     /* all child threads will inherit this mask unless they
@@ -708,7 +729,7 @@ get_realtime_priority_constraint()
 
     //jack_info("realtime priority range is (%d,%d)", min, max);
 
-    constraint_ptr = (jack_driver_param_constraint_desc_t *)calloc(1, sizeof(jack_driver_param_value_enum_t));
+    constraint_ptr = (jack_driver_param_constraint_desc_t *)calloc(1, sizeof(jack_driver_param_constraint_desc_t));
     if (constraint_ptr == NULL)
     {
         jack_error("Cannot allocate memory for jack_driver_param_constraint_desc_t structure.");
@@ -726,6 +747,14 @@ SERVER_EXPORT jackctl_server_t * jackctl_server_create(
     bool (* on_device_acquire)(const char * device_name),
     void (* on_device_release)(const char * device_name))
 {
+    return jackctl_server_create2(on_device_acquire, on_device_release, NULL);
+}
+
+SERVER_EXPORT jackctl_server_t * jackctl_server_create2(
+    bool (* on_device_acquire)(const char * device_name),
+    void (* on_device_release)(const char * device_name),
+    void (* on_device_reservation_loop)(void))
+{
     struct jackctl_server * server_ptr;
     union jackctl_parameter_value value;
 
@@ -741,7 +770,7 @@ SERVER_EXPORT jackctl_server_t * jackctl_server_create(
     server_ptr->parameters = NULL;
     server_ptr->engine = NULL;
 
-    strcpy(value.str, JACK_DEFAULT_SERVER_NAME);
+    strcpy(value.str, JackTools::DefaultServerName());
     if (jackctl_add_parameter(
             &server_ptr->parameters,
             "name",
@@ -882,26 +911,7 @@ SERVER_EXPORT jackctl_server_t * jackctl_server_create(
         goto fail_free_parameters;
     }
 
-    server_ptr->self_connect_mode_constraint.flags = JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE;
-    server_ptr->self_connect_mode_constraint.constraint.enumeration.count = SELF_CONNECT_MODES_COUNT;
-    server_ptr->self_connect_mode_constraint.constraint.enumeration.possible_values_array = server_ptr->self_connect_mode_possible_values;
-
-    server_ptr->self_connect_mode_possible_values[0].value.c = SELF_CONNECT_MODE_ALLOW_CHAR;
-    strcpy(server_ptr->self_connect_mode_possible_values[0].short_desc, "Don't restrict self connect requests");
-
-    server_ptr->self_connect_mode_possible_values[1].value.c = SELF_CONNECT_MODE_FAIL_EXTERNAL_ONLY_CHAR ;
-    strcpy(server_ptr->self_connect_mode_possible_values[1].short_desc, "Fail self connect requests to external ports only");
-
-    server_ptr->self_connect_mode_possible_values[2].value.c = SELF_CONNECT_MODE_IGNORE_EXTERNAL_ONLY_CHAR;
-    strcpy(server_ptr->self_connect_mode_possible_values[2].short_desc, "Ignore self connect requests to external ports only");
-
-    server_ptr->self_connect_mode_possible_values[3].value.c = SELF_CONNECT_MODE_FAIL_ALL_CHAR;
-    strcpy(server_ptr->self_connect_mode_possible_values[3].short_desc, "Fail all self connect requests");
-
-    server_ptr->self_connect_mode_possible_values[4].value.c = SELF_CONNECT_MODE_IGNORE_ALL_CHAR;
-    strcpy(server_ptr->self_connect_mode_possible_values[4].short_desc, "Ignore all self connect requests");
-
-    value.c = SELF_CONNECT_MODE_ALLOW_CHAR;
+    value.c = JACK_DEFAULT_SELF_CONNECT_MODE;
     if (jackctl_add_parameter(
             &server_ptr->parameters,
             "self-connect-mode",
@@ -911,13 +921,16 @@ SERVER_EXPORT jackctl_server_t * jackctl_server_create(
             &server_ptr->self_connect_mode,
             &server_ptr->default_self_connect_mode,
             value,
-            &server_ptr->self_connect_mode_constraint) == NULL)
+            jack_constraint_compose_enum_char(
+                JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE,
+                self_connect_mode_constraint_descr_array)) == NULL)
     {
         goto fail_free_parameters;
     }
 
     JackServerGlobals::on_device_acquire = on_device_acquire;
     JackServerGlobals::on_device_release = on_device_release;
+    JackServerGlobals::on_device_reservation_loop = on_device_reservation_loop;
 
     if (!jackctl_drivers_load(server_ptr))
     {
@@ -1000,7 +1013,6 @@ jackctl_server_open(
     jackctl_server *server_ptr,
     jackctl_driver *driver_ptr)
 {
-    JackSelfConnectMode self_connect_mode;
     JSList * paramlist = NULL;
 
     try {
@@ -1034,27 +1046,6 @@ jackctl_server_open(
             server_ptr->client_timeout.i = 500; /* 0.5 sec; usable when non realtime. */
         }
 
-        switch (server_ptr->self_connect_mode.c)
-        {
-        case SELF_CONNECT_MODE_ALLOW_CHAR:
-            self_connect_mode = JackSelfConnectAllow;
-            break;
-        case SELF_CONNECT_MODE_FAIL_EXTERNAL_ONLY_CHAR:
-            self_connect_mode = JackSelfConnectFailExternalOnly;
-            break;
-        case SELF_CONNECT_MODE_IGNORE_EXTERNAL_ONLY_CHAR:
-            self_connect_mode = JackSelfConnectIgnoreExternalOnly;
-            break;
-        case SELF_CONNECT_MODE_FAIL_ALL_CHAR:
-            self_connect_mode = JackSelfConnectFailAll;
-            break;
-        case SELF_CONNECT_MODE_IGNORE_ALL_CHAR:
-            self_connect_mode = JackSelfConnectIgnoreAll;
-            break;
-        default:
-            self_connect_mode = JACK_DEFAULT_SELF_CONNECT_MODE;
-        }
-
         /* check port max value before allocating server */
         if (server_ptr->port_max.ui > PORT_NUM_MAX) {
             jack_error("Jack server started with too much ports %d (when port max can be %d)", server_ptr->port_max.ui, PORT_NUM_MAX);
@@ -1071,7 +1062,7 @@ jackctl_server_open(
             server_ptr->port_max.ui,
             server_ptr->verbose.b,
             (jack_timer_type_t)server_ptr->clock_source.ui,
-            self_connect_mode,
+            server_ptr->self_connect_mode.c,
             server_ptr->name.str);
         if (server_ptr->engine == NULL)
         {
@@ -1090,7 +1081,7 @@ jackctl_server_open(
 
         return true;
 
-    } catch (std::exception e) {
+    } catch (std::exception&) {
         jack_error("jackctl_server_open error...");
         jackctl_destroy_param_list(paramlist);
     }
@@ -1292,7 +1283,7 @@ SERVER_EXPORT union jackctl_parameter_value jackctl_parameter_get_value(jackctl_
 SERVER_EXPORT bool jackctl_parameter_reset(jackctl_parameter *parameter_ptr)
 {
     if (!parameter_ptr) {
-        return NULL;
+        return false;
     }
 
     if (!parameter_ptr->is_set)
@@ -1310,7 +1301,7 @@ SERVER_EXPORT bool jackctl_parameter_reset(jackctl_parameter *parameter_ptr)
 SERVER_EXPORT bool jackctl_parameter_set_value(jackctl_parameter *parameter_ptr, const union jackctl_parameter_value * value_ptr)
 {
     if (!parameter_ptr || !value_ptr) {
-        return NULL;
+        return false;
     }
 
     parameter_ptr->is_set = true;
@@ -1384,6 +1375,17 @@ SERVER_EXPORT bool jackctl_server_unload_internal(
     }
 }
 
+SERVER_EXPORT bool jackctl_server_load_session_file(
+    jackctl_server * server_ptr,
+    const char * file)
+{
+    if (!server_ptr || !file || !server_ptr->engine) {
+        return false;
+    }
+
+    return (server_ptr->engine->LoadInternalSessionFile(file) >= 0);
+}
+
 SERVER_EXPORT bool jackctl_server_add_slave(jackctl_server * server_ptr, jackctl_driver * driver_ptr)
 {
     if (server_ptr && server_ptr->engine) {
@@ -1442,5 +1444,3 @@ SERVER_EXPORT bool jackctl_server_switch_master(jackctl_server * server_ptr, jac
         return false;
     }
 }
-
-

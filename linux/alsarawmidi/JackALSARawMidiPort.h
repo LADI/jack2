@@ -31,12 +31,13 @@ namespace Jack {
 
     private:
 
-        char alias[REAL_JACK_PORT_NAME_SIZE];
+        char alias[REAL_JACK_PORT_NAME_SIZE+1];
         struct pollfd *alsa_poll_fds;
         int alsa_poll_fd_count;
         int fds[2];
         unsigned short io_mask;
-        char name[REAL_JACK_PORT_NAME_SIZE];
+        char name[REAL_JACK_PORT_NAME_SIZE+1];
+        char device_name[REAL_JACK_PORT_NAME_SIZE+1];
         struct pollfd *queue_poll_fd;
 
     protected:
@@ -60,8 +61,8 @@ namespace Jack {
 
     public:
 
-        JackALSARawMidiPort(snd_rawmidi_info_t *info, size_t index,
-                            unsigned short io_mask);
+        JackALSARawMidiPort(const char *client_name, snd_rawmidi_info_t *info,
+                            size_t index, unsigned short io_mask);
 
         virtual
         ~JackALSARawMidiPort();
@@ -71,6 +72,9 @@ namespace Jack {
 
         const char *
         GetName();
+
+        const char *
+        GetDeviceName();
 
         int
         GetPollDescriptorCount();

@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include "types.h"
 #include "JackCompilerDeps.h"
+#include "JackConstants.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -47,9 +48,8 @@ extern "C"
 {
 #endif
 
-#define MAX_SERVERS 8			/* maximum concurrent servers */
-#define MAX_SHM_ID 256			/* generally about 16 per server */
-#define JACK_SERVER_NAME_SIZE 256	/* maximum length of server name */
+#define MAX_SERVERS 8               /* maximum concurrent servers */
+#define MAX_SHM_ID 256              /* generally about 16 per server */
 #define JACK_SHM_MAGIC 0x4a41434b	/* shm magic number: "JACK" */
 #define JACK_SHM_NULL_INDEX -1		/* NULL SHM index */
 #define JACK_SHM_REGISTRY_INDEX -2	/* pseudo SHM index for registry */
@@ -62,7 +62,7 @@ extern "C"
 #ifdef USE_POSIX_SHM
 
 #ifndef NAME_MAX
-#define NAME_MAX            255
+#define NAME_MAX 255
 #endif
 
 #ifndef SHM_NAME_MAX
@@ -71,13 +71,26 @@ extern "C"
     typedef char shm_name_t[SHM_NAME_MAX];
     typedef shm_name_t jack_shm_id_t;
 
-#elif WIN32  
-#define NAME_MAX            255
+#elif WIN32
+#define NAME_MAX 255
 #ifndef SHM_NAME_MAX
 #define SHM_NAME_MAX NAME_MAX
 #endif
     typedef char shm_name_t[SHM_NAME_MAX];
     typedef shm_name_t jack_shm_id_t;
+
+#elif __ANDROID__
+
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
+
+#ifndef SHM_NAME_MAX
+#define SHM_NAME_MAX NAME_MAX
+#endif
+    typedef char shm_name_t[SHM_NAME_MAX];
+    typedef shm_name_t jack_shm_id_t;
+    typedef int jack_shm_fd_t;
 
 #else
     /* System V SHM */
@@ -88,10 +101,16 @@ extern "C"
     typedef enum {
         shm_POSIX = 1, 			/* POSIX shared memory */
         shm_SYSV = 2, 			/* System V shared memory */
-        shm_WIN32 = 3			/* Windows 32 shared memory */
+        shm_WIN32 = 3,			/* Windows 32 shared memory */
+        shm_ANDROID = 4			/* Android shared memory */
     } jack_shmtype_t;
 
+#ifdef __APPLE__
+    /* we need to align and pack data to 32bit so that x86_64 and arm64 work together */
+    typedef int32_t jack_shm_registry_index_t;
+#else
     typedef int16_t jack_shm_registry_index_t;
+#endif
 
     /**
      * A structure holding information about shared memory allocated by
@@ -109,7 +128,7 @@ extern "C"
         pid_t pid;	/* process ID */
 #endif
 
-        char	name[JACK_SERVER_NAME_SIZE];
+        char	name[JACK_SERVER_NAME_SIZE+1];
     }
     jack_shm_server_t;
 
@@ -135,6 +154,9 @@ extern "C"
 
         jack_shmsize_t size;      /* for POSIX unattach */
         jack_shm_id_t id;        /* API specific, see above */
+#ifdef __ANDROID__
+        jack_shm_fd_t fd;
+#endif
     }
     jack_shm_registry_t;
 
@@ -153,15 +175,18 @@ extern "C"
     struct _jack_shm_info {
         jack_shm_registry_index_t index;       /* offset into the registry */
         uint32_t size;
+#ifdef __ANDROID__
+        jack_shm_fd_t fd;
+#endif
         union {
             void *attached_at;  /* address where attached */
             char ptr_size[8];
-        } ptr;  /* a "pointer" that has the same 8 bytes size when compling in 32 or 64 bits */
+        } ptr;  /* a "pointer" that has the same 8 bytes size when compiling in 32 or 64 bits */
     } POST_PACKED_STRUCTURE;
-    
+
     typedef struct _jack_shm_info jack_shm_info_t;
-    
-	/* utility functions used only within JACK */
+
+    /* utility functions used only within JACK */
 
     void jack_shm_copy_from_registry (jack_shm_info_t*,
                 jack_shm_registry_index_t);
@@ -170,7 +195,7 @@ extern "C"
     int jack_release_shm_info (jack_shm_registry_index_t);
     char* jack_shm_addr (jack_shm_info_t* si);
 
-    // here begin the API
+    /* here begin the API */
     int jack_register_server (const char *server_name, int new_registry);
     int jack_unregister_server (const char *server_name);
 

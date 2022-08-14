@@ -47,7 +47,7 @@ class JackGenericClientChannel : public detail::JackClientChannelInterface
         JackGenericClientChannel();
         virtual ~JackGenericClientChannel();
 
-        virtual int Open(const char* server_name, const char* name, int uuid, char* name_res, JackClient* obj, jack_options_t options, jack_status_t* status) { return -1; }
+        virtual int Open(const char* server_name, const char* name, jack_uuid_t uuid, char* name_res, JackClient* obj, jack_options_t options, jack_status_t* status) { return -1; }
         virtual void Close() {}
 
         virtual int Start() { return -1; }
@@ -55,10 +55,8 @@ class JackGenericClientChannel : public detail::JackClientChannelInterface
 
         int ServerCheck(const char* server_name);
 
-        void ClientCheck(const char* name, int uuid, char* name_res, int protocol, int options, int* status, int* result, int open);
-        void ClientOpen(const char* name, int pid, int uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result);
-        void ClientOpen(const char* name, int* ref, int uuid, JackEngineControl** shared_engine, JackGraphManager** shared_manager, JackClientInterface* client, int* result)
-        {}
+        void ClientCheck(const char* name, jack_uuid_t uuid, char* name_res, int protocol, int options, int* status, int* result, int open);
+        void ClientOpen(const char* name, int pid, jack_uuid_t uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result);
         void ClientClose(int refnum, int* result);
 
         void ClientActivate(int refnum, int is_real_time, int* result);
@@ -85,7 +83,7 @@ class JackGenericClientChannel : public detail::JackClientChannelInterface
 
         void GetInternalClientName(int refnum, int int_ref, char* name_res, int* result);
         void InternalClientHandle(int refnum, const char* client_name, int* status, int* int_ref, int* result);
-        void InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, int uuid, int* result);
+        void InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, jack_uuid_t uuid, int* result);
         void InternalClientUnload(int refnum, int int_ref, int* status, int* result);
 
         // Session API
@@ -95,6 +93,8 @@ class JackGenericClientChannel : public detail::JackClientChannelInterface
         void GetClientNameForUUID(int refnum, const char* uuid, char* name_res, int* result);
         void ReserveClientName(int refnum, const char* client_name, const char *uuid, int* result);
         void ClientHasSessionCallback(const char* client_name, int* result);
+
+        void PropertyChangeNotify(jack_uuid_t subject, const char* key, jack_property_change_t change, int* result);
 };
 
 } // end of namespace

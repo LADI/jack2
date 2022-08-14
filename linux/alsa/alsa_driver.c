@@ -56,6 +56,8 @@ char* strcasestr(const char* haystack, const char* needle);
 
 /* Delay (in process calls) before jackd will report an xrun */
 #define XRUN_REPORT_DELAY 0
+/* Max re-try count for Alsa poll timeout handling */
+#define MAX_RETRY_COUNT 5
 
 void
 jack_driver_init (jack_driver_t *driver)
@@ -312,9 +314,44 @@ alsa_driver_setup_io_function_pointers (alsa_driver_t *driver)
 				break;
 
 			case 4: /* NO DITHER */
+				switch (driver->playback_sample_format)
+				{
+					case SND_PCM_FORMAT_S24_LE:
+					case SND_PCM_FORMAT_S24_BE:
 				driver->write_via_copy = driver->quirk_bswap?
-					sample_move_d32u24_sSs:
-					sample_move_d32u24_sS;
+					sample_move_d32l24_sSs:
+					sample_move_d32l24_sS;
+				break;
+					case SND_PCM_FORMAT_S32_LE:
+					case SND_PCM_FORMAT_S32_BE:
+					{
+						int bits = snd_pcm_hw_params_get_sbits(driver->playback_hw_params);
+						if (bits == 32)
+						{
+							driver->write_via_copy = driver->quirk_bswap?
+								sample_move_d32_sSs:
+								sample_move_d32_sS;
+						}
+						else if (bits == 24)
+						{
+							jack_log("sample format is SND_PCM_FORMAT_S32 but only 24 bits available");
+							driver->write_via_copy = driver->quirk_bswap?
+								sample_move_d32u24_sSs:
+								sample_move_d32u24_sS;
+						}
+						else
+						{
+							jack_error("unsupported sample format for playback: "
+									   "SND_PCM_FORMAT_S32 with %d bits",
+									   bits);
+							exit (1);
+						}
+						break;
+					}
+					default:
+					jack_error("unsupported 4 byte sample_format");
+					exit (1);
+				}
 				break;
 
 			default:
@@ -341,9 +378,44 @@ alsa_driver_setup_io_function_pointers (alsa_driver_t *driver)
 					sample_move_dS_s24;
 				break;
 			case 4:
+				switch (driver->capture_sample_format)
+				{
+					case SND_PCM_FORMAT_S24_LE:
+					case SND_PCM_FORMAT_S24_BE:
 				driver->read_via_copy = driver->quirk_bswap?
-					sample_move_dS_s32u24s:
-					sample_move_dS_s32u24;
+					sample_move_dS_s32l24s:
+					sample_move_dS_s32l24;
+				break;
+					case SND_PCM_FORMAT_S32_LE:
+					case SND_PCM_FORMAT_S32_BE:
+					{
+						int bits = snd_pcm_hw_params_get_sbits(driver->capture_hw_params);
+						if (bits == 32)
+						{
+							driver->read_via_copy = driver->quirk_bswap?
+								sample_move_dS_s32s:
+								sample_move_dS_s32;
+						}
+						else if(bits == 24)
+						{
+							jack_log("sample format is SND_PCM_FORMAT_S32 but only 24 bits available");
+							driver->read_via_copy = driver->quirk_bswap?
+								sample_move_dS_s32u24s:
+								sample_move_dS_s32u24;
+						}
+						else
+						{
+							jack_error("unsupported sample format for capture: "
+									   "SND_PCM_FORMAT_S32 with %d bits",
+									   bits);
+							exit (1);
+						}
+						break;
+					}
+					default:
+                        jack_error("unsupported 4 byte sample_format");
+                        exit (1);
+                }
 				break;
 			}
 		}
@@ -364,15 +436,17 @@ alsa_driver_configure_stream (alsa_driver_t *driver, char *device_name,
 	unsigned int frame_rate;
 	snd_pcm_uframes_t stop_th;
 	static struct {
-		char Name[32];
+		char Name[40];
 		snd_pcm_format_t format;
 		int swapped;
 	} formats[] = {
- 	    {"32bit float little-endian", SND_PCM_FORMAT_FLOAT_LE},
+		{"32bit float little-endian", SND_PCM_FORMAT_FLOAT_LE, IS_LE},
 		{"32bit integer little-endian", SND_PCM_FORMAT_S32_LE, IS_LE},
 		{"32bit integer big-endian", SND_PCM_FORMAT_S32_BE, IS_BE},
-		{"24bit little-endian", SND_PCM_FORMAT_S24_3LE, IS_LE},
-		{"24bit big-endian", SND_PCM_FORMAT_S24_3BE, IS_BE},
+		{"24bit little-endian in 3bytes format", SND_PCM_FORMAT_S24_3LE, IS_LE},
+		{"24bit big-endian in 3bytes format", SND_PCM_FORMAT_S24_3BE, IS_BE},
+		{"24bit little-endian", SND_PCM_FORMAT_S24_LE, IS_LE},
+		{"24bit big-endian", SND_PCM_FORMAT_S24_BE, IS_BE},
 		{"16bit little-endian", SND_PCM_FORMAT_S16_LE, IS_LE},
 		{"16bit big-endian", SND_PCM_FORMAT_S16_BE, IS_BE},
 	};
@@ -587,6 +661,20 @@ alsa_driver_configure_stream (alsa_driver_t *driver, char *device_name,
 		return -1;
 	}
 
+	err = snd_pcm_sw_params_set_tstamp_mode(handle, sw_params, SND_PCM_TSTAMP_ENABLE);
+	if (err < 0) {
+		jack_info("Could not enable ALSA time stamp mode for %s (err %d)",
+			  stream_name, err);
+	}
+
+#if SND_LIB_MAJOR >= 1 && SND_LIB_MINOR >= 1
+	err = snd_pcm_sw_params_set_tstamp_type(handle, sw_params, SND_PCM_TSTAMP_TYPE_MONOTONIC);
+	if (err < 0) {
+		jack_info("Could not use monotonic ALSA time stamps for %s (err %d)",
+			  stream_name, err);
+	}
+#endif
+
 	if ((err = snd_pcm_sw_params (handle, sw_params)) < 0) {
 		jack_error ("ALSA: cannot set software parameters for %s\n",
 			    stream_name);
@@ -650,7 +738,7 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 		}
 	}
 
-	/* check the rate, since thats rather important */
+	/* check the rate, since that's rather important */
 
 	if (driver->playback_handle) {
 		snd_pcm_hw_params_get_rate (driver->playback_hw_params,
@@ -695,7 +783,7 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 	}
 
 
-	/* check the fragment size, since thats non-negotiable */
+	/* check the fragment size, since that's non-negotiable */
 
 	if (driver->playback_handle) {
  		snd_pcm_access_t access;
@@ -737,8 +825,8 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 		if (c_period_size != driver->frames_per_cycle) {
 			jack_error ("alsa_pcm: requested an interrupt every %"
 				    PRIu32
-				    " frames but got %uc frames for capture",
-				    driver->frames_per_cycle, p_period_size);
+				    " frames but got %u frames for capture",
+				    driver->frames_per_cycle, c_period_size);
 			return -1;
 		}
 	}
@@ -756,6 +844,8 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 		case SND_PCM_FORMAT_S32_LE:
 		case SND_PCM_FORMAT_S24_3LE:
 		case SND_PCM_FORMAT_S24_3BE:
+		case SND_PCM_FORMAT_S24_LE:
+		case SND_PCM_FORMAT_S24_BE:
 		case SND_PCM_FORMAT_S16_LE:
 		case SND_PCM_FORMAT_S32_BE:
 		case SND_PCM_FORMAT_S16_BE:
@@ -774,6 +864,8 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 		case SND_PCM_FORMAT_S32_LE:
 		case SND_PCM_FORMAT_S24_3LE:
 		case SND_PCM_FORMAT_S24_3BE:
+		case SND_PCM_FORMAT_S24_LE:
+		case SND_PCM_FORMAT_S24_BE:
 		case SND_PCM_FORMAT_S16_LE:
 		case SND_PCM_FORMAT_S32_BE:
 		case SND_PCM_FORMAT_S16_BE:
@@ -815,10 +907,8 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 
 	if (driver->playback_nchannels > driver->capture_nchannels) {
 		driver->max_nchannels = driver->playback_nchannels;
-		driver->user_nchannels = driver->capture_nchannels;
 	} else {
 		driver->max_nchannels = driver->capture_nchannels;
-		driver->user_nchannels = driver->playback_nchannels;
 	}
 
 	alsa_driver_setup_io_function_pointers (driver);
@@ -892,6 +982,9 @@ alsa_driver_set_parameters (alsa_driver_t *driver,
 */
 
 	return 0;
+
+	// may be unused
+	(void)err;
 }
 
 int
@@ -914,7 +1007,7 @@ alsa_driver_get_channel_addresses (alsa_driver_t *driver,
 				   snd_pcm_uframes_t *capture_offset,
 				   snd_pcm_uframes_t *playback_offset)
 {
-	unsigned long err;
+	int err;
 	channel_t chn;
 
 	if (capture_avail) {
@@ -1190,7 +1283,8 @@ alsa_driver_xrun_recovery (alsa_driver_t *driver, float *delayed_usecs)
 			    < 0) {
 				jack_error("error preparing after suspend: %s", snd_strerror(res));
 			}
-		} else {
+		} 
+		if (driver->playback_handle) {
 			if ((res = snd_pcm_prepare(driver->playback_handle))
 			    < 0) {
 				jack_error("error preparing after suspend: %s", snd_strerror(res));
@@ -1207,6 +1301,18 @@ alsa_driver_xrun_recovery (alsa_driver_t *driver, float *delayed_usecs)
 		timersub(&now, &tstamp, &diff);
 		*delayed_usecs = diff.tv_sec * 1000000.0 + diff.tv_usec;
 		jack_log("**** alsa_pcm: xrun of at least %.3f msecs",*delayed_usecs / 1000.0);
+		if (driver->capture_handle) {
+			jack_log("Repreparing capture");
+			if ((res = snd_pcm_prepare(driver->capture_handle)) < 0) {
+				jack_error("error preparing after xrun: %s", snd_strerror(res));
+			}
+		}
+		if (driver->playback_handle) {
+			jack_log("Repreparing playback");
+			if ((res = snd_pcm_prepare(driver->playback_handle)) < 0) {
+				jack_error("error preparing after xrun: %s", snd_strerror(res));
+			}
+		}
 	}
 
 	if (alsa_driver_restart (driver)) {
@@ -1254,6 +1360,7 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 	int xrun_detected = FALSE;
 	int need_capture;
 	int need_playback;
+	int retry_cnt = 0;
 	unsigned int i;
 	jack_time_t poll_enter;
 	jack_time_t poll_ret = 0;
@@ -1271,7 +1378,7 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 
   again:
 
-	while (need_playback || need_capture) {
+	while ((need_playback || need_capture) && !xrun_detected) {
 
 		int poll_result;
 		unsigned int ci = 0;
@@ -1320,16 +1427,22 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 			driver->poll_late++;
 		}
 
+#ifdef __ANDROID__
+		poll_result = poll (driver->pfd, nfds, -1);  //fix for sleep issue
+#else
 		poll_result = poll (driver->pfd, nfds, driver->poll_timeout);
+#endif
 		if (poll_result < 0) {
 
 			if (errno == EINTR) {
-				jack_info ("poll interrupt");
+				const char poll_log[] = "ALSA: poll interrupt";
 				// this happens mostly when run
 				// under gdb, or when exiting due to a signal
 				if (under_gdb) {
+					jack_info(poll_log);
 					goto again;
 				}
+				jack_error(poll_log);
 				*status = -2;
 				return 0;
 			}
@@ -1342,6 +1455,25 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 		}
 
 		poll_ret = jack_get_microseconds ();
+
+		if (poll_result == 0) {
+			retry_cnt++;
+			if(retry_cnt > MAX_RETRY_COUNT) {
+				jack_error ("ALSA: poll time out, polled for %" PRIu64
+					    " usecs, Reached max retry cnt = %d, Exiting",
+					    poll_ret - poll_enter, MAX_RETRY_COUNT);
+				*status = -5;
+				return 0;
+			}
+			jack_error ("ALSA: poll time out, polled for %" PRIu64
+				    " usecs, Retrying with a recovery, retry cnt = %d",
+				    poll_ret - poll_enter, retry_cnt);
+			*status = alsa_driver_xrun_recovery (driver, delayed_usecs);
+			if(*status != 0) {
+				jack_error ("ALSA: poll time out, recovery failed with status = %d", *status);
+				return 0;
+			}
+		}
 
         // JACK2
         SetTime(poll_ret);
@@ -1391,6 +1523,12 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 				return 0;
 			}
 
+			if (revents & POLLNVAL) {
+				jack_error ("ALSA: playback device disconnected");
+				*status = -7;
+				return 0;
+			}
+
 			if (revents & POLLERR) {
 				xrun_detected = TRUE;
 			}
@@ -1414,6 +1552,12 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 				return 0;
 			}
 
+			if (revents & POLLNVAL) {
+				jack_error ("ALSA: capture device disconnected");
+				*status = -7;
+				return 0;
+			}
+
 			if (revents & POLLERR) {
 				xrun_detected = TRUE;
 			}
@@ -1427,15 +1571,6 @@ alsa_driver_wait (alsa_driver_t *driver, int extra_fd, int *status, float
 #endif
 			}
 		}
-
-		if (poll_result == 0) {
-			jack_error ("ALSA: poll time out, polled for %" PRIu64
-				    " usecs",
-				    poll_ret - poll_enter);
-			*status = -5;
-			return 0;
-		}
-
 	}
 
 	if (driver->capture_handle) {
@@ -1835,7 +1970,7 @@ discover_alsa_using_apps ()
         while (dir) {
                 char maybe[PATH_MAX+1];
                 snprintf (maybe, sizeof(maybe), "%s/lsof", dir);
-                if (access (maybe, X_OK)) {
+                if (access (maybe, X_OK) == 0) {
                         break;
                 }
                 dir = strtok (NULL, ":");
@@ -1973,7 +2108,6 @@ alsa_driver_new (char *name, char *playback_alsa_device,
 	driver->hw = 0;
 	driver->capture_and_playback_not_synced = FALSE;
 	driver->max_nchannels = 0;
-	driver->user_nchannels = 0;
 	driver->playback_nchannels = user_playback_nchnls;
 	driver->capture_nchannels = user_capture_nchnls;
 	driver->playback_sample_bytes = (shorts_first ? 2:4);
@@ -2034,6 +2168,13 @@ alsa_driver_new (char *name, char *playback_alsa_device,
 				  SND_PCM_NONBLOCK) < 0) {
 			switch (errno) {
 			case EBUSY:
+#ifdef __ANDROID__
+                jack_error ("\n\nATTENTION: The playback device \"%s\" is "
+                            "already in use. Please stop the"
+                            " application using it and "
+                            "run JACK again",
+                            playback_alsa_device);
+#else
                 current_apps = discover_alsa_using_apps ();
                 if (current_apps) {
                         jack_error ("\n\nATTENTION: The playback device \"%s\" is "
@@ -2051,6 +2192,7 @@ alsa_driver_new (char *name, char *playback_alsa_device,
                                     "run JACK again",
                                     playback_alsa_device);
                 }
+#endif
                 alsa_driver_delete (driver);
 				return NULL;
 
@@ -2078,6 +2220,11 @@ alsa_driver_new (char *name, char *playback_alsa_device,
 				  SND_PCM_NONBLOCK) < 0) {
 			switch (errno) {
 			case EBUSY:
+#ifdef __ANDROID__
+                jack_error ("\n\nATTENTION: The capture (recording) device \"%s\" is "
+                            "already in use",
+                            capture_alsa_device);
+#else
                 current_apps = discover_alsa_using_apps ();
                 if (current_apps) {
                         jack_error ("\n\nATTENTION: The capture device \"%s\" is "
@@ -2097,6 +2244,7 @@ alsa_driver_new (char *name, char *playback_alsa_device,
                 }
 				alsa_driver_delete (driver);
 				return NULL;
+#endif
 				break;
 
 			case EPERM:

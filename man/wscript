@@ -1,12 +1,10 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 # encoding: utf-8
-
-import Build
-import re
-import os
 
 
 def build(bld):
-    bld.exec_command("cd man ; sh fill_template %s" % bld.env['JACK_VERSION'])
+    bld.exec_command('cd man ; sh fill_template {} {}'.format(
+        bld.env['JACK_VERSION'],
+        bld.env['BUILD_JACK_EXAMPLE_TOOLS'])
+    )
     bld.install_files(bld.env['MANDIR'], bld.path.ant_glob('*.1'))
-

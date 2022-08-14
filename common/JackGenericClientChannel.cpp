@@ -53,6 +53,12 @@ void JackGenericClientChannel::ServerSyncCall(JackRequest* req, JackResult* res,
         return;
     }
     
+    if (!JackGlobals::fServerRunning) {
+        jack_error("Server is not running");
+        *result = -1;
+        return;
+    }
+    
     if (req->Write(fRequest) < 0) {
         jack_error("Could not write request type = %ld", req->fType);
         *result = -1;
@@ -77,6 +83,12 @@ void JackGenericClientChannel::ServerAsyncCall(JackRequest* req, JackResult* res
         return;
     }
     
+    if (!JackGlobals::fServerRunning) {
+        jack_error("Server is not running");
+        *result = -1;
+        return;
+    }
+    
     if (req->Write(fRequest) < 0) {
         jack_error("Could not write request type = %ld", req->fType);
         *result = -1;
@@ -85,16 +97,16 @@ void JackGenericClientChannel::ServerAsyncCall(JackRequest* req, JackResult* res
     }
 }
 
-void JackGenericClientChannel::ClientCheck(const char* name, int uuid, char* name_res, int protocol, int options, int* status, int* result, int open)
+void JackGenericClientChannel::ClientCheck(const char* name, jack_uuid_t uuid, char* name_res, int protocol, int options, int* status, int* result, int open)
 {
     JackClientCheckRequest req(name, protocol, options, uuid, open);
     JackClientCheckResult res;
     ServerSyncCall(&req, &res, result);
-    *status = res.fStatus;
+    *status |= res.fStatus;
     strcpy(name_res, res.fName);
 }
 
-void JackGenericClientChannel::ClientOpen(const char* name, int pid, int uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
+void JackGenericClientChannel::ClientOpen(const char* name, int pid, jack_uuid_t uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
 {
     JackClientOpenRequest req(name, pid, uuid);
     JackClientOpenResult res;
@@ -273,7 +285,7 @@ void JackGenericClientChannel::InternalClientHandle(int refnum, const char* clie
     *status = res.fStatus;
 }
 
-void JackGenericClientChannel::InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, int uuid, int* result)
+void JackGenericClientChannel::InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, jack_uuid_t uuid, int* result)
 {
     JackInternalClientLoadRequest req(refnum, client_name, so_name, objet_data, options, uuid);
     JackInternalClientLoadResult res;
@@ -288,6 +300,13 @@ void JackGenericClientChannel::InternalClientUnload(int refnum, int int_ref, int
     JackInternalClientUnloadResult res;
     ServerSyncCall(&req, &res, result);
     *status = res.fStatus;
+}
+
+void JackGenericClientChannel::PropertyChangeNotify(jack_uuid_t subject, const char* key, jack_property_change_t change, int* result)
+{
+    JackPropertyChangeNotifyRequest req(subject, key, change);
+    JackResult res;
+    ServerAsyncCall(&req, &res, result);
 }
 
 } // end of namespace

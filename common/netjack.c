@@ -3,6 +3,7 @@
 /*
 NetJack Abstraction.
 
+Copyright (C) 2018 Karl Linden <karl.j.linden@gmail.com>
 Copyright (C) 2008 Pieter Palmers <pieterpalmers@users.sourceforge.net>
 Copyright (C) 2006 Torben Hohn <torbenh@gmx.de>
 Copyright (C) 2003 Robert Ham <rah@bash.sh>
@@ -25,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 */
 
+#include <alloca.h>
 #include <math.h>
 #include <stdio.h>
 #include <memory.h>
@@ -39,7 +41,7 @@ $Id: net_driver.c,v 1.17 2006/04/16 20:16:10 torbenh Exp $
 #include <sys/types.h>
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <malloc.h>
 #define socklen_t int
 #else
@@ -196,10 +198,10 @@ int netjack_wait( netjack_driver_state_t *netj )
         if( packet_cache_get_next_available_framecnt( netj->packcache, netj->expected_framecnt, &next_frame_avail) ) {
             jack_nframes_t offset = next_frame_avail - netj->expected_framecnt;
 
-            //XXX: hmm... i need to remember why resync_threshold wasnt right.
+            //XXX: hmm... i need to remember why resync_threshold wasn't right.
             //if( offset < netj->resync_threshold )
             if( offset < 10 ) {
-                // ok. dont do nothing. we will run without data.
+                // ok. don't do nothing. we will run without data.
                 // this seems to be one or 2 lost packets.
                 //
                 // this can also be reordered packet jitter.
@@ -244,7 +246,7 @@ int netjack_wait( netjack_driver_state_t *netj )
                 // It would not be in the queue anymore, if it had been
                 // retrieved. This might break for redundancy, but
                 // i will make the packet cache drop redundant packets,
-                // that have already been retreived.
+                // that have already been retrieved.
                 //
                 if( packet_cache_get_highest_available_framecnt( netj->packcache, &next_frame_avail) ) {
                     if( next_frame_avail == (netj->expected_framecnt - 1) ) {
@@ -283,7 +285,7 @@ int netjack_wait( netjack_driver_state_t *netj )
 
                     netj->running_free = 1;
 
-                    // when we really dont see packets.
+                    // when we really don't see packets.
                     // reset source address. and open possibility for new master.
                     // maybe dsl reconnect. Also restart of netsource without fix
                     // reply address changes port.
@@ -597,8 +599,7 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
 
     // Fill in netj values.
     // might be subject to autoconfig...
-    // so dont calculate anything with them...
-
+    // so don't calculate anything with them...
 
     netj->sample_rate = sample_rate;
     netj->period_size = period_size;
@@ -623,9 +624,7 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     netj->use_autoconfig = use_autoconfig;
     netj->always_deadline = always_deadline;
 
-
     netj->client = client;
-
 
     if ((bitdepth != 0) && (bitdepth != 8) && (bitdepth != 16) && (bitdepth != CELT_MODE) && (bitdepth != OPUS_MODE)) {
         jack_info ("Invalid bitdepth: %d (8, 16 or 0 for float) !!!", bitdepth);
@@ -633,14 +632,17 @@ netjack_driver_state_t *netjack_init (netjack_driver_state_t *netj,
     }
     netj->bitdepth = bitdepth;
 
-
-    if (resample_factor_up == 0)
+    if (resample_factor_up == 0) {
         resample_factor_up = resample_factor;
+    }
 
     netj->resample_factor = resample_factor;
     netj->resample_factor_up = resample_factor_up;
 
     netj->jitter_val = jitter_val;
+    
+    netj->playback_srcs = NULL;
+    netj->capture_srcs = NULL;
 
     return netj;
 }
@@ -697,7 +699,7 @@ netjack_startup( netjack_driver_state_t *netj )
         socklen_t address_size = sizeof (struct sockaddr_in);
 #endif
         //jack_info ("Waiting for an incoming packet !!!");
-        //jack_info ("*** IMPORTANT *** Dont connect a client to jackd until the driver is attached to a clock source !!!");
+        //jack_info ("*** IMPORTANT *** Don't connect a client to jackd until the driver is attached to a clock source !!!");
 
         while(1) {
             if( ! netjack_poll( netj->sockfd, 1000 ) ) {
@@ -788,7 +790,7 @@ netjack_startup( netjack_driver_state_t *netj )
 
     if( netj->bitdepth == CELT_MODE ) {
         // celt mode.
-        // TODO: this is a hack. But i dont want to change the packet header.
+        // TODO: this is a hack. But i don't want to change the packet header.
         netj->resample_factor = (netj->resample_factor * netj->period_size * 1024 / netj->sample_rate / 8) & (~1);
         netj->resample_factor_up = (netj->resample_factor_up * netj->period_size * 1024 / netj->sample_rate / 8) & (~1);
 
@@ -796,7 +798,7 @@ netjack_startup( netjack_driver_state_t *netj )
         netj->net_period_up = netj->resample_factor_up;
     } else if( netj->bitdepth == OPUS_MODE ) {
         // Opus mode.
-        // TODO: this is a hack. But i dont want to change the packet header, either
+        // TODO: this is a hack. But i don't want to change the packet header, either
         netj->net_period_down = (netj->resample_factor * netj->period_size * 1024 / netj->sample_rate / 8) & (~1);
         netj->net_period_up = (netj->resample_factor_up * netj->period_size * 1024 / netj->sample_rate / 8) & (~1);
     } else {

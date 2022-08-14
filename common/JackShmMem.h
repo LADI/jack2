@@ -39,45 +39,6 @@ void UnlockMemoryImp(void* ptr, size_t size);
 void LockAllMemory();
 void UnlockAllMemory();
 
-class JackMem
-{
-    private:
-
-        size_t fSize;
-        static size_t gSize;
-
-    protected:
-
-        JackMem(): fSize(gSize)
-        {}
-        ~JackMem()
-        {}
-
-    public:
-
-        void* operator new(size_t size)
-        {
-            gSize = size;
-            return calloc(1, size);
-        }
-
-        void operator delete(void* ptr, size_t size)
-        {
-            free(ptr);
-        }
-
-        void LockMemory()
-        {
-            LockMemoryImp(this, fSize);
-        }
-
-        void UnlockMemory()
-        {
-            UnlockMemoryImp(this, fSize);
-        }
-
-};
-
 /*!
 \brief
 
@@ -151,11 +112,12 @@ class JackShmReadWritePtr
     private:
 
         jack_shm_info_t fInfo;
+        bool fInitDone;
 
-        void Init(int index, const char* server_name = "default")
+        void Init(int index, const char* server_name = JACK_DEFAULT_SERVER_NAME)
         {
             if (fInfo.index < 0 && index >= 0) {
-                jack_log("JackShmReadWritePtr::Init %ld %ld", index, fInfo.index);
+                jack_log("JackShmReadWritePtr::Init %ld %d", index, fInfo.index);
                 if (jack_initialize_shm(server_name) < 0) {
                     throw std::bad_alloc();
                 }
@@ -164,6 +126,7 @@ class JackShmReadWritePtr
                     throw std::bad_alloc();
                 }
                 GetShmAddress()->LockMemory();
+                fInitDone = true;
             }
         }
 
@@ -172,6 +135,7 @@ class JackShmReadWritePtr
         JackShmReadWritePtr()
         {
             fInfo.index = -1;
+            fInitDone = false;
             fInfo.ptr.attached_at = (char*)NULL;
         }
 
@@ -182,8 +146,12 @@ class JackShmReadWritePtr
 
         ~JackShmReadWritePtr()
         {
+            if (!fInitDone) {
+               jack_error("JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for %d, skipping unlock", fInfo.index);
+               return;
+            }
             if (fInfo.index >= 0) {
-                jack_log("JackShmReadWritePtr::~JackShmReadWritePtr %ld", fInfo.index);
+                jack_log("JackShmReadWritePtr::~JackShmReadWritePtr %d", fInfo.index);
                 GetShmAddress()->UnlockMemory();
                 jack_release_lib_shm(&fInfo);
                 fInfo.index = -1;
@@ -233,11 +201,12 @@ class JackShmReadWritePtr1
     private:
 
         jack_shm_info_t fInfo;
+        bool fInitDone;
 
-        void Init(int index, const char* server_name = "default")
+        void Init(int index, const char* server_name = JACK_DEFAULT_SERVER_NAME)
         {
             if (fInfo.index < 0 && index >= 0) {
-                jack_log("JackShmReadWritePtr1::Init %ld %ld", index, fInfo.index);
+                jack_log("JackShmReadWritePtr1::Init %ld %d", index, fInfo.index);
                 if (jack_initialize_shm(server_name) < 0) {
                     throw std::bad_alloc();
                 }
@@ -246,6 +215,7 @@ class JackShmReadWritePtr1
                     throw std::bad_alloc();
                 }
                 GetShmAddress()->LockMemory();
+                fInitDone = true;
                 /*
                 nobody else needs to access this shared memory any more, so
                 destroy it. because we have our own attachment to it, it won't
@@ -260,6 +230,7 @@ class JackShmReadWritePtr1
         JackShmReadWritePtr1()
         {
             fInfo.index = -1;
+            fInitDone = false;
             fInfo.ptr.attached_at = NULL;
         }
 
@@ -270,8 +241,12 @@ class JackShmReadWritePtr1
 
         ~JackShmReadWritePtr1()
         {
+            if (!fInitDone) {
+               jack_error("JackShmReadWritePtr1::~JackShmReadWritePtr1 - Init not done for %d, skipping unlock", fInfo.index);
+               return;
+            }
             if (fInfo.index >= 0) {
-                jack_log("JackShmReadWritePtr1::~JackShmReadWritePtr1 %ld", fInfo.index);
+                jack_log("JackShmReadWritePtr1::~JackShmReadWritePtr1 %d", fInfo.index);
                 GetShmAddress()->UnlockMemory();
                 jack_release_lib_shm(&fInfo);
                 fInfo.index = -1;
@@ -321,11 +296,12 @@ class JackShmReadPtr
     private:
 
         jack_shm_info_t fInfo;
+        bool fInitDone;
 
-        void Init(int index, const char* server_name = "default")
+        void Init(int index, const char* server_name = JACK_DEFAULT_SERVER_NAME)
         {
             if (fInfo.index < 0 && index >= 0) {
-                jack_log("JackShmPtrRead::Init %ld %ld", index, fInfo.index);
+                jack_log("JackShmPtrRead::Init %ld %d", index, fInfo.index);
                 if (jack_initialize_shm(server_name) < 0) {
                     throw std::bad_alloc();
                 }
@@ -334,6 +310,7 @@ class JackShmReadPtr
                     throw std::bad_alloc();
                 }
                 GetShmAddress()->LockMemory();
+                fInitDone = true;
             }
         }
 
@@ -342,6 +319,7 @@ class JackShmReadPtr
         JackShmReadPtr()
         {
             fInfo.index = -1;
+            fInitDone = false;
             fInfo.ptr.attached_at = NULL;
         }
 
@@ -352,6 +330,10 @@ class JackShmReadPtr
 
         ~JackShmReadPtr()
         {
+            if (!fInitDone) {
+               jack_error("JackShmReadPtr::~JackShmReadPtr - Init not done for %ld, skipping unlock", fInfo.index);
+               return;
+            }
             if (fInfo.index >= 0) {
                 jack_log("JackShmPtrRead::~JackShmPtrRead %ld", fInfo.index);
                 GetShmAddress()->UnlockMemory();

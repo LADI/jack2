@@ -23,7 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackTime.h"
 #include "JackTypes.h"
 #include "JackError.h"
-#include "cycles.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -38,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <stdlib.h>
 #include <inttypes.h>
 
-static jack_time_t __jack_cpu_mhz = 0;
 jack_time_t (*_jack_get_microseconds)(void) = 0;
 
 #if defined(__gnu_linux__) && (defined(__i386__) || defined(__x86_64__))
@@ -124,62 +122,6 @@ static jack_time_t jack_get_microseconds_from_hpet (void)
 
 #endif /* HPET_SUPPORT */
 
-static jack_time_t jack_get_microseconds_from_cycles (void) {
-	return get_cycles() / __jack_cpu_mhz;
-}
-
-/*
- * This is another kludge.  It looks CPU-dependent, but actually it
- * reflects the lack of standards for the Linux kernel formatting of
- * /proc/cpuinfo.
- */
-
-static jack_time_t jack_get_mhz (void)
-{
-	FILE *f = fopen("/proc/cpuinfo", "r");
-	if (f == 0)
-	{
-		perror("can't open /proc/cpuinfo\n");
-		exit(1);
-	}
-
-	for (;;)
-	{
-		jack_time_t mhz;
-		int ret;
-		char buf[1000];
-
-		if (fgets(buf, sizeof(buf), f) == NULL) {
-			jack_error ("FATAL: cannot locate cpu MHz in "
-				    "/proc/cpuinfo\n");
-			exit(1);
-		}
-
-#if defined(__powerpc__)
-		ret = sscanf(buf, "clock\t: %" SCNu64 "MHz", &mhz);
-#elif defined( __i386__ ) || defined (__hppa__)  || defined (__ia64__) || \
-      defined(__x86_64__)
-		ret = sscanf(buf, "cpu MHz         : %" SCNu64, &mhz);
-#elif defined( __sparc__ )
-		ret = sscanf(buf, "Cpu0Bogo        : %" SCNu64, &mhz);
-#elif defined( __mc68000__ )
-		ret = sscanf(buf, "Clocking:       %" SCNu64, &mhz);
-#elif defined( __s390__  )
-		ret = sscanf(buf, "bogomips per cpu: %" SCNu64, &mhz);
-#elif defined( __sh__  )
-		ret = sscanf(buf, "bogomips        : %" SCNu64, &mhz);
-#else /* MIPS, ARM, alpha */
-		ret = sscanf(buf, "BogoMIPS        : %" SCNu64, &mhz);
-#endif
-
-		if (ret == 1)
-		{
-			fclose(f);
-			return (jack_time_t)mhz;
-		}
-	}
-}
-
 #define HAVE_CLOCK_GETTIME 1
 
 #ifndef HAVE_CLOCK_GETTIME
@@ -201,7 +143,11 @@ static jack_time_t jack_get_microseconds_from_system (void)
 	jack_time_t jackTime;
 	struct timespec time;
 
+#ifdef CLOCK_MONOTONIC_RAW
+	clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+#else
 	clock_gettime(CLOCK_MONOTONIC, &time);
+#endif
 	jackTime = (jack_time_t) time.tv_sec * 1e6 +
 		(jack_time_t) time.tv_nsec / 1e3;
 	return jackTime;
@@ -217,7 +163,7 @@ SERVER_EXPORT void JackSleep(long usec)
 
 SERVER_EXPORT void InitTime()
 {
-	__jack_cpu_mhz = jack_get_mhz ();
+	/* nothing to do on a generic system - we use the system clock */
 }
 
 SERVER_EXPORT void EndTime()
@@ -225,42 +171,36 @@ SERVER_EXPORT void EndTime()
 
 void SetClockSource(jack_timer_type_t source)
 {
-        jack_log("Clock source : %s", ClockSourceName(source));
+    jack_log("Clock source : %s", ClockSourceName(source));
 
 	switch (source)
 	{
-	case JACK_TIMER_CYCLE_COUNTER:
-		_jack_get_microseconds = jack_get_microseconds_from_cycles;
-		break;
+        case JACK_TIMER_HPET:
+            if (jack_hpet_init () == 0) {
+                _jack_get_microseconds = jack_get_microseconds_from_hpet;
+            } else {
+                _jack_get_microseconds = jack_get_microseconds_from_system;
+            }
+            break;
 
-	case JACK_TIMER_HPET:
-		if (jack_hpet_init () == 0) {
-			_jack_get_microseconds = jack_get_microseconds_from_hpet;
-		} else {
-			_jack_get_microseconds = jack_get_microseconds_from_system;
-		}
-		break;
-
-	case JACK_TIMER_SYSTEM_CLOCK:
-	default:
-		_jack_get_microseconds = jack_get_microseconds_from_system;
-		break;
+        case JACK_TIMER_SYSTEM_CLOCK:
+            default:
+            _jack_get_microseconds = jack_get_microseconds_from_system;
+            break;
 	}
 }
 
 const char* ClockSourceName(jack_timer_type_t source)
 {
 	switch (source) {
-	case JACK_TIMER_CYCLE_COUNTER:
-		return "cycle counter";
-	case JACK_TIMER_HPET:
-		return "hpet";
-	case JACK_TIMER_SYSTEM_CLOCK:
-#ifdef HAVE_CLOCK_GETTIME
-		return "system clock via clock_gettime";
-#else
-		return "system clock via gettimeofday";
-#endif
+        case JACK_TIMER_HPET:
+            return "hpet";
+        case JACK_TIMER_SYSTEM_CLOCK:
+        #ifdef HAVE_CLOCK_GETTIME
+            return "system clock via clock_gettime";
+        #else
+            return "system clock via gettimeofday";
+        #endif
 	}
 
 	/* what is wrong with gcc ? */

@@ -23,6 +23,8 @@
 
 #include <jack/systemdeps.h>
 
+typedef uint64_t jack_uuid_t;
+
 typedef int32_t jack_shmsize_t;
 
 /**
@@ -323,7 +325,7 @@ typedef int (*JackGraphOrderCallback)(void *arg);
 
 /**
  * Prototype for the client-supplied function that is called whenever
- * an xrun has occured.
+ * an xrun has occurred.
  *
  * @see jack_get_xrun_delayed_usecs()
  *
@@ -369,7 +371,7 @@ typedef int (*JackSampleRateCallback)(jack_nframes_t nframes, void *arg);
  * @param register non-zero if the port is being registered,
  *                     zero if the port is being unregistered
  */
-typedef void (*JackPortRegistrationCallback)(jack_port_id_t port, int register, void *arg);
+typedef void (*JackPortRegistrationCallback)(jack_port_id_t port, int /* register */, void *arg);
 
 /**
  * Prototype for the client supplied function that is called
@@ -380,7 +382,7 @@ typedef void (*JackPortRegistrationCallback)(jack_port_id_t port, int register, 
  *                     zero if the client is being unregistered
  * @param arg pointer to a client supplied structure
  */
-typedef void (*JackClientRegistrationCallback)(const char* name, int register, void *arg);
+typedef void (*JackClientRegistrationCallback)(const char* name, int /* register */, void *arg);
 
 /**
  * Prototype for the client supplied function that is called
@@ -401,10 +403,8 @@ typedef void (*JackPortConnectCallback)(jack_port_id_t a, jack_port_id_t b, int 
  * @param port the port that has been renamed
  * @param new_name the new name
  * @param arg pointer to a client supplied structure
- *
- * @return zero on success, non-zero on error
  */
-typedef int (*JackPortRenameCallback)(jack_port_id_t port, const char* old_name, const char* new_name, void *arg);
+typedef void (*JackPortRenameCallback)(jack_port_id_t port, const char* old_name, const char* new_name, void *arg);
 
 /**
  * Prototype for the client supplied function that is called
@@ -420,7 +420,7 @@ typedef void (*JackFreewheelCallback)(int starting, void *arg);
  * whenever jackd is shutdown. Note that after server shutdown,
  * the client pointer is *not* deallocated by libjack,
  * the application is responsible to properly use jack_client_close()
- * to release client ressources. Warning: jack_client_close() cannot be
+ * to release client resources. Warning: jack_client_close() cannot be
  * safely used inside the shutdown callback and has to be called outside of
  * the callback context.
  *
@@ -433,12 +433,13 @@ typedef void (*JackShutdownCallback)(void *arg);
  * whenever jackd is shutdown. Note that after server shutdown,
  * the client pointer is *not* deallocated by libjack,
  * the application is responsible to properly use jack_client_close()
- * to release client ressources. Warning: jack_client_close() cannot be
+ * to release client resources. Warning: jack_client_close() cannot be
  * safely used inside the shutdown callback and has to be called outside of
  * the callback context.
 
  * @param code a status word, formed by OR-ing together the relevant @ref JackStatus bits.
- * @param reason a string describing the shutdown reason (backend failure, server crash... etc...)
+ * @param reason a string describing the shutdown reason (backend failure, server crash... etc...). 
+ * Note that this string will not be available anymore after the callback returns, so possibly copy it.
  * @param arg pointer to a client supplied structure
  */
 typedef void (*JackInfoShutdownCallback)(jack_status_t code, const char* reason, void *arg);
@@ -537,17 +538,21 @@ typedef uint64_t jack_unique_t;         /**< Unique ID (opaque) */
  */
 typedef enum {
 
-    JackPositionBBT = 0x10,     /**< Bar, Beat, Tick */
-    JackPositionTimecode = 0x20,        /**< External timecode */
-    JackBBTFrameOffset =      0x40,     /**< Frame offset of BBT information */
-    JackAudioVideoRatio =     0x80, /**< audio frames per video frame */
-    JackVideoFrameOffset =   0x100  /**< frame offset of first video frame */
+    JackPositionBBT      = 0x10,  /**< Bar, Beat, Tick */
+    JackPositionTimecode = 0x20,  /**< External timecode */
+    JackBBTFrameOffset   = 0x40,  /**< Frame offset of BBT information */
+    JackAudioVideoRatio  = 0x80,  /**< audio frames per video frame */
+    JackVideoFrameOffset = 0x100, /**< frame offset of first video frame */
+    JackTickDouble       = 0x200, /**< double-resolution tick */
 
 } jack_position_bits_t;
 
 /** all valid position bits */
 #define JACK_POSITION_MASK (JackPositionBBT|JackPositionTimecode)
 #define EXTENDED_TIME_INFO
+
+/** transport tick_double member is available for use */
+#define JACK_TICK_DOUBLE
 
 PRE_PACKED_STRUCTURE
 struct _jack_position {
@@ -608,10 +613,18 @@ struct _jack_position {
                          set, but the value is zero, there is
                          no video frame within this cycle. */
 
+    /* JACK extra transport fields */
+
+    double              tick_double; /**< current tick-within-beat in double resolution.
+                         Should be assumed zero if JackTickDouble is not set.
+                         Since older versions of JACK do not expose this variable,
+                         the macro JACK_TICK_DOUBLE is provided,
+                         which can be used as build-time detection. */
+
     /* For binary compatibility, new fields should be allocated from
      * this padding area with new valid bits controlling access, so
      * the existing structure size and offsets are preserved. */
-    int32_t             padding[7];
+    int32_t             padding[5];
 
     /* When (unique_1 == unique_2) the contents are consistent. */
     jack_unique_t       unique_2;       /**< unique ID */

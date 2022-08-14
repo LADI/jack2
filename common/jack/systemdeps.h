@@ -52,13 +52,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
         #else
             #define PRE_PACKED_STRUCTURE
             #define POST_PACKED_STRUCTURE
-        #endif
+        #endif /* _MSC_VER */
 
-    #endif
+    #endif /* __GNUC__ */
 
 #endif
 
-#if defined(WIN32) && !defined(__CYGWIN__) && !defined(GNU_WIN32)
+#if defined(_WIN32) && !defined(__CYGWIN__) && !defined(GNU_WIN32)
+
+    #ifdef __MINGW32__
+    #  include <winsock2.h> // mingw gives warning if we include windows.h before winsock2.h
+    #endif
 
     #include <windows.h>
 
@@ -66,14 +70,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
         #define __inline__ inline
         #if (!defined(int8_t) && !defined(_STDINT_H))
             #define __int8_t_defined
-            typedef char int8_t;
-            typedef unsigned char uint8_t;
-            typedef short int16_t;
-            typedef unsigned short uint16_t;
-            typedef long int32_t;
-            typedef unsigned long uint32_t;
-            typedef LONGLONG int64_t;
-            typedef ULONGLONG uint64_t;
+            typedef INT8 int8_t;
+            typedef UINT8 uint8_t;
+            typedef INT16 int16_t;
+            typedef UINT16 uint16_t;
+            typedef INT32 int32_t;
+            typedef UINT32 uint32_t;
+            typedef INT64 int64_t;
+            typedef UINT64 uint64_t;
         #endif
     #elif __MINGW32__   /* MINGW */
         #include <stdint.h>
@@ -101,7 +105,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
         typedef pthread_t jack_native_thread_t;
     #endif
 
-#endif // WIN32 && !__CYGWIN__ && !GNU_WIN32 */
+#endif /* _WIN32 && !__CYGWIN__ && !GNU_WIN32 */
 
 #if defined(__APPLE__) || defined(__linux__) || defined(__sun__) || defined(sun) || defined(__unix__) || defined(__CYGWIN__) || defined(GNU_WIN32)
 
@@ -118,6 +122,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          */
         typedef pthread_t jack_native_thread_t;
 
-    #endif /* __APPLE__ || __linux__ || __sun__ || sun */
+#endif /* __APPLE__ || __linux__ || __sun__ || sun */
 
+#if (defined(__arm__) || defined(__aarch64__) || defined(__mips__) || defined(__ppc__) || defined(__powerpc__)) && !defined(__APPLE__)
+    #undef POST_PACKED_STRUCTURE
+    #define POST_PACKED_STRUCTURE
+#endif /* __arm__ || __aarch64__ || __mips__ || __ppc__ || __powerpc__ */
+
+/** define JACK_LIB_EXPORT, useful for internal clients */
+#if defined(_WIN32)
+    #define JACK_LIB_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__)
+    #define JACK_LIB_EXPORT __attribute__((visibility("default")))
+#else
+    #define JACK_LIB_EXPORT
 #endif
+
+#endif /* __jack_systemdeps_h__ */

@@ -39,12 +39,12 @@ struct SERVER_EXPORT JackServerGlobals
 {
     static JackServer* fInstance;
     static unsigned int fUserCount;
-    static int fRTNotificationSocket;  // For debugging purpose
     static std::map<std::string, JackDriverInfo*> fSlavesList;
     static std::map<std::string, int> fInternalsList;
 
     static bool (* on_device_acquire)(const char* device_name);
     static void (* on_device_release)(const char* device_name);
+    static void (* on_device_reservation_loop)(void);
 
     JackServerGlobals();
     ~JackServerGlobals();
@@ -62,7 +62,7 @@ struct SERVER_EXPORT JackServerGlobals
                      int port_max,
                      int verbose,
                      jack_timer_type_t clock,
-                     JackSelfConnectMode self_connect_mode);
+                     char self_connect_mode);
     static void Stop();
     static void Delete();
 };

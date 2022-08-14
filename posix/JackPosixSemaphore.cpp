@@ -23,16 +23,45 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackError.h"
 #include <fcntl.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <sys/time.h>
+#ifdef __linux__
+#include "promiscuous.h"
+#endif
+
+#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#define JACK_SEM_PREFIX "/jack_sem"
+#define SEM_DEFAULT_O 0
+#else
+#define JACK_SEM_PREFIX "jack_sem"
+#define SEM_DEFAULT_O O_RDWR
+#endif
 
 namespace Jack
 {
 
+JackPosixSemaphore::JackPosixSemaphore() : JackSynchro(), fSemaphore(NULL)
+{
+    const char* promiscuous = getenv("JACK_PROMISCUOUS_SERVER");
+    fPromiscuous = (promiscuous != NULL);
+#ifdef __linux__
+    fPromiscuousGid = jack_group2gid(promiscuous);
+#endif
+}
+
 void JackPosixSemaphore::BuildName(const char* client_name, const char* server_name, char* res, int size)
 {
-    char ext_client_name[JACK_CLIENT_NAME_SIZE + 1];
+    char ext_client_name[SYNC_MAX_NAME_SIZE + 1];
     JackTools::RewriteName(client_name, ext_client_name);
-    snprintf(res, size, "jack_sem.%d_%s_%s", JackTools::GetUID(), server_name, ext_client_name);
+#if __APPLE__  // POSIX semaphore names are limited to 32 characters...
+    snprintf(res, 32, "js_%s", ext_client_name);
+#else
+    if (fPromiscuous) {
+        snprintf(res, size, JACK_SEM_PREFIX ".%s_%s", server_name, ext_client_name);
+    } else {
+        snprintf(res, size, JACK_SEM_PREFIX ".%d_%s_%s", JackTools::GetUID(), server_name, ext_client_name);
+    }
+#endif
 }
 
 bool JackPosixSemaphore::Signal()
@@ -44,8 +73,9 @@ bool JackPosixSemaphore::Signal()
         return false;
     }
 
-    if (fFlush)
+    if (fFlush) {
         return true;
+    }
 
     if ((res = sem_post(fSemaphore)) != 0) {
         jack_error("JackPosixSemaphore::Signal name = %s err = %s", fName, strerror(errno));
@@ -62,8 +92,9 @@ bool JackPosixSemaphore::SignalAll()
         return false;
     }
 
-    if (fFlush)
+    if (fFlush) {
         return true;
+    }
 
     if ((res = sem_post(fSemaphore)) != 0) {
         jack_error("JackPosixSemaphore::SignalAll name = %s err = %s", fName, strerror(errno));
@@ -71,7 +102,6 @@ bool JackPosixSemaphore::SignalAll()
     return (res == 0);
 }
 
-/*
 bool JackPosixSemaphore::Wait()
 {
     int res;
@@ -81,26 +111,14 @@ bool JackPosixSemaphore::Wait()
         return false;
     }
 
-    if ((res = sem_wait(fSemaphore)) != 0) {
-        jack_error("JackPosixSemaphore::Wait name = %s err = %s", fName, strerror(errno));
-    }
-    return (res == 0);
-}
-*/
-
-bool JackPosixSemaphore::Wait()
-{
-    int res;
-
     while ((res = sem_wait(fSemaphore) < 0)) {
         jack_error("JackPosixSemaphore::Wait name = %s err = %s", fName, strerror(errno));
-        if (errno != EINTR)
+        if (errno != EINTR) {
             break;
+        }
     }
     return (res == 0);
 }
-
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) // glibc feature test
 
 bool JackPosixSemaphore::TimedWait(long usec)
 {
@@ -122,20 +140,12 @@ bool JackPosixSemaphore::TimedWait(long usec)
         jack_error("JackPosixSemaphore::TimedWait err = %s", strerror(errno));
         jack_log("JackPosixSemaphore::TimedWait now : %ld %ld ", now.tv_sec, now.tv_usec);
         jack_log("JackPosixSemaphore::TimedWait next : %ld %ld ", time.tv_sec, time.tv_nsec/1000);
-        if (errno != EINTR)
+        if (errno != EINTR) {
             break;
+        }
     }
     return (res == 0);
 }
-
-#else
-#warning "JackPosixSemaphore::TimedWait is not supported: Jack in SYNC mode with JackPosixSemaphore will not run properly !!"
-
-bool JackPosixSemaphore::TimedWait(long usec)
-{
-	return Wait();
-}
-#endif
 
 // Server side : publish the semaphore in the global namespace
 bool JackPosixSemaphore::Allocate(const char* name, const char* server_name, int value)
@@ -143,10 +153,18 @@ bool JackPosixSemaphore::Allocate(const char* name, const char* server_name, int
     BuildName(name, server_name, fName, sizeof(fName));
     jack_log("JackPosixSemaphore::Allocate name = %s val = %ld", fName, value);
 
-    if ((fSemaphore = sem_open(fName, O_CREAT, 0777, value)) == (sem_t*)SEM_FAILED) {
+    if ((fSemaphore = sem_open(fName, O_CREAT | SEM_DEFAULT_O, 0777, value)) == (sem_t*)SEM_FAILED) {
         jack_error("Allocate: can't check in named semaphore name = %s err = %s", fName, strerror(errno));
         return false;
     } else {
+#ifdef __linux__
+        if (fPromiscuous) {
+            char sempath[SYNC_MAX_NAME_SIZE+13];
+            snprintf(sempath, sizeof(sempath), "/dev/shm/sem.%s", fName);
+            if (jack_promiscuous_perms(-1, sempath, fPromiscuousGid) < 0)
+                return false;
+        }
+#endif
         return true;
     }
 }
@@ -163,14 +181,17 @@ bool JackPosixSemaphore::ConnectInput(const char* name, const char* server_name)
         return true;
     }
 
-    if ((fSemaphore = sem_open(fName, O_CREAT)) == (sem_t*)SEM_FAILED) {
+    if ((fSemaphore = sem_open(fName, SEM_DEFAULT_O)) == (sem_t*)SEM_FAILED) {
         jack_error("Connect: can't connect named semaphore name = %s err = %s", fName, strerror(errno));
         return false;
-    } else {
+    } else if (fSemaphore) {
         int val = 0;
         sem_getvalue(fSemaphore, &val);
         jack_log("JackPosixSemaphore::Connect sem_getvalue %ld", val);
         return true;
+    } else {
+        jack_error("Connect: fSemaphore not initialized!");
+        return false;
     }
 }
 

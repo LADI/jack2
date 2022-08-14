@@ -52,11 +52,11 @@ JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
                                            size_t max_messages)
 {
     read_queue = new JackMidiBufferReadQueue();
-    std::auto_ptr<JackMidiBufferReadQueue> read_queue_ptr(read_queue);
+    std::unique_ptr<JackMidiBufferReadQueue> read_queue_ptr(read_queue);
     thread_queue = new JackMidiAsyncQueue(max_bytes, max_messages);
-    std::auto_ptr<JackMidiAsyncQueue> thread_queue_ptr(thread_queue);
+    std::unique_ptr<JackMidiAsyncQueue> thread_queue_ptr(thread_queue);
     thread = new JackThread(this);
-    std::auto_ptr<JackThread> thread_ptr(thread);
+    std::unique_ptr<JackThread> thread_ptr(thread);
     char error_message[MAXERRORLENGTH];
     MMRESULT result = midiOutOpen(&handle, index, (DWORD_PTR)HandleMessageEvent,
                                   (DWORD_PTR)this, CALLBACK_FUNCTION);
@@ -87,6 +87,7 @@ JackWinMMEOutputPort::JackWinMMEOutputPort(const char *alias_name,
     snprintf(alias, sizeof(alias) - 1, "%s:%s:out%d", alias_name, name_tmp,
              index + 1);
     snprintf(name, sizeof(name) - 1, "%s:playback_%d", client_name, index + 1);
+    strncpy(device_name, name_tmp, sizeof(device_name) - 1);
     read_queue_ptr.release();
     thread_queue_ptr.release();
     thread_ptr.release();
@@ -255,17 +256,17 @@ JackWinMMEOutputPort::HandleMessage(UINT message, DWORD_PTR param1,
     set_threaded_log_function();
     switch (message) {
     case MOM_CLOSE:
-        jack_info("JackWinMMEOutputPort::HandleMessage - MIDI device closed.");
+        jack_log("JackWinMMEOutputPort::HandleMessage - MIDI device closed.");
         break;
     case MOM_DONE:
         Signal(sysex_semaphore);
         break;
     case MOM_OPEN:
-        jack_info("JackWinMMEOutputPort::HandleMessage - MIDI device opened.");
+        jack_log("JackWinMMEOutputPort::HandleMessage - MIDI device opened.");
         break;
     case MOM_POSITIONCB:
         LPMIDIHDR header = (LPMIDIHDR) param1;
-        jack_info("JackWinMMEOutputPort::HandleMessage - %d bytes out of %d "
+        jack_log("JackWinMMEOutputPort::HandleMessage - %d bytes out of %d "
                   "bytes of the current sysex message have been sent.",
                   header->dwOffset, header->dwBytesRecorded);
     }
@@ -343,7 +344,7 @@ JackWinMMEOutputPort::Start()
 bool
 JackWinMMEOutputPort::Stop()
 {
-    jack_info("JackWinMMEOutputPort::Stop - stopping MIDI output port "
+    jack_log("JackWinMMEOutputPort::Stop - stopping MIDI output port "
               "processing thread.");
 
     int result;

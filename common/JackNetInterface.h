@@ -29,15 +29,17 @@ namespace Jack
 #define DEFAULT_MULTICAST_IP "225.3.19.154"
 #define DEFAULT_PORT    19000
 #define DEFAULT_MTU     1500
+#define MAX_MTU         9000
 
 #define SLAVE_SETUP_RETRY   5
 
-#define MANAGER_INIT_TIMEOUT    2000000         // in usec
-#define MASTER_INIT_TIMEOUT     1000000 * 10    // in usec
-#define SLAVE_INIT_TIMEOUT      1000000 * 10    // in usec
-#define PACKET_TIMEOUT          500000          // in usec
+#define MANAGER_INIT_TIMEOUT    1000000 * 2   // in usec
+#define MASTER_INIT_TIMEOUT     1000000 * 10  // in usec
+#define SLAVE_INIT_TIMEOUT      1000000 * 1   // in usec
+#define PACKET_TIMEOUT          1000000       // in usec
 
-#define NETWORK_MAX_LATENCY     20
+#define NETWORK_DEFAULT_LATENCY     2
+#define NETWORK_MAX_LATENCY         30  // maximum possible latency in network master/slave loop
 
     /**
     \Brief This class describes the basic Net Interface, used by both master and slave.
@@ -46,9 +48,12 @@ namespace Jack
     class SERVER_EXPORT JackNetInterface
     {
 
+        friend class JackNetExt;
+
         protected:
-        
+
             bool fSetTimeOut;
+            int fPacketTimeOut;
 
             void Initialize();
 
@@ -89,8 +94,8 @@ namespace Jack
             virtual void DecodeTransportData() = 0;
 
             // sync packet
-            virtual void EncodeSyncPacket() = 0;
-            virtual void DecodeSyncPacket() = 0;
+            virtual void EncodeSyncPacket(int frames = -1) = 0;
+            virtual void DecodeSyncPacket(int& frames) = 0;
 
             virtual int SyncRecv() = 0;
             virtual int SyncSend() = 0;
@@ -110,8 +115,14 @@ namespace Jack
             int AudioRecv(packet_header_t* rx_head, NetAudioBuffer* buffer);
 
             int FinishRecv(NetAudioBuffer* buffer);
-            
+
             void SetRcvTimeOut();
+            void SetPacketTimeOut(int time_out)
+            {
+                // New time out
+                fPacketTimeOut = time_out;
+                fSetTimeOut = false;
+            }
 
             NetAudioBuffer* AudioBufferFactory(int nports, char* buffer);
 
@@ -137,7 +148,8 @@ namespace Jack
             bool fRunning;
             int fCurrentCycleOffset;
             int fMaxCycleOffset;
-       
+            bool fSynched;
+
             bool Init();
             bool SetParams();
 
@@ -150,23 +162,30 @@ namespace Jack
             int DataSend();
 
             // sync packet
-            void EncodeSyncPacket();
-            void DecodeSyncPacket();
+            void EncodeSyncPacket(int frames = -1);
+            void DecodeSyncPacket(int& frames);
 
             int Send(size_t size, int flags);
             int Recv(size_t size, int flags);
-
-            bool IsSynched();
 
             void FatalRecvError();
             void FatalSendError();
 
         public:
 
-            JackNetMasterInterface() : JackNetInterface(), fRunning(false), fCurrentCycleOffset(0), fMaxCycleOffset(0)
+            JackNetMasterInterface() 
+                : JackNetInterface(), 
+                fRunning(false), 
+                fCurrentCycleOffset(0), 
+                fMaxCycleOffset(0), 
+                fSynched(false)
             {}
             JackNetMasterInterface(session_params_t& params, JackNetSocket& socket, const char* multicast_ip)
-                    : JackNetInterface(params, socket, multicast_ip), fRunning(false), fCurrentCycleOffset(0), fMaxCycleOffset(0)
+                    : JackNetInterface(params, socket, multicast_ip), 
+                    fRunning(false), 
+                    fCurrentCycleOffset(0), 
+                    fMaxCycleOffset(0), 
+                    fSynched(false)
             {}
 
             virtual~JackNetMasterInterface()
@@ -188,7 +207,7 @@ namespace Jack
             bool InitConnection(int time_out_sec);
             bool InitRendering();
 
-            net_status_t SendAvailableToMaster(long count = LONG_MAX);  // long here (and not int...)
+            net_status_t SendAvailableToMaster(int count = INT_MAX);
             net_status_t SendStartToMaster();
 
             bool SetParams();
@@ -200,8 +219,8 @@ namespace Jack
             int DataSend();
 
             // sync packet
-            void EncodeSyncPacket();
-            void DecodeSyncPacket();
+            void EncodeSyncPacket(int frames = -1);
+            void DecodeSyncPacket(int& frames);
 
             int Recv(size_t size, int flags);
             int Send(size_t size, int flags);

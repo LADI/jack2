@@ -53,16 +53,27 @@ void tryload_libjack()
     if (getenv("SKIP_LIBJACK") == 0) { // just in case libjack is causing troubles..
     #ifdef __APPLE__
         libjack_handle = dlopen("libjack.0.dylib", RTLD_LAZY);
+        if (!libjack_handle) {
+            fprintf(stderr, "dlopen error : %s \n", dlerror());
+        }
+        libjack_handle = dlopen("/usr/local/lib/libjack.0.dylib", RTLD_LAZY);
+        if (!libjack_handle) {
+            fprintf(stderr, "dlopen error : %s \n", dlerror());
+        }
     #elif defined(WIN32)
         #ifdef _WIN64
-            libjack_handle = LoadLibrary("libjack64.dll");
+            libjack_handle = LoadLibraryA("libjack64.dll");
         #else
-            libjack_handle = LoadLibrary("libjack.dll");
+            libjack_handle = LoadLibraryA("libjack.dll");
         #endif
+        if (!libjack_handle) {
+            char* lpMsgBuf;
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,NULL,GetLastError(),MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPTSTR) &lpMsgBuf,0,NULL );
+            fprintf(stderr, "Failed to load libjack DLL: %d", lpMsgBuf);
+        }
     #else
         libjack_handle = dlopen("libjack.so.0", RTLD_LAZY);
     #endif
-
     }
     libjack_is_present = (libjack_handle != 0);
 }
@@ -71,8 +82,11 @@ void *load_jack_function(const char *fn_name)
 {
     void *fn = 0;
     if (!libjack_handle) {
-        fprintf (stderr, "libjack not found, so do not try to load  %s ffs  !\n", fn_name);
-        return 0;
+        tryload_libjack();
+        if (!libjack_handle) {
+            fprintf (stderr, "libjack not found, so do not try to load  %s ffs  !\n", fn_name);
+            return 0;
+       }
     }
 #ifdef WIN32
     fn = (void*)GetProcAddress(libjack_handle, fn_name);
@@ -83,9 +97,9 @@ void *load_jack_function(const char *fn_name)
 #ifdef WIN32
         char* lpMsgBuf;
         FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,NULL,GetLastError(),MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPTSTR) &lpMsgBuf,0,NULL );
-        fprintf (stderr, "could not GetProcAddress( %s ), %s \n", fn_name, lpMsgBuf) ;
+        fprintf(stderr, "could not GetProcAddress( %s ), %s \n", fn_name, lpMsgBuf);
 #else
-        fprintf (stderr, "could not dlsym( %s ), %s \n", fn_name, dlerror()) ;
+        fprintf(stderr, "could not dlsym( %s ), %s \n", fn_name, dlerror());
 #endif
     }
     return fn;
@@ -207,6 +221,7 @@ DECL_VOID_FUNCTION(jack_port_set_latency_range, (jack_port_t *port, jack_latency
 DECL_FUNCTION(int, jack_recompute_total_latencies, (jack_client_t* client),(client));
 
 DECL_FUNCTION(int, jack_port_set_name, (jack_port_t *port, const char *port_name), (port, port_name));
+DECL_FUNCTION(int, jack_port_rename, (jack_client_t *client, jack_port_t *port, const char *port_name), (client, port, port_name));
 DECL_FUNCTION(int, jack_port_set_alias, (jack_port_t *port, const char *alias), (port, alias));
 DECL_FUNCTION(int, jack_port_unset_alias, (jack_port_t *port, const char *alias), (port, alias));
 DECL_FUNCTION(int, jack_port_get_aliases, (const jack_port_t *port, char* const aliases[2]), (port,aliases));
@@ -254,7 +269,7 @@ DECL_FUNCTION(int, jack_set_timebase_callback, (jack_client_t *client,
 DECL_FUNCTION(int, jack_transport_locate, (jack_client_t *client, jack_nframes_t frame), (client, frame));
 DECL_FUNCTION(jack_transport_state_t, jack_transport_query, (const jack_client_t *client, jack_position_t *pos), (client, pos));
 DECL_FUNCTION(jack_nframes_t, jack_get_current_transport_frame, (const jack_client_t *client), (client));
-DECL_FUNCTION(int, jack_transport_reposition, (jack_client_t *client, jack_position_t *pos), (client, pos));
+DECL_FUNCTION(int, jack_transport_reposition, (jack_client_t *client, const jack_position_t *pos), (client, pos));
 DECL_VOID_FUNCTION(jack_transport_start, (jack_client_t *client), (client));
 DECL_VOID_FUNCTION(jack_transport_stop, (jack_client_t *client), (client));
 DECL_VOID_FUNCTION(jack_get_transport_info, (jack_client_t *client, jack_transport_info_t *tinfo), (client,tinfo));

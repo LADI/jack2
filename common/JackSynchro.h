@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #ifndef __JackSynchro__
 #define __JackSynchro__
 
-#define SYNC_MAX_NAME_SIZE 256
+#include "JackConstants.h"
 
 namespace Jack
 {
@@ -39,9 +39,6 @@ class JackSynchro
 
         char fName[SYNC_MAX_NAME_SIZE];
         bool fFlush; // If true, signal are "flushed" : used for drivers that do no consume the signal
-
-        void BuildName(const char* name, const char* server_name, char* res)
-        {}
 
     public:
 

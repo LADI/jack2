@@ -25,20 +25,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 using Jack::JackALSARawMidiOutputPort;
 
-JackALSARawMidiOutputPort::JackALSARawMidiOutputPort(snd_rawmidi_info_t *info,
+JackALSARawMidiOutputPort::JackALSARawMidiOutputPort(const char* client_name,
+                                                     snd_rawmidi_info_t *info,
                                                      size_t index,
                                                      size_t max_bytes_per_poll,
                                                      size_t max_bytes,
                                                      size_t max_messages):
-    JackALSARawMidiPort(info, index, POLLOUT)
+    JackALSARawMidiPort(client_name, info, index, POLLOUT)
 {
     alsa_event = 0;
     read_queue = new JackMidiBufferReadQueue();
-    std::auto_ptr<JackMidiBufferReadQueue> read_ptr(read_queue);
+    std::unique_ptr<JackMidiBufferReadQueue> read_ptr(read_queue);
     send_queue = new JackALSARawMidiSendQueue(rawmidi, max_bytes_per_poll);
-    std::auto_ptr<JackALSARawMidiSendQueue> send_ptr(send_queue);
+    std::unique_ptr<JackALSARawMidiSendQueue> send_ptr(send_queue);
     thread_queue = new JackMidiAsyncQueue(max_bytes, max_messages);
-    std::auto_ptr<JackMidiAsyncQueue> thread_ptr(thread_queue);
+    std::unique_ptr<JackMidiAsyncQueue> thread_ptr(thread_queue);
     raw_queue = new JackMidiRawOutputWriteQueue(send_queue, max_bytes,
                                                 max_messages, max_messages);
     thread_ptr.release();

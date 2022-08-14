@@ -1,4 +1,5 @@
 /*
+Copyright (C) 2018 Karl Linden <karl.j.linden@gmail.com>
 Copyright (C) 2008-2011 Torben Horn
 
 This program is free software; you can redistribute it and/or modify
@@ -16,9 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#ifdef WIN32
-#include <malloc.h>
-#endif
+#include <alloca.h>
 
 #include "JackNetOneDriver.h"
 #include "JackEngineControl.h"
@@ -288,7 +287,7 @@ int JackNetOneDriver::Read()
     }
 
     if ((netj.num_lost_packets * netj.period_size / netj.sample_rate) > 2)
-        JackTools::ThrowJackNetException();
+        throw JackNetException();
 
     //netjack_read(&netj, netj.period_size);
     JackDriver::CycleTakeBeginTime();
@@ -959,7 +958,7 @@ extern "C"
         jack_driver_descriptor_add_parameter(desc, &filler, "redundancy", 'R', JackDriverParamUInt, &value, NULL, "Send packets N times", NULL);
 
         value.ui = false;
-        jack_driver_descriptor_add_parameter(desc, &filler, "native-endian", 'e', JackDriverParamBool, &value, NULL, "Dont convert samples to network byte order", NULL);
+        jack_driver_descriptor_add_parameter(desc, &filler, "native-endian", 'e', JackDriverParamBool, &value, NULL, "Don't convert samples to network byte order", NULL);
 
         value.i = 0;
         jack_driver_descriptor_add_parameter(desc, &filler, "jitterval", 'J', JackDriverParamInt, &value, NULL, "Attempted jitterbuffer microseconds on master", NULL);
@@ -1108,7 +1107,7 @@ extern "C"
                                              dont_htonl_floats, always_deadline, jitter_val));
 
             if (driver->Open(period_size, sample_rate, 1, 1, capture_ports, playback_ports,
-                                0, "from_master_", "to_master_", 0, 0) == 0) {
+                                0, "from_master", "to_master", 0, 0) == 0) {
                 return driver;
             } else {
                 delete driver;
@@ -1118,6 +1117,11 @@ extern "C"
         } catch (...) {
             return NULL;
         }
+
+#if HAVE_SAMPLERATE
+        // unused
+        (void)resample_factor_up;
+#endif
     }
 
 #ifdef __cplusplus

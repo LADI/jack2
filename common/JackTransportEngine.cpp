@@ -36,6 +36,8 @@ namespace Jack
 
 JackTransportEngine::JackTransportEngine(): JackAtomicArrayState<jack_position_t>()
 {
+    static_assert(offsetof(JackTransportEngine, fWriteCounter) % sizeof(fWriteCounter) == 0,
+                  "fWriteCounter must be first member of JackTransportEngine to ensure its alignment");
     fTransportState = JackTransportStopped;
     fTransportCmd = fPreviousCmd = TransportCommandStop;
     fSyncTimeout = 10000000;	/* 10 seconds default...
@@ -194,7 +196,7 @@ void JackTransportEngine::CycleEnd(JackClientInterface** table, jack_nframes_t f
                 fTransportState = JackTransportStopped;
                 MakeAllStopping(table);
             } else if (fPendingPos) {
-                jack_log("transport starting ==> starting frame = %d"), ReadCurrentState()->frame;
+                jack_log("transport starting ==> starting frame = %d", ReadCurrentState()->frame);
                 fTransportState = JackTransportStarting;
                 MakeAllStartingLocating(table);
                 SyncTimeout(frame_rate, buffer_size);

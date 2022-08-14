@@ -42,7 +42,6 @@
 #include "jack/jslist.h"
 #include "jack/control.h"
 #include "sigsegv.h"
-#include "svnversion.h"
 
 static char * g_log_filename;
 static ino_t g_log_file_ino;
@@ -181,7 +180,7 @@ jack_dbus_message_handler(
     if (interface_name != NULL)
     {
         /* Check if we can match the interface and method.
-         * The inteface handler functions only return false if the
+         * The interface handler functions only return false if the
          * method name was unknown, otherwise they run the specified
          * method and return TRUE.
          */
@@ -900,7 +899,7 @@ main (int argc, char **argv)
     setup_sigsegv();
 
     jack_info("------------------");
-    jack_info("Controller activated. Version %s (%s) built on %s", jack_get_version_string(), SVN_VERSION, timestamp_str);
+    jack_info("Controller activated. Version %s (%s) built on %s", jack_get_version_string(), JACK_VERSION, timestamp_str);
 
     if (!dbus_threads_init_default())
     {

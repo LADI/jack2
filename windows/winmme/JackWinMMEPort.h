@@ -20,6 +20,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef __JackWinMMEPort__
 #define __JackWinMMEPort__
 
+#ifdef __MINGW32__
+#include <winsock2.h>
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 
@@ -31,8 +34,9 @@ namespace Jack {
 
     protected:
 
-        char alias[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
-        char name[JACK_CLIENT_NAME_SIZE + JACK_PORT_NAME_SIZE];
+        char alias[REAL_JACK_PORT_NAME_SIZE+1];
+        char name[REAL_JACK_PORT_NAME_SIZE+1];
+        char device_name[REAL_JACK_PORT_NAME_SIZE+1];
 
     public:
 
@@ -45,6 +49,9 @@ namespace Jack {
 
         const char *
         GetName();
+
+        const char *
+        GetDeviceName();
 
         void
         GetOSErrorString(LPTSTR text);

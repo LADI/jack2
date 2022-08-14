@@ -24,7 +24,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <assert.h>
 #include <stdlib.h>
 #include <algorithm>
+#ifdef HAVE_TRE_REGEX_H
+#include <tre/regex.h>
+#else
 #include <regex.h>
+#endif
 
 namespace Jack
 {
@@ -301,8 +305,9 @@ int JackGraphManager::ComputeTotalLatencies()
     jack_port_id_t port_index;
     for (port_index = FIRST_AVAILABLE_PORT; port_index < fPortMax; port_index++) {
         JackPort* port = GetPort(port_index);
-        if (port->IsUsed())
+        if (port->IsUsed()) {
             ComputeTotalLatency(port_index);
+        }
     }
     return 0;
 }
@@ -321,14 +326,17 @@ void JackGraphManager::RecalculateLatencyAux(jack_port_id_t port_index, jack_lat
 
         dst_port->GetLatencyRange(mode, &other_latency);
 
-        if (other_latency.max > latency.max)
+        if (other_latency.max > latency.max) {
 			latency.max = other_latency.max;
-		if (other_latency.min < latency.min)
+        }
+		if (other_latency.min < latency.min) {
 			latency.min = other_latency.min;
+        }
     }
 
-    if (latency.min == UINT32_MAX)
+    if (latency.min == UINT32_MAX) {
 		latency.min = 0;
+    }
 
 	port->SetLatencyRange(mode, &latency);
 }
@@ -355,8 +363,9 @@ void JackGraphManager::SetBufferSize(jack_nframes_t buffer_size)
     jack_port_id_t port_index;
     for (port_index = FIRST_AVAILABLE_PORT; port_index < fPortMax; port_index++) {
         JackPort* port = GetPort(port_index);
-        if (port->IsUsed())
+        if (port->IsUsed()) {
             port->ClearBuffer(buffer_size);
+        }
     }
 }
 
@@ -370,8 +379,9 @@ jack_port_id_t JackGraphManager::AllocatePortAux(int refnum, const char* port_na
         JackPort* port = GetPort(port_index);
         if (!port->IsUsed()) {
             jack_log("JackGraphManager::AllocatePortAux port_index = %ld name = %s type = %s", port_index, port_name, port_type);
-            if (!port->Allocate(refnum, port_name, port_type, flags))
+            if (!port->Allocate(refnum, port_name, port_type, flags)) {
                 return NO_PORT;
+            }
             break;
         }
     }
@@ -801,18 +811,24 @@ const char** JackGraphManager::GetConnections(jack_port_id_t port_index)
 // Client
 void JackGraphManager::GetPortsAux(const char** matching_ports, const char* port_name_pattern, const char* type_name_pattern, unsigned long flags)
 {
+    // Cleanup port array
+    memset(matching_ports, 0, sizeof(char*) * fPortMax);
+
     int match_cnt = 0;
     regex_t port_regex, type_regex;
 
     if (port_name_pattern && port_name_pattern[0]) {
-        regcomp(&port_regex, port_name_pattern, REG_EXTENDED | REG_NOSUB);
+        if (regcomp(&port_regex, port_name_pattern, REG_EXTENDED | REG_NOSUB)!=0) {
+             jack_log("JackGraphManager::GetPortsAux could not compile regex for port_name_pattern '%s'", port_name_pattern);
+             return;
+        }
     }
     if (type_name_pattern && type_name_pattern[0]) {
-        regcomp(&type_regex, type_name_pattern, REG_EXTENDED | REG_NOSUB);
+        if (regcomp(&type_regex, type_name_pattern, REG_EXTENDED | REG_NOSUB)!=0) {
+             jack_log("JackGraphManager::GetPortsAux could not compile regex for type_name_pattern '%s'", type_name_pattern);
+             return;
+        }
     }
-
-    // Cleanup port array
-    memset(matching_ports, 0, sizeof(char*) * fPortMax);
 
     for (unsigned int i = 0; i < fPortMax; i++) {
         bool matching = true;

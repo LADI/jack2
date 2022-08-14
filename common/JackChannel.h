@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include "types.h"
 #include "JackSession.h"
+#include "JackMetadata.h"
 
 namespace Jack
 {
@@ -74,10 +75,10 @@ class JackClientRequestInterface : public JackChannelTransactionInterface, publi
         {}
         virtual ~JackClientRequestInterface()
         {}
-        
+
         virtual int Read(void* data, int len) { return -1; }
         virtual int Write(void* data, int len) { return -1; }
-        
+
         virtual int Connect(const char* dir, const char* name, int which) { return -1; }
         virtual int Close() { return -1; }
 
@@ -98,7 +99,7 @@ class JackClientChannelInterface
         {}
 
         // Open the Server/Client connection
-        virtual int Open(const char* server_name, const char* name, int uuid, char* name_res, JackClient* obj, jack_options_t options, jack_status_t* status)
+        virtual int Open(const char* server_name, const char* name, jack_uuid_t uuid, char* name_res, JackClient* obj, jack_options_t options, jack_status_t* status)
         {
             return 0;
         }
@@ -122,9 +123,9 @@ class JackClientChannelInterface
             return -1;
         }
 
-        virtual void ClientCheck(const char* name, int uuid, char* name_res, int protocol, int options, int* status, int* result, int open)
+        virtual void ClientCheck(const char* name, jack_uuid_t uuid, char* name_res, int protocol, int options, int* status, int* result, int open)
         {}
-        virtual void ClientOpen(const char* name, int pid, int uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
+        virtual void ClientOpen(const char* name, int pid, jack_uuid_t uuid, int* shared_engine, int* shared_client, int* shared_graph, int* result)
         {}
         virtual void ClientOpen(const char* name, int* ref, JackEngineControl** shared_engine, JackGraphManager** shared_manager, JackClientInterface* client, int* result)
         {}
@@ -168,7 +169,7 @@ class JackClientChannelInterface
         {}
         virtual void InternalClientHandle(int refnum, const char* client_name, int* status, int* int_ref, int* result)
         {}
-        virtual void InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, int uuid, int* result)
+        virtual void InternalClientLoad(int refnum, const char* client_name, const char* so_name, const char* objet_data, int options, int* status, int* int_ref, jack_uuid_t uuid, int* result)
         {}
         virtual void InternalClientUnload(int refnum, int int_ref, int* status, int* result)
         {}
@@ -184,6 +185,9 @@ class JackClientChannelInterface
         virtual void ReserveClientName(int refnum, const char* client_name, const char *uuid, int* result)
         {}
         virtual void ClientHasSessionCallback(const char* client_name, int* result)
+        {}
+
+        virtual void PropertyChangeNotify(jack_uuid_t subject, const char* key, jack_property_change_t change, int* result)
         {}
 
         virtual bool IsChannelThread()

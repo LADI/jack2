@@ -46,8 +46,9 @@ namespace Jack
 
         JackFilter()
         {
-            for (int i = 0; i < MAX_SIZE; i++)
+            for (int i = 0; i < MAX_SIZE; i++) {
                 fTable[i] = 0;
+            }
         }
 
         void AddValue(jack_time_t val)
@@ -59,8 +60,9 @@ namespace Jack
         jack_time_t GetVal()
         {
             jack_time_t mean = 0;
-            for (int i = 0; i < MAX_SIZE; i++)
+            for (int i = 0; i < MAX_SIZE; i++) {
                 mean += fTable[i];
+            }
             return mean / MAX_SIZE;
         }
 
@@ -218,7 +220,7 @@ namespace Jack
 #endif
 
     /*
-    Torben Hohn PI controler from JACK1
+    Torben Hohn PI controller from JACK1
     */
 
     struct JackPIControler {
@@ -295,7 +297,7 @@ namespace Jack
             // This is the integral of the smoothed_offset
             offset_integral += smooth_offset;
 
-            // Clamp offset : the smooth offset still contains unwanted noise which would go straigth onto the resample coeff.
+            // Clamp offset : the smooth offset still contains unwanted noise which would go straight onto the resample coeff.
             // It only used in the P component and the I component is used for the fine tuning anyways.
             if (fabs(smooth_offset) < pclamp)
                 smooth_offset = 0.0;
@@ -306,7 +308,7 @@ namespace Jack
             double current_resample_factor
                 = static_resample_factor - smooth_offset / catch_factor - offset_integral / catch_factor / catch_factor2;
 
-            // Now quantize this value around resample_mean, so that the noise which is in the integral component doesnt hurt.
+            // Now quantize this value around resample_mean, so that the noise which is in the integral component doesn't hurt.
             current_resample_factor = floor((current_resample_factor - resample_mean) * controlquant + 0.5) / controlquant + resample_mean;
 
             // Calculate resample_mean so we can init ourselves to saner values.

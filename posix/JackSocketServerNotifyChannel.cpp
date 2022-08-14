@@ -22,7 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackRequest.h"
 #include "JackConstants.h"
 #include "JackNotification.h"
-#include "JackServerGlobals.h"
 
 namespace Jack
 {
@@ -34,7 +33,6 @@ int JackSocketServerNotifyChannel::Open(const char* server_name)
         return -1;
     } else {
         fRequestSocket.SetNonBlocking(true);
-        JackServerGlobals::fRTNotificationSocket = fRequestSocket.GetFd();
         return 0;
     }
 }
@@ -47,7 +45,7 @@ void JackSocketServerNotifyChannel::Close()
 /*
 The requirement is that the Notification from RT thread can be delivered... not sure using a socket is adequate here...
 Can the write operation block?
-A non blocking write operation shoud be used : check if write can succeed, and ignore the notification otherwise
+A non blocking write operation should be used : check if write can succeed, and ignore the notification otherwise
 (since its mainly used for XRun, ignoring a notification is OK, successive XRun will come...)
 */
 void JackSocketServerNotifyChannel::Notify(int refnum, int notify, int value)

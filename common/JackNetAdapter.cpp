@@ -40,7 +40,7 @@ namespace Jack
         GetHostName(fParams.fName, JACK_CLIENT_NAME_SIZE);
         fSocket.GetName(fParams.fSlaveNetName);
         fParams.fMtu = DEFAULT_MTU;
-        // Desactivated for now...
+        // Deactivated for now...
         fParams.fTransportSync = 0;
         int send_audio = -1;
         int return_audio = -1;
@@ -49,10 +49,10 @@ namespace Jack
         fParams.fSampleRate = sample_rate;
         fParams.fPeriodSize = buffer_size;
         fParams.fSlaveSyncMode = 1;
-        fParams.fNetworkLatency = 2;
+        fParams.fNetworkLatency = NETWORK_DEFAULT_LATENCY;
         fParams.fSampleEncoder = JackFloatEncoder;
         fClient = jack_client;
-
+    
         // Possibly use env variable
         const char* default_udp_port = getenv("JACK_NETJACK_PORT");
         udp_port = (default_udp_port) ? atoi(default_udp_port) : DEFAULT_PORT;
@@ -262,10 +262,11 @@ namespace Jack
     {
         try {
             // Keep running even in case of error
-            while (fThread.GetStatus() == JackThread::kRunning)
+            while (fThread.GetStatus() == JackThread::kRunning) {
                 if (Process() == SOCKET_ERROR) {
                     return false;
                 }
+            }
             return false;
         } catch (JackNetException& e) {
             // Otherwise just restart...
@@ -349,13 +350,22 @@ namespace Jack
 //read/write operations---------------------------------------------------------------
     int JackNetAdapter::Read()
     {
-        //don't return -1 in case of sync recv failure
-        //we need the process to continue for network error detection
-        if (SyncRecv() == SOCKET_ERROR) {
-            return 0;
+        switch (SyncRecv()) {
+        
+            case SOCKET_ERROR:
+                return SOCKET_ERROR;
+                
+            case SYNC_PACKET_ERROR:
+                // Since sync packet is incorrect, don't decode it and continue with data
+                break;
+                
+            default:
+                //decode sync
+                int unused_frames;
+                DecodeSyncPacket(unused_frames);
+                break;
         }
-
-        DecodeSyncPacket();
+        
         return DataRecv();
     }
 
@@ -450,7 +460,7 @@ extern "C"
         jack_driver_descriptor_add_parameter(desc, &filler, "ring-buffer", 'g', JackDriverParamInt, &value, NULL, "Fixed ringbuffer size", "Fixed ringbuffer size (if not set => automatic adaptative)");
 
         value.i = false;
-        jack_driver_descriptor_add_parameter(desc, &filler, "auto-connect", 'c', JackDriverParamBool, &value, NULL, "Auto connect netmaster to system ports", "");
+        jack_driver_descriptor_add_parameter(desc, &filler, "auto-connect", 'c', JackDriverParamBool, &value, NULL, "Auto connect netadapter to system ports", NULL);
 
         return desc;
     }

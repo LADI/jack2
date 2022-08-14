@@ -51,9 +51,9 @@ JackWinMMEInputPort::JackWinMMEInputPort(const char *alias_name,
                                          size_t max_bytes, size_t max_messages)
 {
     thread_queue = new JackMidiAsyncQueue(max_bytes, max_messages);
-    std::auto_ptr<JackMidiAsyncQueue> thread_queue_ptr(thread_queue);
+    std::unique_ptr<JackMidiAsyncQueue> thread_queue_ptr(thread_queue);
     write_queue = new JackMidiBufferWriteQueue();
-    std::auto_ptr<JackMidiBufferWriteQueue> write_queue_ptr(write_queue);
+    std::unique_ptr<JackMidiBufferWriteQueue> write_queue_ptr(write_queue);
     sysex_buffer = new jack_midi_data_t[max_bytes];
     char error_message[MAXERRORLENGTH];
     MMRESULT result = midiInOpen(&handle, index,
@@ -92,6 +92,7 @@ JackWinMMEInputPort::JackWinMMEInputPort(const char *alias_name,
     snprintf(alias, sizeof(alias) - 1, "%s:%s:in%d", alias_name, name_tmp,
              index + 1);
     snprintf(name, sizeof(name) - 1, "%s:capture_%d", client_name, index + 1);
+    strncpy(device_name, name_tmp, sizeof(device_name) - 1);
     jack_event = 0;
     started = false;
     write_queue_ptr.release();
@@ -205,10 +206,10 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
     set_threaded_log_function();
     switch (message) {
     case MIM_CLOSE:
-        jack_info("JackWinMMEInputPort::ProcessWinMME - MIDI device closed.");
+        jack_log("JackWinMMEInputPort::ProcessWinMME - MIDI device closed.");
         break;
     case MIM_MOREDATA:
-        jack_info("JackWinMMEInputPort::ProcessWinMME - The MIDI input device "
+        jack_log("JackWinMMEInputPort::ProcessWinMME - The MIDI input device "
                   "driver thinks that JACK is not processing messages fast "
                   "enough.");
         // Fallthrough on purpose.
@@ -245,7 +246,7 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
         LPMIDIHDR header = (LPMIDIHDR) param1;
         size_t byte_count = header->dwBytesRecorded;
         if (! byte_count) {
-            jack_info("JackWinMMEInputPort::ProcessWinMME - WinMME driver has "
+            jack_log("JackWinMMEInputPort::ProcessWinMME - WinMME driver has "
                       "returned sysex header to us with no bytes.  The JACK "
                       "driver is probably being stopped.");
             break;
@@ -273,7 +274,7 @@ JackWinMMEInputPort::ProcessWinMME(UINT message, DWORD param1, DWORD param2)
                    "incomplete sysex message received.");
         break;
     case MIM_OPEN:
-        jack_info("JackWinMMEInputPort::ProcessWinMME - MIDI device opened.");
+        jack_log("JackWinMMEInputPort::ProcessWinMME - MIDI device opened.");
     }
 }
 

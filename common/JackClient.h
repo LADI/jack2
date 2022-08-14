@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackPlatformPlug.h"
 #include "JackChannel.h"
 #include "JackRequest.h"
+#include "JackMetadata.h"
 #include "varargs.h"
 #include <list>
 
@@ -68,6 +69,7 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         JackThreadCallback fThreadFun;
         JackSessionCallback fSession;
         JackLatencyCallback fLatency;
+        JackPropertyChangeCallback fPropertyChange;
 
         void* fProcessArg;
         void* fGraphOrderArg;
@@ -87,7 +89,9 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         void* fThreadFunArg;
         void* fSessionArg;
         void* fLatencyArg;
-        char fServerName[JACK_SERVER_CONTROL_NAME_SIZE];
+        void* fPropertyChangeArg;
+
+        char fServerName[JACK_SERVER_NAME_SIZE+1];
 
         JackThread fThread;    /*! Thread to execute the Process function */
         detail::JackClientChannelInterface* fChannel;
@@ -118,16 +122,18 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         inline void CallTimebaseCallbackAux();
         inline int ActivateAux();
         inline void InitAux();
+        inline void SetupRealTime();
 
         int HandleLatencyCallback(int status);
 
     public:
 
-        JackClient();
         JackClient(JackSynchro* table);
         virtual ~JackClient();
+        
+        char* GetServerName() { return fServerName; }
 
-        virtual int Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status) = 0;
+        virtual int Open(const char* server_name, const char* name, jack_uuid_t uuid, jack_options_t options, jack_status_t* status) = 0;
         virtual int Close();
 
         virtual JackGraphManager* GetGraphManager() const = 0;
@@ -143,7 +149,7 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         virtual int SetBufferSize(jack_nframes_t buffer_size);
         virtual int SetFreeWheel(int onoff);
         virtual int ComputeTotalLatencies();
-        virtual void ShutDown();
+        virtual void ShutDown(jack_status_t code, const char* message);
         virtual jack_native_thread_t GetThreadID();
 
         // Port management
@@ -185,6 +191,7 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         virtual int SetPortRenameCallback(JackPortRenameCallback callback, void *arg);
         virtual int SetSessionCallback(JackSessionCallback callback, void *arg);
         virtual int SetLatencyCallback(JackLatencyCallback callback, void *arg);
+        virtual int SetPropertyChangeCallback(JackPropertyChangeCallback callback, void* arg);
 
         // Internal clients
         virtual char* GetInternalClientName(int ref);
@@ -204,6 +211,9 @@ class SERVER_EXPORT JackClient : public JackClientInterface, public JackRunnable
         virtual char* GetClientNameByUUID(const char* uuid);
         virtual int ReserveClientName(const char* client_name, const char* uuid);
         virtual int ClientHasSessionCallback(const char* client_name);
+
+        // Metadata API
+        virtual int PropertyChangeNotify(jack_uuid_t subject, const char* key, jack_property_change_t change);
 
         // JackRunnableInterface interface
         bool Init();

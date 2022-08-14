@@ -51,6 +51,16 @@ JackSynchro* GetSynchroTable()
     return (JackLibGlobals::fGlobals ? JackLibGlobals::fGlobals->fSynchroTable : 0);
 }
 
+// Used for client-side Metadata API (JackLibAPI.cpp)
+JackMetadata* GetMetadata()
+{
+    if (JackLibGlobals::fGlobals) {
+        return JackLibGlobals::fGlobals->fMetadata;
+    } else {
+        return NULL;
+    }
+}
+
 //-------------------
 // Client management
 //-------------------
@@ -62,11 +72,11 @@ ShutDown is called:
 (Not needed since the synch object used (Sema of Fifo will fails when server quits... see ShutDown))
 */
 
-void JackLibClient::ShutDown()
+void JackLibClient::ShutDown(jack_status_t code, const char* message)
 {
     jack_log("JackLibClient::ShutDown");
     JackGlobals::fServerRunning = false;
-    JackClient::ShutDown();
+    JackClient::ShutDown(code, message);
 }
 
 JackLibClient::JackLibClient(JackSynchro* table): JackClient(table)
@@ -81,15 +91,25 @@ JackLibClient::~JackLibClient()
     delete fChannel;
 }
 
-int JackLibClient::Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status)
+int JackLibClient::Open(const char* server_name, const char* name, jack_uuid_t uuid, jack_options_t options, jack_status_t* status)
 {
     int shared_engine, shared_client, shared_graph, result;
+    bool res;
     jack_log("JackLibClient::Open name = %s", name);
-
+    
+    if (strlen(name) >= JACK_CLIENT_NAME_SIZE) {
+        jack_error("\"%s\" is too long to be used as a JACK client name.\n"
+                   "Please use %lu characters or less",
+                   name,
+                   JACK_CLIENT_NAME_SIZE - 1);
+        return -1; 
+    }
+    
     strncpy(fServerName, server_name, sizeof(fServerName));
+    fServerName[sizeof(fServerName) - 1] = 0;
 
     // Open server/client channel
-    char name_res[JACK_CLIENT_NAME_SIZE + 1];
+    char name_res[JACK_CLIENT_NAME_SIZE+1];
     if (fChannel->Open(server_name, name, uuid, name_res, this, options, status) < 0) {
         jack_error("Cannot connect to the server");
         goto error;
@@ -122,13 +142,16 @@ int JackLibClient::Open(const char* server_name, const char* name, int uuid, jac
     SetupDriverSync(false);
 
     // Connect shared synchro : the synchro must be usable in I/O mode when several clients live in the same process
-    if (!fSynchroTable[GetClientControl()->fRefNum].Connect(name_res, fServerName)) {
+    assert(JackGlobals::fSynchroMutex);
+    JackGlobals::fSynchroMutex->Lock();
+    res = fSynchroTable[GetClientControl()->fRefNum].Connect(name_res, fServerName);
+    JackGlobals::fSynchroMutex->Unlock();
+    if (!res) {
         jack_error("Cannot ConnectSemaphore %s client", name_res);
         goto error;
     }
 
     JackGlobals::fClientTable[GetClientControl()->fRefNum] = this;
-    JackGlobals::fServerRunning = true;
     SetClockSource(GetEngineControl()->fClockSource);
     jack_log("JackLibClient::Open name = %s refnum = %ld", name_res, GetClientControl()->fRefNum);
     return 0;
@@ -145,6 +168,8 @@ error:
 int JackLibClient::ClientNotifyImp(int refnum, const char* name, int notify, int sync, const char* message, int value1, int value2)
 {
     int res = 0;
+    assert(JackGlobals::fSynchroMutex);
+    JackGlobals::fSynchroMutex->Lock();
 
     // Done all time
     switch (notify) {
@@ -157,11 +182,13 @@ int JackLibClient::ClientNotifyImp(int refnum, const char* name, int notify, int
 
         case kRemoveClient:
             jack_log("JackClient::RemoveClient name = %s, ref = %ld ", name, refnum);
-            if (GetClientControl() && strcmp(GetClientControl()->fName, name) != 0)
+            if (GetClientControl() && strcmp(GetClientControl()->fName, name) != 0) {
                 res = fSynchroTable[refnum].Disconnect() ? 0 : -1;
+            }
             break;
     }
 
+    JackGlobals::fSynchroMutex->Unlock();
     return res;
 }
 

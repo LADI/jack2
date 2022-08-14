@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
 
+#define __STDC_FORMAT_MACROS 1
+#include <inttypes.h>
 #include "JackClient.h"
 #include "JackError.h"
 #include "JackGraphManager.h"
@@ -122,6 +124,7 @@ extern "C"
             unsigned long buffer_size);
     LIB_EXPORT int jack_port_unregister(jack_client_t *, jack_port_t *);
     LIB_EXPORT void * jack_port_get_buffer(jack_port_t *, jack_nframes_t);
+    LIB_EXPORT jack_uuid_t  jack_port_uuid(const jack_port_t*);
     LIB_EXPORT const char*  jack_port_name(const jack_port_t *port);
     LIB_EXPORT const char*  jack_port_short_name(const jack_port_t *port);
     LIB_EXPORT int jack_port_flags(const jack_port_t *port);
@@ -150,6 +153,7 @@ extern "C"
     LIB_EXPORT int jack_recompute_total_latencies(jack_client_t*);
 
     LIB_EXPORT int jack_port_set_name(jack_port_t *port, const char* port_name);
+    LIB_EXPORT int jack_port_rename(jack_client_t *client, jack_port_t *port, const char* port_name);
     LIB_EXPORT int jack_port_set_alias(jack_port_t *port, const char* alias);
     LIB_EXPORT int jack_port_unset_alias(jack_port_t *port, const char* alias);
     LIB_EXPORT int jack_port_get_aliases(const jack_port_t *port, char* const aliases[2]);
@@ -263,6 +267,16 @@ extern "C"
     LIB_EXPORT void jack_session_commands_free(jack_session_command_t *cmds);
     LIB_EXPORT int jack_client_has_session_callback(jack_client_t *client, const char* client_name);
 
+    LIB_EXPORT jack_uuid_t jack_client_uuid_generate();
+    LIB_EXPORT jack_uuid_t jack_port_uuid_generate(uint32_t port_id);
+    LIB_EXPORT uint32_t jack_uuid_to_index(jack_uuid_t);
+    LIB_EXPORT int  jack_uuid_compare(jack_uuid_t, jack_uuid_t);
+    LIB_EXPORT void jack_uuid_copy(jack_uuid_t* dst, jack_uuid_t src);
+    LIB_EXPORT void jack_uuid_clear(jack_uuid_t*);
+    LIB_EXPORT int  jack_uuid_parse(const char* buf, jack_uuid_t*);
+    LIB_EXPORT void jack_uuid_unparse(jack_uuid_t, char buf[JACK_UUID_STRING_SIZE]);
+    LIB_EXPORT int  jack_uuid_empty(jack_uuid_t);
+
 #ifdef __cplusplus
 }
 #endif
@@ -342,6 +356,20 @@ LIB_EXPORT void* jack_port_get_buffer(jack_port_t* port, jack_nframes_t frames)
     } else {
         JackGraphManager* manager = GetGraphManager();
         return (manager ? manager->GetBuffer(myport, frames) : NULL);
+    }
+}
+
+LIB_EXPORT jack_uuid_t jack_port_uuid(const jack_port_t* port)
+{
+    JackGlobals::CheckContext("jack_port_uuid");
+
+    uintptr_t port_aux = (uintptr_t)port;
+    jack_port_id_t myport = (jack_port_id_t)port_aux;
+    if (!CheckPort(myport)) {
+        jack_error("jack_port_uuid called with an incorrect port %ld", myport);
+        return 0;
+    } else {
+        return jack_port_uuid_generate(myport);
     }
 }
 
@@ -482,7 +510,7 @@ LIB_EXPORT int jack_port_tie(jack_port_t* src, jack_port_t* dst)
         jack_error("jack_port_tie called with ports not belonging to the same client");
         return -1;
     } else {
-        return manager->GetPort(mydst)->Tie(mysrc);
+        return (manager ? manager->GetPort(mydst)->Tie(mysrc) : -1);
     }
 }
 
@@ -601,24 +629,37 @@ LIB_EXPORT int jack_recompute_total_latencies(jack_client_t* ext_client)
 LIB_EXPORT int jack_port_set_name(jack_port_t* port, const char* name)
 {
     JackGlobals::CheckContext("jack_port_set_name");
+    jack_error("jack_port_set_name: deprecated");
 
+    // Find a valid client
+    jack_client_t* client = NULL;
+    for (int i = 0; i < CLIENT_NUM; i++) {
+        if ((client = (jack_client_t*)JackGlobals::fClientTable[i])) {
+            break;
+        }
+    }
+
+    return (client) ? jack_port_rename(client, port, name) : -1;
+}
+
+LIB_EXPORT int jack_port_rename(jack_client_t* ext_client, jack_port_t* port, const char* name)
+{
+    JackGlobals::CheckContext("jack_port_rename");
+
+    JackClient* client = (JackClient*)ext_client;
     uintptr_t port_aux = (uintptr_t)port;
     jack_port_id_t myport = (jack_port_id_t)port_aux;
-    if (!CheckPort(myport)) {
-        jack_error("jack_port_set_name called with an incorrect port %ld", myport);
+    if (client == NULL) {
+        jack_error("jack_port_rename called with a NULL client");
+        return -1;
+    } else if (!CheckPort(myport)) {
+        jack_error("jack_port_rename called with an incorrect port %ld", myport);
         return -1;
     } else if (name == NULL) {
-        jack_error("jack_port_set_name called with a NULL port name");
+        jack_error("jack_port_rename called with a NULL port name");
         return -1;
     } else {
-        JackClient* client = NULL;
-        for (int i = 0; i < CLIENT_NUM; i++) {
-            // Find a valid client
-            if ((client = JackGlobals::fClientTable[i])) {
-                break;
-            }
-        }
-        return (client) ? client->PortRename(myport, name) : -1;
+        return client->PortRename(myport, name);
     }
 }
 
@@ -1257,19 +1298,21 @@ LIB_EXPORT jack_port_t* jack_port_by_name(jack_client_t* ext_client, const char*
 
     JackClient* client = (JackClient*)ext_client;
     if (client == NULL) {
-        jack_error("jack_get_ports called with a NULL client");
-        return 0;
+        jack_error("jack_port_by_name called with a NULL client");
+        return NULL;
     }
 
     if (portname == NULL) {
         jack_error("jack_port_by_name called with a NULL port name");
         return NULL;
-    } else {
-        JackGraphManager* manager = GetGraphManager();
-        if (!manager)
-            return NULL;
+    }
+    
+    JackGraphManager* manager = GetGraphManager();
+    if (manager) {
         int res = manager->GetPort(portname); // returns a port index at least > 1
         return (res == NO_PORT) ? NULL : (jack_port_t*)((uintptr_t)res);
+    } else {
+        return NULL;
     }
 }
 
@@ -1399,7 +1442,7 @@ LIB_EXPORT float jack_cpu_load(jack_client_t* ext_client)
         return 0.0f;
     } else {
         JackEngineControl* control = GetEngineControl();
-        return (control ? control->fCPULoad :  0.0f);
+        return (control ? control->fCPULoad : 0.0f);
     }
 }
 
@@ -1431,12 +1474,12 @@ LIB_EXPORT char* jack_get_client_name(jack_client_t* ext_client)
 
 LIB_EXPORT int jack_client_name_size(void)
 {
-    return JACK_CLIENT_NAME_SIZE;
+    return JACK_CLIENT_NAME_SIZE+1;
 }
 
 LIB_EXPORT int jack_port_name_size(void)
 {
-    return REAL_JACK_PORT_NAME_SIZE;
+    return REAL_JACK_PORT_NAME_SIZE+1;
 }
 
 LIB_EXPORT int jack_port_type_size(void)
@@ -1716,14 +1759,12 @@ LIB_EXPORT int jack_drop_real_time_scheduling(jack_native_thread_t thread)
 LIB_EXPORT int jack_client_stop_thread(jack_client_t* client, jack_native_thread_t thread)
 {
     JackGlobals::CheckContext("jack_client_stop_thread");
-
     return JackThread::StopImp(thread);
 }
 
 LIB_EXPORT int jack_client_kill_thread(jack_client_t* client, jack_native_thread_t thread)
 {
     JackGlobals::CheckContext("jack_client_kill_thread");
-
     return JackThread::KillImp(thread);
 }
 
@@ -1744,7 +1785,6 @@ LIB_EXPORT int jack_internal_client_new (const char* client_name,
                                      const char* load_init)
 {
     JackGlobals::CheckContext("jack_internal_client_new");
-
     jack_error("jack_internal_client_new: deprecated");
     return -1;
 }
@@ -1752,7 +1792,6 @@ LIB_EXPORT int jack_internal_client_new (const char* client_name,
 LIB_EXPORT void jack_internal_client_close (const char* client_name)
 {
     JackGlobals::CheckContext("jack_internal_client_close");
-
     jack_error("jack_internal_client_close: deprecated");
 }
 
@@ -1854,7 +1893,7 @@ LIB_EXPORT void jack_get_version(int *major_ptr,
 {
     JackGlobals::CheckContext("jack_get_version");
 
-    // FIXME: We need these comming from build system
+    // FIXME: We need these coming from build system
     *major_ptr = 0;
     *minor_ptr = 0;
     *micro_ptr = 0;
@@ -1864,7 +1903,6 @@ LIB_EXPORT void jack_get_version(int *major_ptr,
 LIB_EXPORT const char* jack_get_version_string()
 {
     JackGlobals::CheckContext("jack_get_version_string");
-
     return VERSION;
 }
 
@@ -1944,8 +1982,8 @@ LIB_EXPORT char *jack_client_get_uuid(jack_client_t* ext_client)
         jack_error("jack_client_get_uuid called with a NULL client");
         return NULL;
     } else {
-        char retval[16];
-        snprintf(retval, sizeof(retval), "%d", client->GetClientControl()->fSessionID);
+        char retval[JACK_UUID_STRING_SIZE];
+        jack_uuid_unparse(client->GetClientControl()->fSessionID, retval);
         return strdup(retval);
     }
 }
@@ -2033,4 +2071,72 @@ LIB_EXPORT int jack_client_has_session_callback(jack_client_t* ext_client, const
     } else {
         return client->ClientHasSessionCallback(client_name);
     }
+}
+
+LIB_EXPORT jack_uuid_t jack_client_uuid_generate()
+{
+    static uint32_t uuid_cnt = 0;
+    jack_uuid_t uuid = 0x2; /* JackUUIDClient */;
+    uuid = (uuid << 32) | ++uuid_cnt;
+    return uuid;
+}
+
+LIB_EXPORT jack_uuid_t jack_port_uuid_generate(uint32_t port_id)
+{
+    jack_uuid_t uuid = 0x1; /* JackUUIDPort */
+    uuid = (uuid << 32) | (port_id + 1);
+    return uuid;
+}
+
+LIB_EXPORT uint32_t jack_uuid_to_index(jack_uuid_t u)
+{
+    return (u & 0xffff) - 1;
+}
+
+LIB_EXPORT int jack_uuid_compare(jack_uuid_t a, jack_uuid_t b)
+{
+    if (a == b) {
+        return 0;
+    }
+
+    if (a < b) {
+        return -1;
+    }
+
+    return 1;
+}
+
+LIB_EXPORT void jack_uuid_copy(jack_uuid_t* dst, jack_uuid_t src)
+{
+    *dst = src;
+}
+
+LIB_EXPORT void jack_uuid_clear(jack_uuid_t* u)
+{
+    *u = JACK_UUID_EMPTY_INITIALIZER;
+}
+
+LIB_EXPORT int jack_uuid_parse(const char* b, jack_uuid_t* u)
+{
+    if (sscanf (b, "%" PRIu64, u) == 1) {
+
+        if (*u < (0x1LL << 32)) {
+            /* has not type bits set - not legal */
+            return -1;
+        }
+
+        return 0;
+    }
+
+    return -1;
+}
+
+LIB_EXPORT void jack_uuid_unparse(jack_uuid_t u, char b[JACK_UUID_STRING_SIZE])
+{
+    snprintf (b, JACK_UUID_STRING_SIZE, "%" PRIu64, u);
+}
+
+LIB_EXPORT int jack_uuid_empty(jack_uuid_t u)
+{
+    return u == JACK_UUID_EMPTY_INITIALIZER;
 }

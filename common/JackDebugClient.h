@@ -59,7 +59,7 @@ class JackDebugClient : public JackClient
         int fIsDeactivated;
         int fIsClosed;
         bool fFreewheel;
-        char fClientName[JACK_CLIENT_NAME_SIZE + 1];
+        char fClientName[JACK_CLIENT_NAME_SIZE+1];
         JackProcessCallback fProcessTimeCallback;
         void* fProcessTimeCallbackArg;
 
@@ -68,7 +68,7 @@ class JackDebugClient : public JackClient
         JackDebugClient(JackClient* fTheClient);
         virtual ~JackDebugClient();
 
-        virtual int Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status);
+        virtual int Open(const char* server_name, const char* name, jack_uuid_t uuid, jack_options_t options, jack_status_t* status);
         int Close();
 
         virtual JackGraphManager* GetGraphManager() const;
@@ -84,7 +84,7 @@ class JackDebugClient : public JackClient
         int SetBufferSize(jack_nframes_t buffer_size);
         int SetFreeWheel(int onoff);
         int ComputeTotalLatencies();
-        void ShutDown();
+        void ShutDown(jack_status_t code, const char* message);
         jack_native_thread_t GetThreadID();
 
         // Port management
@@ -106,7 +106,7 @@ class JackDebugClient : public JackClient
         void TransportLocate(jack_nframes_t frame);
         jack_transport_state_t TransportQuery(jack_position_t* pos);
         jack_nframes_t GetCurrentTransportFrame();
-        int TransportReposition(jack_position_t* pos);
+        int TransportReposition(const jack_position_t* pos);
         void TransportStart();
         void TransportStop();
 
@@ -131,7 +131,7 @@ class JackDebugClient : public JackClient
         int InternalClientHandle(const char* client_name, jack_status_t* status);
         int InternalClientLoad(const char* client_name, jack_options_t options, jack_status_t* status, jack_varargs_t* va);
         void InternalClientUnload(int ref, jack_status_t* status);
-        
+
         // RT Thread
         int SetProcessThread(JackThreadCallback fun, void *arg);
 

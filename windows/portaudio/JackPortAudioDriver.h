@@ -36,12 +36,12 @@ class JackPortAudioDriver : public JackMMCSS, public JackAudioDriver
 
     private:
 
-        PortAudioDevices* fPaDevices;
         PaStream* fStream;
         jack_default_audio_sample_t** fInputBuffer;
         jack_default_audio_sample_t** fOutputBuffer;
         PaDeviceIndex fInputDevice;
         PaDeviceIndex fOutputDevice;
+        PortAudioDevices* fPaDevices;
 
         static int Render(const void* inputBuffer, void* outputBuffer,
                           unsigned long framesPerBuffer,
@@ -51,15 +51,14 @@ class JackPortAudioDriver : public JackMMCSS, public JackAudioDriver
 
         PaError OpenStream(jack_nframes_t buffer_size);
         void UpdateLatencies();
+        int Render(const void* inputBuffer, void* outputBuffer, PaStreamCallbackFlags statusFlags);
 
     public:
 
         JackPortAudioDriver(const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table, PortAudioDevices* pa_devices)
                 : JackMMCSS(), JackAudioDriver(name, alias, engine, table), fStream(NULL), fInputBuffer(NULL), fOutputBuffer(NULL),
-                fInputDevice(paNoDevice), fOutputDevice(paNoDevice)
-        {
-            fPaDevices = pa_devices;
-        }
+                fInputDevice(paNoDevice), fOutputDevice(paNoDevice), fPaDevices(pa_devices)
+        {}
 
         virtual ~JackPortAudioDriver()
         {

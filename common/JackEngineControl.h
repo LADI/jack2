@@ -63,18 +63,18 @@ struct SERVER_EXPORT JackEngineControl : public JackShmMem
     int fServerPriority;
     int fClientPriority;
     int fMaxClientPriority;
-    char fServerName[JACK_SERVER_CONTROL_NAME_SIZE];
-    JackTransportEngine fTransport;
+    char fServerName[JACK_SERVER_NAME_SIZE+1];
+    alignas(UInt32) alignas(JackTransportEngine) JackTransportEngine fTransport;
     jack_timer_type_t fClockSource;
     int fDriverNum;
     bool fVerbose;
 
     // CPU Load
-    jack_time_t  fPrevCycleTime;
-    jack_time_t  fCurCycleTime;
-    jack_time_t  fSpareUsecs;
-    jack_time_t  fMaxUsecs;
-    jack_time_t  fRollingClientUsecs[JACK_ENGINE_ROLLING_COUNT];
+    jack_time_t fPrevCycleTime;
+    jack_time_t fCurCycleTime;
+    jack_time_t fSpareUsecs;
+    jack_time_t fMaxUsecs;
+    jack_time_t fRollingClientUsecs[JACK_ENGINE_ROLLING_COUNT];
     unsigned int fRollingClientUsecsCnt;
     int	fRollingClientUsecsIndex;
     int	fRollingInterval;
@@ -86,14 +86,18 @@ struct SERVER_EXPORT JackEngineControl : public JackShmMem
     UInt64 fConstraint;
 
     // Timer
-    JackFrameTimer fFrameTimer;
+    alignas(UInt32) alignas(JackFrameTimer) JackFrameTimer fFrameTimer;
 
 #ifdef JACK_MONITOR
     JackEngineProfiling fProfiler;
 #endif
 
     JackEngineControl(bool sync, bool temporary, long timeout, bool rt, long priority, bool verbose, jack_timer_type_t clock, const char* server_name)
-    {
+      {
+        static_assert(offsetof(JackEngineControl, fTransport) % sizeof(UInt32) == 0,
+                      "fTransport must be aligned within JackEngineControl");
+        static_assert(offsetof(JackEngineControl, fFrameTimer) % sizeof(UInt32) == 0,
+                      "fFrameTimer must be aligned within JackEngineControl");
         fBufferSize = 512;
         fSampleRate = 48000;
         fPeriodUsecs = jack_time_t(1000000.f / fSampleRate * fBufferSize);
@@ -104,7 +108,12 @@ struct SERVER_EXPORT JackEngineControl : public JackShmMem
         fRealTime = rt;
         fSavedRealTime = false;
         fServerPriority = priority;
+
+    #ifdef WIN32
+        fClientPriority = (rt) ? priority - 3 : 0;
+    #else
         fClientPriority = (rt) ? priority - 5 : 0;
+    #endif
         fMaxClientPriority = (rt) ? priority - 1 : 0;
         fVerbose = verbose;
         fPrevCycleTime = 0;
@@ -113,6 +122,8 @@ struct SERVER_EXPORT JackEngineControl : public JackShmMem
         fMaxUsecs = 0;
         ResetRollingUsecs();
         strncpy(fServerName, server_name, sizeof(fServerName));
+        fServerName[sizeof(fServerName) - 1] = 0;
+        fCPULoad = 0.f;
         fPeriod = 0;
         fComputation = 0;
         fConstraint = 0;
@@ -120,11 +131,11 @@ struct SERVER_EXPORT JackEngineControl : public JackShmMem
         fXrunDelayedUsecs = 0.f;
         fClockSource = clock;
         fDriverNum = 0;
-   }
+    }
 
     ~JackEngineControl()
     {}
-    
+
     void UpdateTimeOut()
     {
         fPeriodUsecs = jack_time_t(1000000.f / fSampleRate * fBufferSize); // In microsec

@@ -52,16 +52,6 @@ class SERVER_EXPORT JackDriverInterface
 
         virtual int Open() = 0;
 
-        virtual int Open (bool capturing,
-                         bool playing,
-                         int inchannels,
-                         int outchannels,
-                         bool monitor,
-                         const char* capture_driver_name,
-                         const char* playback_driver_name,
-                         jack_nframes_t capture_latency,
-                         jack_nframes_t playback_latency) = 0;
-
         virtual int Open(jack_nframes_t buffer_size,
                          jack_nframes_t samplerate,
                          bool capturing,
@@ -105,9 +95,11 @@ class SERVER_EXPORT JackDriverInterface
         virtual int ProcessRead() = 0;
         virtual int ProcessWrite() = 0;
 
+        // For "slave" driver in "synchronous" mode
         virtual int ProcessReadSync() = 0;
         virtual int ProcessWriteSync() = 0;
 
+        // For "slave" driver in "asynchronous" mode
         virtual int ProcessReadAsync() = 0;
         virtual int ProcessWriteAsync() = 0;
 
@@ -130,15 +122,16 @@ class SERVER_EXPORT JackDriverClientInterface : public JackDriverInterface, publ
 #define PlaybackDriverFlags static_cast<JackPortFlags>(JackPortIsInput | JackPortIsPhysical | JackPortIsTerminal)
 #define MonitorDriverFlags static_cast<JackPortFlags>(JackPortIsOutput)
 
+typedef std::list<std::pair<std::string, std::pair<std::string, std::string> > > driver_connections_list_t; // [type : (src, dst)]
+
 class SERVER_EXPORT JackDriver : public JackDriverClientInterface
 {
 
     protected:
 
-        char fCaptureDriverName[JACK_CLIENT_NAME_SIZE + 1];
-        char fPlaybackDriverName[JACK_CLIENT_NAME_SIZE + 1];
-
-        char fAliasName[JACK_CLIENT_NAME_SIZE + 1];
+        char fCaptureDriverName[JACK_CLIENT_NAME_SIZE+1];
+        char fPlaybackDriverName[JACK_CLIENT_NAME_SIZE+1];
+        char fAliasName[JACK_CLIENT_NAME_SIZE+1];
 
         jack_nframes_t fCaptureLatency;
         jack_nframes_t fPlaybackLatency;
@@ -169,21 +162,22 @@ class SERVER_EXPORT JackDriver : public JackDriverClientInterface
         jack_port_id_t fPlaybackPortList[DRIVER_PORT_NUM];
         jack_port_id_t fMonitorPortList[DRIVER_PORT_NUM];
 
-        std::list<std::pair<std::string, std::string> > fConnections;		// Connections list
+        driver_connections_list_t fConnections;		// Connections list
 
         void CycleIncTime();
         void CycleTakeBeginTime();
         void CycleTakeEndTime();
 
         void SetupDriverSync(int ref, bool freewheel);
-     
+
         void NotifyXRun(jack_time_t callback_usecs, float delayed_usecs);   // XRun notification sent by the driver
         void NotifyBufferSize(jack_nframes_t buffer_size);                  // BufferSize notification sent by the driver
         void NotifySampleRate(jack_nframes_t sample_rate);                  // SampleRate notification sent by the driver
         void NotifyFailure(int code, const char* reason);                   // Failure notification sent by the driver
 
-        virtual void SaveConnections();
-        virtual void RestoreConnections();
+        virtual void SaveConnections(int alias);
+        virtual void LoadConnections(int alias, bool full_name = true);
+        std::string MatchPortName(const char* name, const char** ports, int alias, const std::string& type);
 
         virtual int StartSlaves();
         virtual int StopSlaves();
@@ -194,7 +188,6 @@ class SERVER_EXPORT JackDriver : public JackDriverClientInterface
     public:
 
         JackDriver(const char* name, const char* alias, JackLockedEngine* engine, JackSynchro* table);
-        JackDriver();
         virtual ~JackDriver();
 
         void SetMaster(bool onoff);
@@ -209,16 +202,6 @@ class SERVER_EXPORT JackDriver : public JackDriverClientInterface
         }
 
         virtual int Open();
-
-        virtual int Open(bool capturing,
-                         bool playing,
-                         int inchannels,
-                         int outchannels,
-                         bool monitor,
-                         const char* capture_driver_name,
-                         const char* playback_driver_name,
-                         jack_nframes_t capture_latency,
-                         jack_nframes_t playback_latency);
 
         virtual int Open(jack_nframes_t buffer_size,
                          jack_nframes_t samplerate,
@@ -249,15 +232,17 @@ class SERVER_EXPORT JackDriver : public JackDriverClientInterface
         int ProcessReadSlaves();
         int ProcessWriteSlaves();
 
-        // For "slave" driver
-        int ProcessRead();
-        int ProcessWrite();
+        // For "slave" driver with typically decompose a given cycle in separated Read and Write parts.
+        virtual int ProcessRead();
+        virtual int ProcessWrite();
 
-        int ProcessReadSync();
-        int ProcessWriteSync();
+        // For "slave" driver in "synchronous" mode
+        virtual int ProcessReadSync();
+        virtual int ProcessWriteSync();
 
-        int ProcessReadAsync();
-        int ProcessWriteAsync();
+        // For "slave" driver in "asynchronous" mode
+        virtual int ProcessReadAsync();
+        virtual int ProcessWriteAsync();
 
         virtual bool IsFixedBufferSize();
         virtual int SetBufferSize(jack_nframes_t buffer_size);

@@ -54,7 +54,7 @@ int JackLoopbackDriver::ProcessWriteSync()
 {
     // Suspend on connected clients in the graph
     if (SuspendRefNum() < 0) {
-        jack_error("JackLoopbackDriver::ProcessWriteSync SuspendRefNum error");
+        jack_error("JackLoopbackDriver::ProcessWriteSync - SuspendRefNum error");
         return -1;
     }
     return 0;
@@ -122,7 +122,7 @@ extern "C"
         }
 
         Jack::JackDriverClientInterface* driver = new Jack::JackLoopbackDriver(engine, table);
-        if (driver->Open(1, 1, channels, channels, false, "loopback", "loopback", 0, 0) == 0) {
+        if (driver->Open(0, 0, 1, 1, channels, channels, false, "loopback", "loopback", 0, 0) == 0) {
             return driver;
         } else {
             delete driver;

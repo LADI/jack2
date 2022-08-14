@@ -85,26 +85,6 @@ int JackAudioDriver::Open(jack_nframes_t buffer_size,
         monitor, capture_driver_name, playback_driver_name, capture_latency, playback_latency);
 }
 
-int JackAudioDriver::Open(bool capturing,
-                          bool playing,
-                          int inchannels,
-                          int outchannels,
-                          bool monitor,
-                          const char* capture_driver_name,
-                          const char* playback_driver_name,
-                          jack_nframes_t capture_latency,
-                          jack_nframes_t playback_latency)
-{
-    fCaptureChannels = inchannels;
-    fPlaybackChannels = outchannels;
-    fWithMonitorPorts = monitor;
-    memset(fCapturePortList, 0, sizeof(jack_port_id_t) * DRIVER_PORT_NUM);
-    memset(fPlaybackPortList, 0, sizeof(jack_port_id_t) * DRIVER_PORT_NUM);
-    memset(fMonitorPortList, 0, sizeof(jack_port_id_t) * DRIVER_PORT_NUM);
-    return JackDriver::Open(capturing, playing, inchannels, outchannels,
-        monitor, capture_driver_name, playback_driver_name, capture_latency, playback_latency);
-}
-
 void JackAudioDriver::UpdateLatencies()
 {
     jack_latency_range_t input_range;
@@ -135,8 +115,8 @@ int JackAudioDriver::Attach()
 {
     JackPort* port;
     jack_port_id_t port_index;
-    char name[REAL_JACK_PORT_NAME_SIZE];
-    char alias[REAL_JACK_PORT_NAME_SIZE];
+    char name[REAL_JACK_PORT_NAME_SIZE+1];
+    char alias[REAL_JACK_PORT_NAME_SIZE+1];
     int i;
 
     jack_log("JackAudioDriver::Attach fBufferSize = %ld fSampleRate = %ld", fEngineControl->fBufferSize, fEngineControl->fSampleRate);
@@ -174,7 +154,7 @@ int JackAudioDriver::Attach()
                 jack_error("Cannot register monitor port for %s", name);
                 return -1;
             } else {
-                 fMonitorPortList[i] = port_index;
+                fMonitorPortList[i] = port_index;
             }
         }
     }
@@ -209,8 +189,9 @@ int JackAudioDriver::Write()
             jack_default_audio_sample_t* buffer = GetOutputBuffer(i);
             int size = sizeof(jack_default_audio_sample_t) * fEngineControl->fBufferSize;
             // Monitor ports
-            if (fWithMonitorPorts && fGraphManager->GetConnectionsNum(fMonitorPortList[i]) > 0)
+            if (fWithMonitorPorts && fGraphManager->GetConnectionsNum(fMonitorPortList[i]) > 0) {
                 memcpy(GetMonitorBuffer(i), buffer, size);
+            }
         }
     }
     return 0;
@@ -222,7 +203,7 @@ int JackAudioDriver::Process()
 }
 
 /*
-The driver ASYNC mode: output buffers computed at the *previous cycle* are used, the server does not
+The driver "asynchronous" mode: output buffers computed at the *previous cycle* are used, the server does not
 synchronize to the end of client graph execution.
 */
 
@@ -258,6 +239,10 @@ void JackAudioDriver::ProcessGraphAsync()
     }
 }
 
+/*
+Used when the driver works in master mode.
+*/
+
 void JackAudioDriver::ProcessGraphAsyncMaster()
 {
     // fBeginDateUst is set in the "low level" layer, fEndDateUst is from previous cycle
@@ -280,6 +265,10 @@ void JackAudioDriver::ProcessGraphAsyncMaster()
     // Does not wait on graph execution end
 }
 
+/*
+Used when the driver works in slave mode.
+*/
+
 void JackAudioDriver::ProcessGraphAsyncSlave()
 {
     if (ResumeRefNum() < 0) {
@@ -288,7 +277,7 @@ void JackAudioDriver::ProcessGraphAsyncSlave()
 }
 
 /*
-The driver SYNC mode: the server does synchronize to the end of client graph execution,
+The driver "synchronous" mode: the server does synchronize to the end of client graph execution,
 if graph process succeed, output buffers computed at the *current cycle* are used.
 */
 
@@ -324,6 +313,10 @@ void JackAudioDriver::ProcessGraphSync()
     }
 }
 
+/*
+Used when the driver works in master mode.
+*/
+
 void JackAudioDriver::ProcessGraphSyncMaster()
 {
     // fBeginDateUst is set in the "low level" layer, fEndDateUst is from previous cycle
@@ -351,6 +344,10 @@ void JackAudioDriver::ProcessGraphSyncMaster()
     }
 }
 
+/*
+Used when the driver works in slave mode.
+*/
+
 void JackAudioDriver::ProcessGraphSyncSlave()
 {
     if (ResumeRefNum() < 0) {
@@ -374,7 +371,7 @@ jack_default_audio_sample_t* JackAudioDriver::GetOutputBuffer(int port_index)
 
 jack_default_audio_sample_t* JackAudioDriver::GetMonitorBuffer(int port_index)
 {
-    return fPlaybackPortList[port_index]
+    return fMonitorPortList[port_index]
         ? (jack_default_audio_sample_t*)fGraphManager->GetBuffer(fMonitorPortList[port_index], fEngineControl->fBufferSize)
         : NULL;
 }

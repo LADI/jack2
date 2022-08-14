@@ -63,6 +63,7 @@ namespace Jack
         fNetMidiPlaybackBuffer = NULL;
         memset(&fSendTransportData, 0, sizeof(net_transport_data_t));
         memset(&fReturnTransportData, 0, sizeof(net_transport_data_t));
+        fPacketTimeOut = PACKET_TIMEOUT * NETWORK_DEFAULT_LATENCY;
     }
 
     void JackNetInterface::FreeNetworkBuffers()
@@ -124,6 +125,7 @@ namespace Jack
     bool JackNetInterface::SetParams()
     {
         // TX header init
+        memset(&fTxHeader, 0, sizeof(fTxHeader));
         strcpy(fTxHeader.fPacketType, "header");
         fTxHeader.fID = fParams.fID;
         fTxHeader.fCycle = 0;
@@ -131,6 +133,7 @@ namespace Jack
         fTxHeader.fIsLastPckt = 0;
 
         // RX header init
+        memset(&fRxHeader, 0, sizeof(fTxHeader));
         strcpy(fRxHeader.fPacketType, "header");
         fRxHeader.fID = fParams.fID;
         fRxHeader.fCycle = 0;
@@ -163,6 +166,7 @@ namespace Jack
                 fTxHeader.fIsLastPckt = ((subproc == (fTxHeader.fNumPacket - 1)) && audio_channels == 0) ? 1 : 0;
                 fTxHeader.fPacketSize = HEADER_SIZE + buffer->RenderToNetwork(subproc, data_size);
                 memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
+                 //PacketHeaderDisplay(&fTxHeader);
                 if (Send(fTxHeader.fPacketSize, 0) == SOCKET_ERROR) {
                     return SOCKET_ERROR;
                 }
@@ -176,7 +180,7 @@ namespace Jack
         // audio
         if (audio_channels > 0) {
             fTxHeader.fDataType = 'a';
-            fTxHeader.fActivePorts = buffer->RenderFromJackPorts();
+            fTxHeader.fActivePorts = buffer->RenderFromJackPorts(fTxHeader.fFrames);
             fTxHeader.fNumPacket = buffer->GetNumPackets(fTxHeader.fActivePorts);
 
             for (uint subproc = 0; subproc < fTxHeader.fNumPacket; subproc++) {
@@ -184,7 +188,7 @@ namespace Jack
                 fTxHeader.fIsLastPckt = (subproc == (fTxHeader.fNumPacket - 1)) ? 1 : 0;
                 fTxHeader.fPacketSize = HEADER_SIZE + buffer->RenderToNetwork(subproc, fTxHeader.fActivePorts);
                 memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
-                // PacketHeaderDisplay(&fTxHeader);
+                //PacketHeaderDisplay(&fTxHeader);
                 if (Send(fTxHeader.fPacketSize, 0) == SOCKET_ERROR) {
                     return SOCKET_ERROR;
                 }
@@ -204,6 +208,7 @@ namespace Jack
         if (++recvd_midi_pckt == rx_head->fNumPacket) {
             buffer->RenderToJackPorts();
         }
+        //PacketHeaderDisplay(rx_head);
         return rx_bytes;
     }
 
@@ -214,19 +219,25 @@ namespace Jack
         fRxHeader.fSubCycle = rx_head->fSubCycle;
         fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
         fRxHeader.fActivePorts = rx_head->fActivePorts;
+        fRxHeader.fFrames = rx_head->fFrames;
         rx_bytes = buffer->RenderFromNetwork(rx_head->fCycle, rx_head->fSubCycle, fRxHeader.fActivePorts);
         
         // Last audio packet is received, so finish rendering...
         if (fRxHeader.fIsLastPckt) {
-            buffer->RenderToJackPorts();
+            buffer->RenderToJackPorts(fRxHeader.fFrames);
         }
+        //PacketHeaderDisplay(rx_head);
         return rx_bytes;
     }
 
     int JackNetInterface::FinishRecv(NetAudioBuffer* buffer)
     {
-        buffer->RenderToJackPorts();
-        return NET_PACKET_ERROR;
+        if (buffer) {
+            buffer->RenderToJackPorts(fRxHeader.fFrames);
+        } else {
+            jack_error("FinishRecv with null buffer...");
+        }
+        return DATA_PACKET_ERROR;
     }
 
     NetAudioBuffer* JackNetInterface::AudioBufferFactory(int nports, char* buffer)
@@ -248,13 +259,14 @@ namespace Jack
                 return new NetOpusAudioBuffer(&fParams, nports, buffer, fParams.fKBps);
             #endif
         }
-        return NULL;
+        
+        throw std::bad_alloc();
     }
     
     void JackNetInterface::SetRcvTimeOut()
     {
         if (!fSetTimeOut) {
-            if (fSocket.SetTimeOut(PACKET_TIMEOUT) == SOCKET_ERROR) {
+            if (fSocket.SetTimeOut(fPacketTimeOut) == SOCKET_ERROR) {
                 jack_error("Can't set rx timeout : %s", StrError(NET_ERROR_CODE));
                 return;
             }
@@ -356,11 +368,11 @@ namespace Jack
             }
 
         } catch (exception&) {
-            jack_error("NetAudioBuffer allocation error...");
+            jack_error("NetAudioBuffer on master allocation error...");
             return false;
         }
 
-        // set the new rx buffer size
+        // set the new buffer size
         if (SetNetBufferSize() == SOCKET_ERROR) {
             jack_error("Can't set net buffer sizes : %s", StrError(NET_ERROR_CODE));
             goto error;
@@ -381,7 +393,7 @@ namespace Jack
         fRunning = false;
 
         // send a 'multicast euthanasia request' - new socket is required on macosx
-        jack_info("Exiting '%s'", fParams.fName);
+        jack_info("Exiting '%s' %s", fParams.fName, fMulticastIP);
         SetPacketType(&fParams, KILL_MASTER);
         JackNetSocket mcast_socket(fMulticastIP, fSocket.GetPort());
 
@@ -426,7 +438,7 @@ namespace Jack
         if (((rx_bytes = fSocket.Recv(fRxBuffer, size, flags)) == SOCKET_ERROR) && fRunning) {
             FatalRecvError();
         }
-
+  
         packet_header_t* header = reinterpret_cast<packet_header_t*>(fRxBuffer);
         PacketHeaderNToH(header, header);
         return rx_bytes;
@@ -444,11 +456,6 @@ namespace Jack
         return tx_bytes;
     }
 
-    bool JackNetMasterInterface::IsSynched()
-    {
-        return (fCurrentCycleOffset <= fMaxCycleOffset);
-    }
-
     int JackNetMasterInterface::SyncSend()
     {
         SetRcvTimeOut();
@@ -457,10 +464,10 @@ namespace Jack
         fTxHeader.fSubCycle = 0;
         fTxHeader.fDataType = 's';
         fTxHeader.fIsLastPckt = (fParams.fSendMidiChannels == 0 && fParams.fSendAudioChannels == 0) ? 1 : 0;
-        fTxHeader.fPacketSize = fParams.fMtu;
-
+        fTxHeader.fPacketSize = HEADER_SIZE + fTxHeader.fActivePorts * sizeof(int); // Data part is used to encode active ports
+      
         memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
-        // PacketHeaderDisplay(&fTxHeader);
+        //PacketHeaderDisplay(&fTxHeader);
         return Send(fTxHeader.fPacketSize, 0);
     }
 
@@ -480,19 +487,31 @@ namespace Jack
         // receive sync (launch the cycle)
         do {
             rx_bytes = Recv(fParams.fMtu, MSG_PEEK);
-            // connection issue, send will detect it, so don't skip the cycle (return 0)
+            // connection issue (return -1)
             if (rx_bytes == SOCKET_ERROR) {
                 return SOCKET_ERROR;
             }
         }
-        while ((strcmp(rx_head->fPacketType, "header") != 0) && (rx_head->fDataType != 's'));
-
+        while (strcmp(rx_head->fPacketType, "header") != 0);
+        //PacketHeaderDisplay(rx_head);
+        
+        if (rx_head->fDataType != 's') {
+            jack_error("Wrong packet type : %c", rx_head->fDataType);
+            // not the last packet..
+            fRxHeader.fIsLastPckt = 0;
+            return SYNC_PACKET_ERROR;
+        }
+    
         fCurrentCycleOffset = fTxHeader.fCycle - rx_head->fCycle;
 
-        if (fCurrentCycleOffset < fMaxCycleOffset) {
-            jack_info("Synching with latency = %d", fCurrentCycleOffset);
-            return 0;
+        if (fCurrentCycleOffset < fMaxCycleOffset && !fSynched) {
+            jack_info("Syncing with latency = %d", fCurrentCycleOffset);
+            return NET_SYNCHING;
         } else {
+            if (fCurrentCycleOffset == fMaxCycleOffset) {
+                // when the sync offset is reached 
+                fSynched = true;
+            }
             rx_bytes = Recv(rx_head->fPacketSize, 0);
             fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
             return rx_bytes;
@@ -504,7 +523,7 @@ namespace Jack
         int rx_bytes = 0;
         uint recvd_midi_pckt = 0;
         packet_header_t* rx_head = reinterpret_cast<packet_header_t*>(fRxBuffer);
-
+     
         while (!fRxHeader.fIsLastPckt) {
             // how much data is queued on the rx buffer ?
             rx_bytes = Recv(fParams.fMtu, MSG_PEEK);
@@ -527,7 +546,7 @@ namespace Jack
                         break;
 
                     case 's':   // sync
-                        jack_info("NetMaster : overloaded, skipping receive from '%s'", fParams.fName);
+                        jack_info("NetMaster : missing last data packet from '%s'", fParams.fName);
                         return FinishRecv(fNetAudioPlaybackBuffer);
                 }
             }
@@ -536,12 +555,14 @@ namespace Jack
         return rx_bytes;
     }
 
-    void JackNetMasterInterface::EncodeSyncPacket()
+    void JackNetMasterInterface::EncodeSyncPacket(int frames)
     {
-        // This method contains every step of sync packet informations coding
+        // This method contains every step of sync packet information coding
         // first of all, clear sync packet
         memset(fTxData, 0, PACKET_AVAILABLE_SIZE(&fParams));
-
+    
+        // Transport not used for now...
+        /*
         // then, first step : transport
         if (fParams.fTransportSync) {
             EncodeTransportData();
@@ -551,16 +572,19 @@ namespace Jack
         }
         // then others (freewheel etc.)
         // ...
-
-        // Transport not used for now...
-
+        */
+   
         // Write active ports list
         fTxHeader.fActivePorts = (fNetAudioPlaybackBuffer) ? fNetAudioPlaybackBuffer->ActivePortsToNetwork(fTxData) : 0;
+        fTxHeader.fFrames = frames;
     }
 
-    void JackNetMasterInterface::DecodeSyncPacket()
+    void JackNetMasterInterface::DecodeSyncPacket(int& frames)
     {
-        // This method contains every step of sync packet informations decoding process
+        // This method contains every step of sync packet information decoding process
+        
+        // Transport not used for now...
+        /*
         // first : transport
         if (fParams.fTransportSync) {
             // copy received transport data to transport data structure
@@ -570,14 +594,15 @@ namespace Jack
         }
         // then others
         // ...
-
-        // Transport not used for now...
+        */
+       
         packet_header_t* rx_head = reinterpret_cast<packet_header_t*>(fRxBuffer);
 
         // Read active ports list
         if (fNetAudioCaptureBuffer) {
             fNetAudioCaptureBuffer->ActivePortsFromNetwork(fRxData, rx_head->fActivePorts);
         }
+        frames = rx_head->fFrames;
     }
 
 // JackNetSlaveInterface ************************************************************************************************
@@ -601,7 +626,7 @@ namespace Jack
 
         // set the parameters to send
         strcpy(fParams.fPacketType, "params");
-        fParams.fProtocolVersion = SLAVE_PROTOCOL;
+        fParams.fProtocolVersion = NETWORK_PROTOCOL;
         SetPacketType(&fParams, SLAVE_AVAILABLE);
 
         // init loop : get a master and start, do it until connection is ok
@@ -631,25 +656,15 @@ namespace Jack
     // Separate the connection protocol into two separated step
     bool JackNetSlaveInterface::InitConnection(int time_out_sec)
     {
-        jack_log("JackNetSlaveInterface::InitConnection()");
-        uint try_count = (time_out_sec > 0) ? ((1000000 * time_out_sec) / SLAVE_INIT_TIMEOUT) : LONG_MAX;
-
+        jack_log("JackNetSlaveInterface::InitConnection time_out_sec = %d", time_out_sec);
+        int try_count = (time_out_sec > 0) ? int((1000000.f * float(time_out_sec)) / float(SLAVE_INIT_TIMEOUT)) : INT_MAX;
+  
         // set the parameters to send
         strcpy(fParams.fPacketType, "params");
-        fParams.fProtocolVersion = SLAVE_PROTOCOL;
+        fParams.fProtocolVersion = NETWORK_PROTOCOL;
         SetPacketType(&fParams, SLAVE_AVAILABLE);
 
-        net_status_t status;
-        do {
-            // get a master
-            status = SendAvailableToMaster(try_count);
-            if (status == NET_SOCKET_ERROR) {
-                return false;
-            }
-        }
-        while (status != NET_CONNECTED && --try_count > 0);
-
-        return (try_count != 0);
+        return (SendAvailableToMaster(try_count) == NET_CONNECTED);
     }
 
     bool JackNetSlaveInterface::InitRendering()
@@ -670,9 +685,9 @@ namespace Jack
         return true;
     }
 
-    net_status_t JackNetSlaveInterface::SendAvailableToMaster(long try_count)
+    net_status_t JackNetSlaveInterface::SendAvailableToMaster(int try_count)
     {
-        jack_log("JackNetSlaveInterface::SendAvailableToMaster()");
+        jack_log("JackNetSlaveInterface::SendAvailableToMaster try_count = %d", try_count);
         // utility
         session_params_t host_params;
         int rx_bytes = 0;
@@ -705,6 +720,7 @@ namespace Jack
 
         // send 'AVAILABLE' until 'SLAVE_SETUP' received
         jack_info("Waiting for a master...");
+        
         do {
             // send 'available'
             session_params_t net_params;
@@ -723,9 +739,9 @@ namespace Jack
                 return NET_RECV_ERROR;
             }
         }
-        while (strcmp(host_params.fPacketType, fParams.fPacketType)  && (GetPacketType(&host_params) != SLAVE_SETUP)  && (--try_count > 0));
-
-        // Time out failure..
+        while (strcmp(host_params.fPacketType, fParams.fPacketType) && (GetPacketType(&host_params) != SLAVE_SETUP)  && (--try_count > 0));
+    
+        // time out failure..
         if (try_count == 0) {
             jack_error("Time out error in connect");
             return NET_CONNECT_ERROR;
@@ -733,12 +749,13 @@ namespace Jack
 
         // everything is OK, copy parameters
         fParams = host_params;
-
+     
         // connect the socket
         if (fSocket.Connect() == SOCKET_ERROR) {
             jack_error("Error in connect : %s", StrError(NET_ERROR_CODE));
             return NET_CONNECT_ERROR;
         }
+        
         return NET_CONNECTED;
     }
 
@@ -792,7 +809,7 @@ namespace Jack
             }
 
         } catch (exception&) {
-            jack_error("NetAudioBuffer allocation error...");
+            jack_error("NetAudioBuffer on slave allocation error...");
             return false;
         }
 
@@ -811,14 +828,12 @@ namespace Jack
 
     void JackNetSlaveInterface::FatalRecvError()
     {
-        jack_error("Recv connection lost error = %s", StrError(NET_ERROR_CODE));
-        throw JackNetException();
+        throw JackNetException("Recv connection lost error");
     }
 
     void JackNetSlaveInterface::FatalSendError()
     {
-        jack_error("Send connection lost error = %s", StrError(NET_ERROR_CODE));
-        throw JackNetException();
+        throw JackNetException("Send connection lost error");
     }
 
     int JackNetSlaveInterface::Recv(size_t size, int flags)
@@ -851,22 +866,30 @@ namespace Jack
 
     int JackNetSlaveInterface::SyncRecv()
     {
+        SetRcvTimeOut();
+        
         int rx_bytes = 0;
         packet_header_t* rx_head = reinterpret_cast<packet_header_t*>(fRxBuffer);
      
         // receive sync (launch the cycle)
         do {
             rx_bytes = Recv(fParams.fMtu, 0);
-            // connection issue, send will detect it, so don't skip the cycle (return 0)
+            // connection issue (return -1)
             if (rx_bytes == SOCKET_ERROR) {
                 return rx_bytes;
             }
         }
-        while ((strcmp(rx_head->fPacketType, "header") != 0) && (rx_head->fDataType != 's'));
-
-        fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
+        while (strcmp(rx_head->fPacketType, "header") != 0);
         
-        SetRcvTimeOut();
+        if (rx_head->fDataType != 's') {
+            jack_error("Wrong packet type : %c", rx_head->fDataType);
+            // not the last packet...
+            fRxHeader.fIsLastPckt = 0;
+            return SYNC_PACKET_ERROR;
+        }
+        
+        //PacketHeaderDisplay(rx_head);
+        fRxHeader.fIsLastPckt = rx_head->fIsLastPckt;
         return rx_bytes;
     }
 
@@ -880,7 +903,7 @@ namespace Jack
             // how much data is queued on the rx buffer ?
             rx_bytes = Recv(fParams.fMtu, MSG_PEEK);
 
-            // error here, problem with recv, just skip the cycle (return -1)
+            // error here, just skip the cycle (return -1)
             if (rx_bytes == SOCKET_ERROR) {
                 return rx_bytes;
             }
@@ -898,7 +921,7 @@ namespace Jack
                         break;
 
                     case 's':   // sync
-                        jack_info("NetSlave : overloaded, skipping receive");
+                        jack_info("NetSlave : missing last data packet");
                         return FinishRecv(fNetAudioCaptureBuffer);
                 }
             }
@@ -919,10 +942,10 @@ namespace Jack
         fTxHeader.fSubCycle = 0;
         fTxHeader.fDataType = 's';
         fTxHeader.fIsLastPckt = (fParams.fReturnMidiChannels == 0 && fParams.fReturnAudioChannels == 0) ? 1 : 0;
-        fTxHeader.fPacketSize = fParams.fMtu;
-
+        fTxHeader.fPacketSize = HEADER_SIZE + fTxHeader.fActivePorts * sizeof(int); // Data part is used to encode active ports
+    
         memcpy(fTxBuffer, &fTxHeader, HEADER_SIZE);
-        // PacketHeaderDisplay(&fTxHeader);
+        //PacketHeaderDisplay(&fTxHeader);
         return Send(fTxHeader.fPacketSize, 0);
     }
 
@@ -935,13 +958,15 @@ namespace Jack
     }
 
     // network sync------------------------------------------------------------------------
-    void JackNetSlaveInterface::EncodeSyncPacket()
+    void JackNetSlaveInterface::EncodeSyncPacket(int frames)
     {
-        // This method contains every step of sync packet informations coding
+        // This method contains every step of sync packet information coding
         // first of all, clear sync packet
         memset(fTxData, 0, PACKET_AVAILABLE_SIZE(&fParams));
 
         // then first step : transport
+        // Transport is not used for now...
+        /*
         if (fParams.fTransportSync) {
             EncodeTransportData();
             TransportDataHToN(&fReturnTransportData, &fReturnTransportData);
@@ -950,16 +975,19 @@ namespace Jack
         }
         // then others
         // ...
-
-        // Transport is not used for now...
+        */
 
         // Write active ports list
         fTxHeader.fActivePorts = (fNetAudioCaptureBuffer) ? fNetAudioCaptureBuffer->ActivePortsToNetwork(fTxData) : 0;
+        fTxHeader.fFrames = frames;
     }
 
-    void JackNetSlaveInterface::DecodeSyncPacket()
+    void JackNetSlaveInterface::DecodeSyncPacket(int& frames)
     {
-        // This method contains every step of sync packet informations decoding process
+        // This method contains every step of sync packet information decoding process
+        
+        // Transport not used for now...
+        /*
         // first : transport
         if (fParams.fTransportSync) {
             // copy received transport data to transport data structure
@@ -969,14 +997,16 @@ namespace Jack
         }
         // then others
         // ...
-
-        // Transport not used for now...
+        */
+       
         packet_header_t* rx_head = reinterpret_cast<packet_header_t*>(fRxBuffer);
 
         // Read active ports list
         if (fNetAudioPlaybackBuffer) {
             fNetAudioPlaybackBuffer->ActivePortsFromNetwork(fRxData, rx_head->fActivePorts);
         }
+        
+        frames = rx_head->fFrames;
     }
 
 }

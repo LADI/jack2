@@ -80,6 +80,8 @@ JackALSARawMidiDriver::Attach()
         port = fGraphManager->GetPort(index);
         port->SetAlias(alias);
         port->SetLatencyRange(JackCaptureLatency, &latency_range);
+        fEngine->PortSetDefaultMetadata(fClientControl.fRefNum, index,
+                                        input_port->GetDeviceName());
         fCapturePortList[i] = index;
 
         jack_info("JackALSARawMidiDriver::Attach - input port registered "
@@ -106,6 +108,8 @@ JackALSARawMidiDriver::Attach()
         port = fGraphManager->GetPort(index);
         port->SetAlias(alias);
         port->SetLatencyRange(JackPlaybackLatency, &latency_range);
+        fEngine->PortSetDefaultMetadata(fClientControl.fRefNum, index,
+                                        output_port->GetDeviceName());
         fPlaybackPortList[i] = index;
 
         jack_info("JackALSARawMidiDriver::Attach - output port registered "
@@ -405,10 +409,11 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     }
     size_t num_inputs = 0;
     size_t num_outputs = 0;
+    const char *client_name = fClientControl.fName;
     if (potential_inputs) {
         try {
             input_ports = new JackALSARawMidiInputPort *[potential_inputs];
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating input "
                        "port array: %s", e.what());
             FreeDeviceInfo(&in_info_list, &out_info_list);
@@ -418,7 +423,7 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     if (potential_outputs) {
         try {
             output_ports = new JackALSARawMidiOutputPort *[potential_outputs];
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating output "
                        "port array: %s", e.what());
             FreeDeviceInfo(&in_info_list, &out_info_list);
@@ -428,9 +433,9 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     for (size_t i = 0; i < potential_inputs; i++) {
         snd_rawmidi_info_t *info = in_info_list.at(i);
         try {
-            input_ports[num_inputs] = new JackALSARawMidiInputPort(info, i);
+            input_ports[num_inputs] = new JackALSARawMidiInputPort(client_name, info, i);
             num_inputs++;
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating new "
                        "JackALSARawMidiInputPort: %s", e.what());
         }
@@ -439,9 +444,9 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     for (size_t i = 0; i < potential_outputs; i++) {
         snd_rawmidi_info_t *info = out_info_list.at(i);
         try {
-            output_ports[num_outputs] = new JackALSARawMidiOutputPort(info, i);
+            output_ports[num_outputs] = new JackALSARawMidiOutputPort(client_name, info, i);
             num_outputs++;
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating new "
                        "JackALSARawMidiOutputPort: %s", e.what());
         }
@@ -504,7 +509,7 @@ JackALSARawMidiDriver::Start()
     }
     try {
         poll_fds = new pollfd[poll_fd_count];
-    } catch (std::exception e) {
+    } catch (std::exception& e) {
         jack_error("JackALSARawMidiDriver::Start - creating poll descriptor "
                    "structures failed: %s", e.what());
         return -1;
@@ -512,7 +517,7 @@ JackALSARawMidiDriver::Start()
     if (fPlaybackChannels) {
         try {
             output_port_timeouts = new jack_nframes_t[fPlaybackChannels];
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Start - creating array for "
                        "output port timeout values failed: %s", e.what());
             goto free_poll_descriptors;
@@ -521,7 +526,7 @@ JackALSARawMidiDriver::Start()
     struct pollfd *poll_fd_iter;
     try {
         CreateNonBlockingPipe(fds);
-    } catch (std::exception e) {
+    } catch (std::exception& e) {
         jack_error("JackALSARawMidiDriver::Start - while creating wake pipe: "
                    "%s", e.what());
         goto free_output_port_timeouts;
@@ -624,6 +629,9 @@ JackALSARawMidiDriver::Write()
 #ifdef __cplusplus
 extern "C" {
 #endif
+    
+    // singleton kind of driver
+    static Jack::JackALSARawMidiDriver* driver = NULL;
 
     SERVER_EXPORT jack_driver_desc_t *
     driver_get_descriptor()
@@ -639,14 +647,19 @@ extern "C" {
     driver_initialize(Jack::JackLockedEngine *engine, Jack::JackSynchro *table,
                       const JSList *params)
     {
-        Jack::JackDriverClientInterface *driver =
-            new Jack::JackALSARawMidiDriver("system_midi", "alsarawmidi",
-                                            engine, table);
-        if (driver->Open(1, 1, 0, 0, false, "midi in", "midi out", 0, 0)) {
-            delete driver;
-            driver = 0;
+        // singleton kind of driver
+        if (!driver) {
+            driver = new Jack::JackALSARawMidiDriver("system_midi", "alsarawmidi", engine, table);
+            if (driver->Open(1, 1, 0, 0, false, "midi in", "midi out", 0, 0) == 0) {
+                return driver;
+            } else {
+                delete driver;
+                return NULL;
+            }
+        } else {
+            jack_info("JackALSARawMidiDriver already allocated, cannot be loaded twice");
+            return NULL;
         }
-        return driver;
     }
 
 #ifdef __cplusplus

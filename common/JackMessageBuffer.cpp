@@ -38,7 +38,10 @@ JackMessageBuffer::JackMessageBuffer()
     fOutBuffer(0),
     fOverruns(0),
     fRunning(false)
-{}
+{
+    static_assert(offsetof(JackMessageBuffer, fOverruns) % sizeof(fOverruns) == 0,
+                  "fOverruns must be aligned within JackMessageBuffer");
+}
 
 JackMessageBuffer::~JackMessageBuffer()
 {}
@@ -180,7 +183,7 @@ int JackMessageBuffer::SetInitCallback(JackThreadInitCallback callback, void *ar
         /*
         The condition variable emulation code does not work reliably on Windows (lost signal).
         So use a "hackish" way to signal/wait for the result.
-        Probaly better in the long term : use pthread-win32 (http://sourceware.org/pthreads-win32/`
+        Probably better in the long term : use pthread-win32 (http://sourceware.org/pthreads-win32/`
         */
         fGuard.Unlock();
         int count = 0;
@@ -189,14 +192,14 @@ int JackMessageBuffer::SetInitCallback(JackThreadInitCallback callback, void *ar
             fGuard.Signal();
             JackSleep(1000);
         }
-        if (count == 1000) goto error;
+        if (count == 1000) {
+            jack_error("JackMessageBuffer::SetInitCallback : signal lost");
+            return -1;
+	}
     #endif
-    
         return 0;
     }
-    
-error:
-    jack_error("JackMessageBuffer::SetInitCallback : callback cannot be executed");
+    jack_error("JackMessageBuffer::SetInitCallback : callback could not be executed");
     return -1;
 }
 

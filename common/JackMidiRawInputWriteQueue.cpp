@@ -31,7 +31,7 @@ JackMidiRawInputWriteQueue(JackMidiWriteQueue *write_queue,
                            size_t max_packet_data, size_t max_packets)
 {
     packet_queue = new JackMidiAsyncQueue(max_packet_data, max_packets);
-    std::auto_ptr<JackMidiAsyncQueue> packet_queue_ptr(packet_queue);
+    std::unique_ptr<JackMidiAsyncQueue> packet_queue_ptr(packet_queue);
     input_buffer = new jack_midi_data_t[max_packet_data];
     Clear();
     expected_bytes = 0;
@@ -83,7 +83,7 @@ JackMidiRawInputWriteQueue::HandleEventLoss(jack_midi_event_t *event)
 {
     jack_error("JackMidiRawInputWriteQueue::HandleEventLoss - A %d byte MIDI "
                "event scheduled for frame '%d' could not be processed because "
-               "the write queue cannot accomodate an event of that size.  The "
+               "the write queue cannot accommodate an event of that size.  The "
                "event has been discarded.", event->size, event->time);
 }
 

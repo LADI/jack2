@@ -51,16 +51,17 @@ struct SERVER_EXPORT JackMidiEvent
     uint32_t time;
     jack_shmsize_t size;
     union {
-        jack_shmsize_t   offset;
+        jack_shmsize_t offset;
         jack_midi_data_t data[INLINE_SIZE_MAX];
     };
 
     jack_midi_data_t* GetData(void* buffer)
     {
-        if (size <= INLINE_SIZE_MAX)
+        if (size <= INLINE_SIZE_MAX) {
             return data;
-        else
+        } else {
             return (jack_midi_data_t*)buffer + offset;
+        }
     }
 };
 
@@ -81,7 +82,6 @@ struct SERVER_EXPORT JackMidiBuffer
     jack_shmsize_t write_pos; //!< data write position from the end of the buffer.
     uint32_t event_count;
     uint32_t lost_events;
-    uint32_t mix_index;
 
     JackMidiEvent events[1]; // Using 0 size does not compile with older GCC versions, so use 1 here.
 
@@ -95,6 +95,8 @@ struct SERVER_EXPORT JackMidiBuffer
     // checks only size constraints.
     jack_midi_data_t* ReserveEvent(jack_nframes_t time, jack_shmsize_t size);
 };
+
+void MidiBufferInit(void* buffer, size_t buffer_size, jack_nframes_t nframes);
 
 } // namespace Jack
 

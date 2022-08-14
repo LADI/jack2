@@ -136,7 +136,7 @@ void JackClientPipeThread::ClientKill()
     } else if (fRefNum == 0) {  // Correspond to a still not opened client.
         jack_log("Kill a not opened client %x", this);
     } else {
-        fServer->ClientKill(fRefNum);
+        fServer->GetEngine()->ClientKill(fRefNum);
     }
 
     Close();
@@ -175,7 +175,7 @@ void JackWinNamedPipeServerChannel::Close()
 {
     /* TODO : solve WIN32 thread Kill issue
     This would hang the server... since we are quitting it, its not really problematic,
-    all ressources will be deallocated at the end.
+    all resources will be deallocated at the end.
 
     fRequestListenPipe.Close();
     fThread.Stop();

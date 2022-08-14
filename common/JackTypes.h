@@ -21,6 +21,7 @@
 #ifndef __JackTypes__
 #define __JackTypes__
 
+#include "types.h"
 #include "JackCompilerDeps.h"
 
 typedef unsigned short UInt16;
@@ -34,17 +35,10 @@ typedef signed long   SInt32;
 
 #include "JackTypes_os.h"
 
-/**
- * Type used to represent the value of free running
- * monotonic clock with units of microseconds.
- */
-typedef uint64_t jack_time_t;
-
 typedef uint16_t jack_int_t;  // Internal type for ports and refnum
 
 typedef enum {
 	JACK_TIMER_SYSTEM_CLOCK,
-	JACK_TIMER_CYCLE_COUNTER,
 	JACK_TIMER_HPET,
 } jack_timer_type_t;
 
@@ -54,15 +48,5 @@ typedef enum {
     Running,
     Finished,
 } jack_client_state_t;
-
-
-enum JackSelfConnectMode
-{
-    JackSelfConnectAllow,
-    JackSelfConnectFailExternalOnly,
-    JackSelfConnectIgnoreExternalOnly,
-    JackSelfConnectFailAll,
-    JackSelfConnectIgnoreAll,
-};
 
 #endif

@@ -60,8 +60,8 @@ namespace Jack
         static void KillServer();
 
         static int MkDir(const char* path);
-        static char* UserDir();
-        static char* ServerDir(const char* server_name, char* server_dir);
+        static const char* UserDir();
+        static const char* ServerDir(const char* server_name, char* server_dir);
         static const char* DefaultServerName();
         static void CleanupFiles(const char* server_name);
         static int GetTmpdir();
@@ -92,7 +92,7 @@ namespace Jack
     - create a JackGnuPlotMonitor, you can use the data type you want.
     - create a temporary array for your measure
     - once you have filled this array with 'measure points' value, call write() to add it to the record
-    - once you've done with your measurment, just call save() to save your data file
+    - once you've done with your measurement, just call save() to save your data file
 
     You can also call SetPlotFile() to automatically generate '.plt' file from an options list.
 

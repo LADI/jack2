@@ -30,9 +30,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 namespace Jack
 {
 
-void JackFifo::BuildName(const char* client_name, const char* server_name, char* res)
+void JackFifo::BuildName(const char* client_name, const char* server_name, char* res, int size)
 {
-    char ext_client_name[JACK_CLIENT_NAME_SIZE + 1];
+    char ext_client_name[SYNC_MAX_NAME_SIZE + 1];
     JackTools::RewriteName(client_name, ext_client_name);
     sprintf(res, "%s/jack_fifo.%d_%s_%s", jack_client_dir, JackTools::GetUID(), server_name, ext_client_name);
 }
@@ -43,7 +43,7 @@ bool JackFifo::Signal()
     char c = 0;
 
     if (fFifo < 0) {
-        jack_error("JackFifo::Signal name = %s already desallocated!!", fName);
+        jack_error("JackFifo::Signal name = %s already deallocated!!", fName);
         return false;
     }
 
@@ -62,7 +62,7 @@ bool JackFifo::SignalAll()
     char c = 0;
 
     if (fFifo < 0) {
-        jack_error("JackFifo::SignalAll name = %s already desallocated!!", fName);
+        jack_error("JackFifo::SignalAll name = %s already deallocated!!", fName);
         return false;
     }
 
@@ -81,7 +81,7 @@ bool JackFifo::Wait()
     char c;
 
     if (fFifo < 0) {
-        jack_error("JackFifo::Wait name = %s already desallocated!!", fName);
+        jack_error("JackFifo::Wait name = %s already deallocated!!", fName);
         return false;
     }
 
@@ -104,7 +104,7 @@ bool JackFifo::TimedWait(long usec)
     int res;
     
     if (fFifo < 0) {
-        jack_error("JackFifo::TimedWait name = %s already desallocated!!", fName);
+        jack_error("JackFifo::TimedWait name = %s already deallocated!!", fName);
         return false;
     }
    
@@ -126,13 +126,13 @@ bool JackFifo::TimedWait(long usec)
 bool JackFifo::Allocate(const char* name, const char* server_name, int value)
 {
     struct stat statbuf;
-    BuildName(name, server_name, fName);
+    BuildName(name, server_name, fName, sizeof(fName));
     jack_log("JackFifo::Allocate name = %s", fName);
 
     if (stat(fName, &statbuf) < 0) {
         if (errno == ENOENT || errno == EPERM) {
             if (mkfifo(fName, 0666) < 0) {
-                jack_error("Cannot create inter-client FIFO name = %s err = %s", name, strerror(errno));
+                jack_error("Cannot create inter-client FIFO name = %s err = %s", fName, strerror(errno));
                 return false;
             }
         } else {
@@ -149,17 +149,21 @@ bool JackFifo::Allocate(const char* name, const char* server_name, int value)
     if ((fFifo = open(fName, O_RDWR | O_CREAT, 0666)) < 0) {
         jack_error("Cannot open FIFO name = %s err = %s", name, strerror(errno));
         return false;
-    } else {
-        fPoll.fd = fFifo;
-        fPoll.events = POLLERR | POLLIN | POLLHUP | POLLNVAL;
-        return true;
     }
+
+    fPoll.fd = fFifo;
+    fPoll.events = POLLERR | POLLIN | POLLHUP | POLLNVAL;
+    while (value--) {
+        Signal();
+    }
+
+    return true;
 }
 
 // Client side
 bool JackFifo::ConnectAux(const char* name, const char* server_name, int access)
 {
-    BuildName(name, server_name, fName);
+    BuildName(name, server_name, fName, sizeof(fName));
     jack_log("JackFifo::ConnectAux name = %s", fName);
 
     // Temporary...

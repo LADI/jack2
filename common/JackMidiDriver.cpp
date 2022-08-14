@@ -51,15 +51,15 @@ int JackMidiDriver::Open(bool capturing,
 {
     fCaptureChannels = inchannels;
     fPlaybackChannels = outchannels;
-    return JackDriver::Open(capturing, playing, inchannels, outchannels, monitor, capture_driver_name, playback_driver_name, capture_latency, playback_latency);
+    return JackDriver::Open(0, 0, capturing, playing, inchannels, outchannels, monitor, capture_driver_name, playback_driver_name, capture_latency, playback_latency);
 }
 
 int JackMidiDriver::Attach()
 {
     JackPort* port;
     jack_port_id_t port_index;
-    char name[REAL_JACK_PORT_NAME_SIZE];
-    char alias[REAL_JACK_PORT_NAME_SIZE];
+    char name[REAL_JACK_PORT_NAME_SIZE+1];
+    char alias[REAL_JACK_PORT_NAME_SIZE+1];
     int i;
 
     jack_log("JackMidiDriver::Attach fBufferSize = %ld fSampleRate = %ld", fEngineControl->fBufferSize, fEngineControl->fSampleRate);

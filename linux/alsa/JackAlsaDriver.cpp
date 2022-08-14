@@ -39,12 +39,45 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "JackPort.h"
 #include "JackGraphManager.h"
 #include "JackLockedEngine.h"
+#ifdef __ANDROID__
+#include "JackAndroidThread.h"
+#else
 #include "JackPosixThread.h"
+#endif
 #include "JackCompilerDeps.h"
 #include "JackServerGlobals.h"
 
+static struct jack_constraint_enum_str_descriptor midi_constraint_descr_array[] =
+{
+    { "none", "no MIDI driver" },
+    { "seq", "ALSA Sequencer driver" },
+    { "raw", "ALSA RawMIDI driver" },
+    { 0 }
+};
+
+static struct jack_constraint_enum_char_descriptor dither_constraint_descr_array[] =
+{
+    { 'n', "none" },
+    { 'r', "rectangular" },
+    { 's', "shaped" },
+    { 't', "triangular" },
+    { 0 }
+};
+
 namespace Jack
 {
+
+static volatile bool device_reservation_loop_running = false;
+
+static void* on_device_reservation_loop(void*)
+{
+    while (device_reservation_loop_running && JackServerGlobals::on_device_reservation_loop != NULL) {
+        JackServerGlobals::on_device_reservation_loop();
+        usleep(50*1000);
+    }
+
+    return NULL;
+}
 
 int JackAlsaDriver::SetBufferSize(jack_nframes_t buffer_size)
 {
@@ -95,8 +128,8 @@ int JackAlsaDriver::Attach()
     JackPort* port;
     jack_port_id_t port_index;
     unsigned long port_flags = (unsigned long)CaptureDriverFlags;
-    char name[REAL_JACK_PORT_NAME_SIZE];
-    char alias[REAL_JACK_PORT_NAME_SIZE];
+    char name[REAL_JACK_PORT_NAME_SIZE+1];
+    char alias[REAL_JACK_PORT_NAME_SIZE+1];
 
     assert(fCaptureChannels < DRIVER_PORT_NUM);
     assert(fPlaybackChannels < DRIVER_PORT_NUM);
@@ -268,10 +301,12 @@ int JackAlsaDriver::Open(jack_nframes_t nframes,
     }
 
     alsa_midi_t *midi = 0;
+#ifndef __ANDROID__
     if (strcmp(midi_driver_name, "seq") == 0)
         midi = alsa_seqmidi_new((jack_client_t*)this, 0);
     else if (strcmp(midi_driver_name, "raw") == 0)
         midi = alsa_rawmidi_new((jack_client_t*)this);
+#endif
 
     if (JackServerGlobals::on_device_acquire != NULL) {
         int capture_card = card_to_num(capture_driver_name);
@@ -317,15 +352,22 @@ int JackAlsaDriver::Open(jack_nframes_t nframes,
                                capture_latency,
                                playback_latency,
                                midi);
-    if (fDriver) {
-        // ALSA driver may have changed the in/out values
-        fCaptureChannels = ((alsa_driver_t *)fDriver)->capture_nchannels;
-        fPlaybackChannels = ((alsa_driver_t *)fDriver)->playback_nchannels;
-        return 0;
-    } else {
-        JackAudioDriver::Close();
+    if (!fDriver) {
+        Close();
         return -1;
     }
+
+    // ALSA driver may have changed the in/out values
+    fCaptureChannels = ((alsa_driver_t *)fDriver)->capture_nchannels;
+    fPlaybackChannels = ((alsa_driver_t *)fDriver)->playback_nchannels;
+    if (JackServerGlobals::on_device_reservation_loop != NULL) {
+        device_reservation_loop_running = true;
+        if (JackPosixThread::StartImp(&fReservationLoopThread, 0, 0, on_device_reservation_loop, NULL) != 0) {
+            device_reservation_loop_running = false;
+        }
+    }
+
+    return 0;
 }
 
 int JackAlsaDriver::Close()
@@ -333,7 +375,14 @@ int JackAlsaDriver::Close()
     // Generic audio driver close
     int res = JackAudioDriver::Close();
 
-    alsa_driver_delete((alsa_driver_t*)fDriver);
+    if (fDriver) {
+        alsa_driver_delete((alsa_driver_t*)fDriver);
+    }
+
+    if (device_reservation_loop_running) {
+        device_reservation_loop_running = false;
+        JackPosixThread::StopImp(fReservationLoopThread);
+    }
 
     if (JackServerGlobals::on_device_release != NULL)
     {
@@ -446,6 +495,11 @@ void JackAlsaDriver::SetTimetAux(jack_time_t time)
     fBeginDateUst = time;
 }
 
+int JackAlsaDriver::PortSetDefaultMetadata(jack_port_id_t port_id, const char* pretty_name)
+{
+    return fEngine->PortSetDefaultMetadata(fClientControl.fRefNum, port_id, pretty_name);
+}
+
 void JackAlsaDriver::WriteOutputAux(jack_nframes_t orig_nframes, snd_pcm_sframes_t contiguous, snd_pcm_sframes_t nwritten)
 {
     for (int chn = 0; chn < fPlaybackChannels; chn++) {
@@ -469,7 +523,11 @@ int JackAlsaDriver::is_realtime() const
 
 int JackAlsaDriver::create_thread(pthread_t *thread, int priority, int realtime, void *(*start_routine)(void*), void *arg)
 {
+#ifdef __ANDROID__
+    return JackAndroidThread::StartImp(thread, priority, realtime, start_routine, arg);
+#else
     return JackPosixThread::StartImp(thread, priority, realtime, start_routine, arg);
+#endif
 }
 
 jack_port_id_t JackAlsaDriver::port_register(const char *port_name, const char *port_type, unsigned long flags, unsigned long buffer_size)
@@ -522,39 +580,6 @@ extern "C"
 #endif
 
 static
-void
-fill_device(
-    jack_driver_param_constraint_desc_t ** constraint_ptr_ptr,
-    uint32_t * array_size_ptr,
-    const char * device_id,
-    const char * device_description)
-{
-    jack_driver_param_value_enum_t * possible_value_ptr;
-
-    //jack_info("%6s - %s", device_id, device_description);
-
-    if (*constraint_ptr_ptr == NULL)
-    {
-        *constraint_ptr_ptr = (jack_driver_param_constraint_desc_t *)calloc(1, sizeof(jack_driver_param_value_enum_t));
-        *array_size_ptr = 0;
-    }
-
-    if ((*constraint_ptr_ptr)->constraint.enumeration.count == *array_size_ptr)
-    {
-        *array_size_ptr += 10;
-        (*constraint_ptr_ptr)->constraint.enumeration.possible_values_array =
-            (jack_driver_param_value_enum_t *)realloc(
-                (*constraint_ptr_ptr)->constraint.enumeration.possible_values_array,
-                sizeof(jack_driver_param_value_enum_t) * *array_size_ptr);
-    }
-
-    possible_value_ptr = (*constraint_ptr_ptr)->constraint.enumeration.possible_values_array + (*constraint_ptr_ptr)->constraint.enumeration.count;
-    (*constraint_ptr_ptr)->constraint.enumeration.count++;
-    strcpy(possible_value_ptr->value.str, device_id);
-    strcpy(possible_value_ptr->short_desc, device_description);
-}
-
-static
 jack_driver_param_constraint_desc_t *
 enum_alsa_devices()
 {
@@ -563,8 +588,8 @@ enum_alsa_devices()
     snd_pcm_info_t * pcminfo_capture;
     snd_pcm_info_t * pcminfo_playback;
     int card_no = -1;
-    char card_id[JACK_DRIVER_PARAM_STRING_MAX + 1];
-    char device_id[JACK_DRIVER_PARAM_STRING_MAX + 1];
+    jack_driver_param_value_t card_id;
+    jack_driver_param_value_t device_id;
     char description[64];
     int device_no;
     bool has_capture;
@@ -580,19 +605,24 @@ enum_alsa_devices()
 
     while(snd_card_next(&card_no) >= 0 && card_no >= 0)
     {
-        snprintf(card_id, sizeof(card_id), "hw:%d", card_no);
+        snprintf(card_id.str, sizeof(card_id.str), "hw:%d", card_no);
 
-        if (snd_ctl_open(&handle, card_id, 0) >= 0 &&
+        if (snd_ctl_open(&handle, card_id.str, 0) >= 0 &&
             snd_ctl_card_info(handle, info) >= 0)
         {
-            snprintf(card_id, sizeof(card_id), "hw:%s", snd_ctl_card_info_get_id(info));
-            fill_device(&constraint_ptr, &array_size, card_id, snd_ctl_card_info_get_name(info));
+            snprintf(card_id.str, sizeof(card_id.str), "hw:%s", snd_ctl_card_info_get_id(info));
+            if (!jack_constraint_add_enum(
+                    &constraint_ptr,
+                    &array_size,
+                    &card_id,
+                    snd_ctl_card_info_get_name(info)))
+                goto fail;
 
             device_no = -1;
 
             while (snd_ctl_pcm_next_device(handle, &device_no) >= 0 && device_no != -1)
             {
-                snprintf(device_id, sizeof(device_id), "%s,%d", card_id, device_no);
+                snprintf(device_id.str, sizeof(device_id.str), "%s,%d", card_id.str, device_no);
 
                 snd_pcm_info_set_device(pcminfo_capture, device_no);
                 snd_pcm_info_set_subdevice(pcminfo_capture, 0);
@@ -621,7 +651,12 @@ enum_alsa_devices()
                     continue;
                 }
 
-                fill_device(&constraint_ptr, &array_size, device_id, description);
+                if (!jack_constraint_add_enum(
+                        &constraint_ptr,
+                        &array_size,
+                        &device_id,
+                        description))
+                    goto fail;
             }
 
             snd_ctl_close(handle);
@@ -629,77 +664,9 @@ enum_alsa_devices()
     }
 
     return constraint_ptr;
-}
-
-static
-jack_driver_param_constraint_desc_t *
-get_midi_driver_constraint()
-{
-    jack_driver_param_constraint_desc_t * constraint_ptr;
-    jack_driver_param_value_enum_t * possible_value_ptr;
-
-    //jack_info("%6s - %s", device_id, device_description);
-
-    constraint_ptr = (jack_driver_param_constraint_desc_t *)calloc(1, sizeof(jack_driver_param_value_enum_t));
-    constraint_ptr->flags = JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE;
-
-    constraint_ptr->constraint.enumeration.possible_values_array = (jack_driver_param_value_enum_t *)malloc(3 * sizeof(jack_driver_param_value_enum_t));
-    constraint_ptr->constraint.enumeration.count = 3;
-
-    possible_value_ptr = constraint_ptr->constraint.enumeration.possible_values_array;
-
-    strcpy(possible_value_ptr->value.str, "none");
-    strcpy(possible_value_ptr->short_desc, "no MIDI driver");
-
-    possible_value_ptr++;
-
-    strcpy(possible_value_ptr->value.str, "seq");
-    strcpy(possible_value_ptr->short_desc, "ALSA Sequencer driver");
-
-    possible_value_ptr++;
-
-    strcpy(possible_value_ptr->value.str, "raw");
-    strcpy(possible_value_ptr->short_desc, "ALSA RawMIDI driver");
-
-    return constraint_ptr;
-}
-
-static
-jack_driver_param_constraint_desc_t *
-get_dither_constraint()
-{
-    jack_driver_param_constraint_desc_t * constraint_ptr;
-    jack_driver_param_value_enum_t * possible_value_ptr;
-
-    //jack_info("%6s - %s", device_id, device_description);
-
-    constraint_ptr = (jack_driver_param_constraint_desc_t *)calloc(1, sizeof(jack_driver_param_value_enum_t));
-    constraint_ptr->flags = JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE;
-
-    constraint_ptr->constraint.enumeration.possible_values_array = (jack_driver_param_value_enum_t *)malloc(4 * sizeof(jack_driver_param_value_enum_t));
-    constraint_ptr->constraint.enumeration.count = 4;
-
-    possible_value_ptr = constraint_ptr->constraint.enumeration.possible_values_array;
-
-    possible_value_ptr->value.c = 'n';
-    strcpy(possible_value_ptr->short_desc, "none");
-
-    possible_value_ptr++;
-
-    possible_value_ptr->value.c = 'r';
-    strcpy(possible_value_ptr->short_desc, "rectangular");
-
-    possible_value_ptr++;
-
-    possible_value_ptr->value.c = 's';
-    strcpy(possible_value_ptr->short_desc, "shaped");
-
-    possible_value_ptr++;
-
-    possible_value_ptr->value.c = 't';
-    strcpy(possible_value_ptr->short_desc, "triangular");
-
-    return constraint_ptr;
+fail:
+    jack_constraint_free(constraint_ptr);
+    return NULL;
 }
 
 static int
@@ -739,7 +706,11 @@ SERVER_EXPORT const jack_driver_desc_t* driver_get_descriptor ()
     desc = jack_driver_descriptor_construct("alsa", JackDriverMaster, "Linux ALSA API based audio backend", &filler);
 
     strcpy(value.str, "hw:0");
+#ifdef __ANDROID__
+    jack_driver_descriptor_add_parameter(desc, &filler, "device", 'd', JackDriverParamString, &value, NULL, "ALSA device name", NULL);
+#else
     jack_driver_descriptor_add_parameter(desc, &filler, "device", 'd', JackDriverParamString, &value, enum_alsa_devices(), "ALSA device name", NULL);
+#endif
 
     strcpy(value.str, "none");
     jack_driver_descriptor_add_parameter(desc, &filler, "capture", 'C', JackDriverParamString, &value, NULL, "Provide capture ports.  Optionally set device", NULL);
@@ -777,13 +748,11 @@ SERVER_EXPORT const jack_driver_desc_t* driver_get_descriptor ()
         'z',
         JackDriverParamChar,
         &value,
-        get_dither_constraint(),
+        jack_constraint_compose_enum_char(
+            JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE,
+            dither_constraint_descr_array),
         "Dithering mode",
-        "Dithering mode:\n"
-        "  n - none\n"
-        "  r - rectangular\n"
-        "  s - shaped\n"
-        "  t - triangular");
+        NULL);
 
     value.ui = 0;
     jack_driver_descriptor_add_parameter(desc, &filler, "inchannels", 'i', JackDriverParamUInt, &value, NULL, "Number of capture channels (defaults to hardware max)", NULL);
@@ -804,12 +773,11 @@ SERVER_EXPORT const jack_driver_desc_t* driver_get_descriptor ()
         'X',
         JackDriverParamString,
         &value,
-        get_midi_driver_constraint(),
-        "ALSA device name",
-        "ALSA MIDI driver:\n"
-        " none - no MIDI driver\n"
-        " seq - ALSA Sequencer driver\n"
-        " raw - ALSA RawMIDI driver\n");
+        jack_constraint_compose_enum_str(
+            JACK_CONSTRAINT_FLAG_STRICT | JACK_CONSTRAINT_FLAG_FAKE_VALUE,
+            midi_constraint_descr_array),
+        "ALSA MIDI driver",
+        NULL);
 
     return desc;
 }

@@ -22,6 +22,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/time.h>
+
+using namespace std;
 
 namespace Jack
 {
@@ -108,6 +111,28 @@ namespace Jack
     #endif
             StrError(NET_ERROR_CODE);
         }
+        
+        int tos = 0;       /* see <netinet/in.h> */
+        
+        /*
+        DSCP Field Hex/Bin/Dec	Layer 2 Prio	Traffic Type	Acronym	WMM Access Category
+        0x38 / 111000 / 56	7	Network Control	NC	AC_VO
+        0x30 / 110000 / 48	6	Voice	VO	AC_VO
+        0x28 / 101000 / 40	5	Video	VI	AC_VI
+        0x20 / 100000 / 32	4	Controlled Load	CL	AC_VI
+        0x18 / 011000 / 24	3	Excellent Effort	EE	AC_BE
+        0x10 / 010000 / 16	2	Spare	--	AC_BK
+        0x08 / 001000 / 8	1	Background	BK	AC_BK
+        0x00 / 000000 / 0	0	Best Effort	BE	AC_BE
+        */
+        
+        socklen_t len = sizeof(tos);
+        
+        res = getsockopt(fSockfd, IPPROTO_IP, IP_TOS, &tos, &len);
+        
+        tos = 46 * 4;       // see <netinet/in.h> 
+        res = setsockopt(fSockfd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
+
         return fSockfd;
     }
 
@@ -118,7 +143,7 @@ namespace Jack
         }
 
         char host_name[32];
-        gethostname(host_name, sizeof(host_name));
+        GetHostName(host_name, sizeof(host_name));
 
         struct hostent* host = gethostbyname(host_name);
         if (host) {
@@ -137,14 +162,15 @@ namespace Jack
 
     int JackNetUnixSocket::Bind()
     {
-        return bind(fSockfd, reinterpret_cast<socket_address_t*>(&fRecvAddr), sizeof(socket_address_t));
+        return ::bind(fSockfd, reinterpret_cast<socket_address_t*>(&fRecvAddr), sizeof(socket_address_t));
     }
 
     int JackNetUnixSocket::BindWith(const char* ip)
     {
         int addr_conv = inet_aton(ip, &fRecvAddr.sin_addr);
-        if (addr_conv < 0)
+        if (addr_conv < 0) {
             return addr_conv;
+        }
         return Bind();
     }
 
@@ -162,15 +188,17 @@ namespace Jack
     int JackNetUnixSocket::ConnectTo(const char* ip)
     {
         int addr_conv = inet_aton(ip, &fSendAddr.sin_addr);
-        if (addr_conv < 0)
+        if (addr_conv < 0) {
             return addr_conv;
+        }
         return Connect();
     }
 
     void JackNetUnixSocket::Close()
     {
-        if (fSockfd)
+        if (fSockfd) {
             close(fSockfd);
+        }
         fSockfd = 0;
     }
 
@@ -208,8 +236,9 @@ namespace Jack
     int JackNetUnixSocket::SetAddress(const char* ip, int port)
     {
         int addr_conv = inet_aton(ip, &fSendAddr.sin_addr);
-        if (addr_conv < 0)
+        if (addr_conv < 0) {
             return addr_conv;
+        }
         fSendAddr.sin_port = htons(port);
         return 0;
     }
@@ -287,7 +316,7 @@ namespace Jack
 
 	        do {
 		        res = select(fSockfd + 1, &fdset, NULL, NULL, &tv);
-	        } while(res < 0 && errno == EINTR);
+	        } while (res < 0 && errno == EINTR);
 
 	        if (res < 0) {
  		        return res;
@@ -316,7 +345,7 @@ namespace Jack
 
 	        do {
 		        res = select(fSockfd + 1, NULL, &fdset, NULL, &tv);
-	        } while(res < 0 && errno == EINTR);
+	        } while (res < 0 && errno == EINTR);
 
 	        if (res < 0) {
 		        return res;
@@ -335,12 +364,12 @@ namespace Jack
         jack_log("JackNetUnixSocket::SetTimeout %d usecs", us);
         struct timeval timeout;
 
-        //less than 1sec
+        //less than 1 sec
         if (us < 1000000) {
             timeout.tv_sec = 0;
             timeout.tv_usec = us;
         } else {
-        //more than 1sec
+        //more than 1 sec
             float sec = float(us) / 1000000.f;
             timeout.tv_sec = (int)sec;
             float usec = (sec - float(timeout.tv_sec)) * 1000000;
@@ -361,20 +390,28 @@ namespace Jack
     int JackNetUnixSocket::SendTo(const void* buffer, size_t nbytes, int flags)
     {
     #if defined(__sun__) || defined(sun)
-        if (WaitWrite() < 0)
+        if (WaitWrite() < 0) {
             return -1;
+        }
     #endif
-        return sendto(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fSendAddr), sizeof(socket_address_t));
+        int res;
+        if ((res = sendto(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fSendAddr), sizeof(socket_address_t))) < 0) {
+            jack_error("SendTo fd = %ld err = %s", fSockfd, strerror(errno));
+        }
+        return res;
     }
 
     int JackNetUnixSocket::SendTo(const void* buffer, size_t nbytes, int flags, const char* ip)
     {
         int addr_conv = inet_aton(ip, &fSendAddr.sin_addr);
-        if (addr_conv < 1)
+        if (addr_conv < 1) {
             return addr_conv;
+        }
+        fSendAddr.sin_port = htons(fPort);
     #if defined(__sun__) || defined(sun)
-        if (WaitWrite() < 0)
+        if (WaitWrite() < 0) {
             return -1;
+        }
     #endif
         return SendTo(buffer, nbytes, flags);
     }
@@ -382,45 +419,64 @@ namespace Jack
     int JackNetUnixSocket::Send(const void* buffer, size_t nbytes, int flags)
     {
     #if defined(__sun__) || defined(sun)
-        if (WaitWrite() < 0)
+        if (WaitWrite() < 0) {
             return -1;
+        }
     #endif
-        return send(fSockfd, buffer, nbytes, flags);
+        int res;
+        if ((res = send(fSockfd, buffer, nbytes, flags)) < 0) {
+            jack_error("Send fd = %ld err = %s", fSockfd, strerror(errno));
+        }
+        return res;
     }
 
     int JackNetUnixSocket::RecvFrom(void* buffer, size_t nbytes, int flags)
     {
         socklen_t addr_len = sizeof(socket_address_t);
     #if defined(__sun__) || defined(sun)
-        if (WaitRead() < 0)
+        if (WaitRead() < 0) {
             return -1;
+        }
     #endif
-        return recvfrom(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fRecvAddr), &addr_len);
+        int res;
+        if ((res = recvfrom(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fRecvAddr), &addr_len)) < 0) {
+            jack_error("RecvFrom fd = %ld err = %s", fSockfd, strerror(errno));
+        }
+        return res;        
     }
 
     int JackNetUnixSocket::Recv(void* buffer, size_t nbytes, int flags)
     {
     #if defined(__sun__) || defined(sun)
-        if (WaitRead() < 0)
+        if (WaitRead() < 0) {
             return -1;
+        }
     #endif
-        return recv(fSockfd, buffer, nbytes, flags);
+        int res;
+        if ((res = recv(fSockfd, buffer, nbytes, flags)) < 0) {
+            jack_error("Recv fd = %ld err = %s", fSockfd, strerror(errno));
+        }
+        return res;        
     }
 
     int JackNetUnixSocket::CatchHost(void* buffer, size_t nbytes, int flags)
     {
         socklen_t addr_len = sizeof(socket_address_t);
     #if defined(__sun__) || defined(sun)
-        if (WaitRead() < 0)
+        if (WaitRead() < 0) {
             return -1;
+        }
     #endif
-        return recvfrom(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fSendAddr), &addr_len);
+        int res;
+        if ((res = recvfrom(fSockfd, buffer, nbytes, flags, reinterpret_cast<socket_address_t*>(&fSendAddr), &addr_len)) < 0) {
+            jack_log("CatchHost fd = %ld err = %s", fSockfd, strerror(errno));
+        }
+        return res;                
     }
 
     net_error_t JackNetUnixSocket::GetError()
     {
-        switch(errno)
-        {
+        switch (errno) {
             case EAGAIN:
             case ETIMEDOUT:
                 return NET_NO_DATA;
@@ -440,4 +496,44 @@ namespace Jack
                 return NET_CONN_ERROR;
         }
     }
+        
+    void JackNetUnixSocket::PrintError()
+    {
+        switch (errno) {
+                
+            case EAGAIN:
+                jack_error("JackNetUnixSocket : EAGAIN");
+                break;
+            case ETIMEDOUT:
+                jack_error("JackNetUnixSocket : ETIMEDOUT");
+                break;
+            case ECONNABORTED:
+                jack_error("JackNetUnixSocket : ECONNABORTED");
+                break;
+            case ECONNREFUSED:
+                jack_error("JackNetUnixSocket : ECONNREFUSED");
+                break;
+            case ECONNRESET:
+                jack_error("JackNetUnixSocket : ECONNRESET");
+                break;
+            case EINVAL:
+                jack_error("JackNetUnixSocket : EINVAL");
+                break;
+            case EHOSTDOWN:
+                jack_error("JackNetUnixSocket : EHOSTDOWN");
+                break;
+            case EHOSTUNREACH:
+                jack_error("JackNetUnixSocket : EHOSTUNREACH");
+                break;
+            case ENETDOWN:
+                jack_error("JackNetUnixSocket : ENETDOWN");
+                break;
+            case ENETUNREACH:
+                jack_error("JackNetUnixSocket : ENETUNREACH");
+                break;
+            default:
+                jack_error("JackNetUnixSocket : %d", errno);
+                break;
+        }
+    }    
 }

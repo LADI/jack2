@@ -23,8 +23,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <cstdio>
 #include <string>
 
-#include "portaudio.h"
-#include "pa_asio.h"
+#include <portaudio.h>
+
+#if defined(HAVE_ASIO)
+#include <pa_asio.h>
+#endif
 
 /*!
 \brief A PortAudio Devices manager.

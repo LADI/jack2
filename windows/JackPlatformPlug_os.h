@@ -24,11 +24,16 @@
 #define jack_server_dir "server"
 #define jack_client_dir "client"
 #define JACK_DEFAULT_DRIVER "portaudio"
-#define JACK_LOCATION "C:/Program Files/Jack"
+#define JACK_LOCATION "C:\\Program Files\\JACK2"
 
 #ifndef ADDON_DIR
     #define ADDON_DIR "jack"
 #endif
+
+#define MAKE_WIDECHAR_CONSTANT2(Quote) L##Quote
+#define MAKE_WIDECHAR_CONSTANT(Quote) MAKE_WIDECHAR_CONSTANT2(Quote)
+#define ADDON_DIRW MAKE_WIDECHAR_CONSTANT(ADDON_DIR)
+
 
 namespace Jack
 {

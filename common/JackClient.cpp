@@ -28,10 +28,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "driver_interface.h"
 #include "JackLibGlobals.h"
 
-
 #include <math.h>
 #include <string>
 #include <algorithm>
+#include <climits>
 
 using namespace std;
 
@@ -39,9 +39,6 @@ namespace Jack
 {
 
 #define IsRealTime() ((fProcess != NULL) | (fThreadFun != NULL) | (fSync != NULL) | (fTimebase != NULL))
-
-JackClient::JackClient():fThread(this)
-{}
 
 JackClient::JackClient(JackSynchro* table):fThread(this)
 {
@@ -63,6 +60,7 @@ JackClient::JackClient(JackSynchro* table):fThread(this)
     fThreadFun = NULL;
     fSession = NULL;
     fLatency = NULL;
+    fPropertyChange = NULL;
 
     fProcessArg = NULL;
     fGraphOrderArg = NULL;
@@ -81,6 +79,7 @@ JackClient::JackClient(JackSynchro* table):fThread(this)
     fThreadFunArg = NULL;
     fSessionArg = NULL;
     fLatencyArg = NULL;
+    fPropertyChangeArg = NULL;
 
     fSessionReply = kPendingSessionReply;
 }
@@ -88,13 +87,15 @@ JackClient::JackClient(JackSynchro* table):fThread(this)
 JackClient::~JackClient()
 {}
 
-void JackClient::ShutDown()
+void JackClient::ShutDown(jack_status_t code, const char* message)
 {
     jack_log("JackClient::ShutDown");
  
+    // If "fInfoShutdown" callback, then call it
     if (fInfoShutdown) {
-        fInfoShutdown(JackFailure, "JACK server has been closed", fInfoShutdownArg);
+        fInfoShutdown(code, message, fInfoShutdownArg);
         fInfoShutdown = NULL;
+    // Otherwise possibly call the normal "fShutdown"
     } else if (fShutdown) {
         fShutdown(fShutdownArg);
         fShutdown = NULL;
@@ -107,17 +108,17 @@ int JackClient::Close()
     int result = 0;
 
     Deactivate();
-    fChannel->Stop();  // Channels is stopped first to avoid receiving notifications while closing
-
-    // Request close only if server is still running
-    if (JackGlobals::fServerRunning) {
-        fChannel->ClientClose(GetClientControl()->fRefNum, &result);
-    } else {
-        jack_log("JackClient::Close server is shutdown");
-    }
-
+    
+    // Channels is stopped first to avoid receiving notifications while closing
+    fChannel->Stop();  
+    // Then close client
+    fChannel->ClientClose(GetClientControl()->fRefNum, &result);
+  
     fChannel->Close();
+    assert(JackGlobals::fSynchroMutex);
+    JackGlobals::fSynchroMutex->Lock();
     fSynchroTable[GetClientControl()->fRefNum].Disconnect();
+    JackGlobals::fSynchroMutex->Unlock();
     JackGlobals::fClientTable[GetClientControl()->fRefNum] = NULL;
     return result;
 }
@@ -146,8 +147,9 @@ void JackClient::SetupDriverSync(bool freewheel)
         }
     } else {
         jack_log("JackClient::SetupDriverSync driver sem in normal mode");
-        for (int i = 0; i < GetEngineControl()->fDriverNum; i++)
+        for (int i = 0; i < GetEngineControl()->fDriverNum; i++) {
             fSynchroTable[i].SetFlush(false);
+        }
     }
 }
 
@@ -229,7 +231,10 @@ int JackClient::ClientNotify(int refnum, const char* name, int notify, int sync,
             case kStartFreewheelCallback:
                 jack_log("JackClient::kStartFreewheel");
                 SetupDriverSync(true);
-                fThread.DropRealTime();     // Always done (JACK server in RT mode or not...)
+                // Drop RT only when the RT thread is actually running
+                if (fThread.GetStatus() == JackThread::kRunning) {
+                    fThread.DropRealTime();     
+                }
                 if (fFreewheel) {
                     fFreewheel(1, fFreewheelArg);
                 }
@@ -241,8 +246,9 @@ int JackClient::ClientNotify(int refnum, const char* name, int notify, int sync,
                 if (fFreewheel) {
                     fFreewheel(0, fFreewheelArg);
                 }
-                if (GetEngineControl()->fRealTime) {
-                    if (fThread.AcquireRealTime() < 0) {
+                // Acquire RT only when the RT thread is actually running
+                if (GetEngineControl()->fRealTime && fThread.GetStatus() == JackThread::kRunning) {
+                    if (fThread.AcquireRealTime(GetEngineControl()->fClientPriority) < 0) {
                         jack_error("JackClient::AcquireRealTime error");
                     }
                 }
@@ -292,22 +298,19 @@ int JackClient::ClientNotify(int refnum, const char* name, int notify, int sync,
 
             case kShutDownCallback:
                 jack_log("JackClient::kShutDownCallback");
-                if (fInfoShutdown) {
-                    fInfoShutdown((jack_status_t)value1, message, fInfoShutdownArg);
-                    fInfoShutdown = NULL;
-                }
+                ShutDown(jack_status_t(value1), message);
                 break;
 
             case kSessionCallback:
                 jack_log("JackClient::kSessionCallback");
                 if (fSession) {
                     jack_session_event_t* event = (jack_session_event_t*)malloc( sizeof(jack_session_event_t));
-                    char uuid_buf[JACK_UUID_SIZE];
+                    char uuid_buf[JACK_UUID_STRING_SIZE];
                     event->type = (jack_session_event_type_t)value1;
                     event->session_dir = strdup(message);
                     event->command_line = NULL;
                     event->flags = (jack_session_flags_t)0;
-                    snprintf(uuid_buf, sizeof(uuid_buf), "%d", GetClientControl()->fSessionID);
+                    jack_uuid_unparse(GetClientControl()->fSessionID, uuid_buf);
                     event->client_uuid = strdup(uuid_buf);
                     fSessionReply = kPendingSessionReply;
                     // Session callback may change fSessionReply by directly using jack_session_reply
@@ -319,6 +322,17 @@ int JackClient::ClientNotify(int refnum, const char* name, int notify, int sync,
             case kLatencyCallback:
                 res = HandleLatencyCallback(value1);
                 break;
+
+            case kPropertyChangeCallback: {
+                jack_uuid_t subject;
+                jack_uuid_parse(name, &subject);
+                const char* key = message;
+                jack_property_change_t change = (jack_property_change_t)value1;
+                jack_log("JackClient::kPropertyChangeCallback subject = %x key = %s change = %x", subject, key, change);
+                if (fPropertyChange)
+                    fPropertyChange(subject, key, change, fPropertyChangeArg);
+                break;
+            }
         }
     }
 
@@ -336,7 +350,7 @@ int JackClient::HandleLatencyCallback(int status)
     list<jack_port_id_t>::iterator it;
 
 	for (it = fPortList.begin(); it != fPortList.end(); it++) {
-	   JackPort* port = GetGraphManager()->GetPort(*it);
+        JackPort* port = GetGraphManager()->GetPort(*it);
         if ((port->GetFlags() & JackPortIsOutput) && (mode == JackPlaybackLatency)) {
             GetGraphManager()->RecalculateLatency(*it, mode);
 		}
@@ -520,23 +534,18 @@ bool JackClient::Init()
         jack_error("Failed to set thread realtime key");
     }
 
-    if (GetEngineControl()->fRealTime) {
-        set_threaded_log_function();
-    }
-
     // Setup RT
     if (GetEngineControl()->fRealTime) {
-        if (fThread.AcquireSelfRealTime(GetEngineControl()->fClientPriority) < 0) {
-            jack_error("JackClient::AcquireSelfRealTime error");
-        }
+        set_threaded_log_function();
+        SetupRealTime();
     }
 
     return true;
 }
 
-int JackClient::StartThread()
+void JackClient::SetupRealTime()
 {
-    jack_log("JackClient::StartThread : period = %ld computation = %ld constraint = %ld",
+    jack_log("JackClient::Init : period = %ld computation = %ld constraint = %ld",
              long(int64_t(GetEngineControl()->fPeriod) / 1000.0f),
              long(int64_t(GetEngineControl()->fComputation) / 1000.0f),
              long(int64_t(GetEngineControl()->fConstraint) / 1000.0f));
@@ -544,6 +553,13 @@ int JackClient::StartThread()
     // Will do "something" on OSX only...
     fThread.SetParams(GetEngineControl()->fPeriod, GetEngineControl()->fComputation, GetEngineControl()->fConstraint);
 
+    if (fThread.AcquireSelfRealTime(GetEngineControl()->fClientPriority) < 0) {
+        jack_error("JackClient::AcquireSelfRealTime error");
+    }
+}
+
+int JackClient::StartThread()
+{
     if (fThread.StartSync() < 0) {
         jack_error("Start thread error");
         return -1;
@@ -621,7 +637,7 @@ inline int JackClient::CallProcessCallback()
 inline bool JackClient::WaitSync()
 {
     // Suspend itself: wait on the input synchro
-    if (GetGraphManager()->SuspendRefNum(GetClientControl(), fSynchroTable, 0x7FFFFFFF) < 0) {
+    if (GetGraphManager()->SuspendRefNum(GetClientControl(), fSynchroTable, LONG_MAX) < 0) {
         jack_error("SuspendRefNum error");
         return false;
     } else {
@@ -656,7 +672,7 @@ inline void JackClient::Error()
     fThread.DropSelfRealTime();
     GetClientControl()->fActive = false;
     fChannel->ClientDeactivate(GetClientControl()->fRefNum, &result);
-    ShutDown();
+    ShutDown(jack_status_t(JackFailure | JackServerError), JACK_SERVER_FAILURE);
     fThread.Terminate();
 }
 
@@ -667,15 +683,15 @@ inline void JackClient::Error()
 int JackClient::PortRegister(const char* port_name, const char* port_type, unsigned long flags, unsigned long buffer_size)
 {
     // Check if port name is empty
-    string port_name_str = string(port_name);
-    if (port_name_str.size() == 0) {
+    string port_short_name_str = string(port_name);
+    if (port_short_name_str.size() == 0) {
         jack_error("port_name is empty");
         return 0; // Means failure here...
     }
 
     // Check port name length
-    string name = string(GetClientControl()->fName) + string(":") + port_name_str;
-    if (name.size() >= REAL_JACK_PORT_NAME_SIZE) {
+    string port_full_name_str = string(GetClientControl()->fName) + string(":") + port_short_name_str;
+    if (port_full_name_str.size() >= REAL_JACK_PORT_NAME_SIZE) {
         jack_error("\"%s:%s\" is too long to be used as a JACK port name.\n"
                    "Please use %lu characters or less",
                    GetClientControl()->fName,
@@ -686,10 +702,10 @@ int JackClient::PortRegister(const char* port_name, const char* port_type, unsig
 
     int result = -1;
     jack_port_id_t port_index = NO_PORT;
-    fChannel->PortRegister(GetClientControl()->fRefNum, name.c_str(), port_type, flags, buffer_size, &port_index, &result);
+    fChannel->PortRegister(GetClientControl()->fRefNum, port_full_name_str.c_str(), port_type, flags, buffer_size, &port_index, &result);
 
     if (result == 0) {
-        jack_log("JackClient::PortRegister ref = %ld name = %s type = %s port_index = %ld", GetClientControl()->fRefNum, name.c_str(), port_type, port_index);
+        jack_log("JackClient::PortRegister ref = %ld name = %s type = %s port_index = %ld", GetClientControl()->fRefNum, port_full_name_str.c_str(), port_type, port_index);
         fPortList.push_back(port_index);
         return port_index;
     } else {
@@ -716,6 +732,14 @@ int JackClient::PortUnRegister(jack_port_id_t port_index)
 int JackClient::PortConnect(const char* src, const char* dst)
 {
     jack_log("JackClient::Connect src = %s dst = %s", src, dst);
+    if (strlen(src) >= REAL_JACK_PORT_NAME_SIZE) {
+        jack_error("\"%s\" is too long to be used as a JACK port name.\n", src);
+        return -1; 
+    }
+    if (strlen(dst) >= REAL_JACK_PORT_NAME_SIZE) {
+        jack_error("\"%s\" is too long to be used as a JACK port name.\n", dst);
+        return -1; 
+    }
     int result = -1;
     fChannel->PortConnect(GetClientControl()->fRefNum, src, dst, &result);
     return result;
@@ -724,6 +748,14 @@ int JackClient::PortConnect(const char* src, const char* dst)
 int JackClient::PortDisconnect(const char* src, const char* dst)
 {
     jack_log("JackClient::Disconnect src = %s dst = %s", src, dst);
+    if (strlen(src) >= REAL_JACK_PORT_NAME_SIZE) {
+        jack_error("\"%s\" is too long to be used as a JACK port name.\n", src);
+        return -1; 
+    }
+    if (strlen(dst) >= REAL_JACK_PORT_NAME_SIZE) {
+        jack_error("\"%s\" is too long to be used as a JACK port name.\n", dst);
+        return -1; 
+    }
     int result = -1;
     fChannel->PortDisconnect(GetClientControl()->fRefNum, src, dst, &result);
     return result;
@@ -835,7 +867,7 @@ int JackClient::SetTimebaseCallback(int conditional, JackTimebaseCallback timeba
     } else {
         fTimebase = NULL;
         fTimebaseArg = NULL;
-        return -1;
+        return result;
     }
 }
 
@@ -890,7 +922,7 @@ void JackClient::TransportStop()
     GetEngineControl()->fTransport.SetCommand(TransportCommandStop);
 }
 
-// Never called concurently with the server
+// Never called concurrently with the server
 // TODO check concurrency with SetSyncCallback
 
 void JackClient::CallSyncCallback()
@@ -956,6 +988,8 @@ void JackClient::OnShutdown(JackShutdownCallback callback, void *arg)
     if (IsActive()) {
         jack_error("You cannot set callbacks on an active client");
     } else {
+        // Shutdown callback will either be an old API version or the new version (with info) 
+        GetClientControl()->fCallback[kShutDownCallback] = (callback != NULL);
         fShutdownArg = arg;
         fShutdown = callback;
     }
@@ -966,6 +1000,7 @@ void JackClient::OnInfoShutdown(JackInfoShutdownCallback callback, void *arg)
     if (IsActive()) {
         jack_error("You cannot set callbacks on an active client");
     } else {
+        // Shutdown callback will either be an old API version or the new version (with info)
         GetClientControl()->fCallback[kShutDownCallback] = (callback != NULL);
         fInfoShutdownArg = arg;
         fInfoShutdown = callback;
@@ -1165,13 +1200,25 @@ int JackClient::SetLatencyCallback(JackLatencyCallback callback, void *arg)
     }
 }
 
+int JackClient::SetPropertyChangeCallback(JackPropertyChangeCallback callback, void *arg)
+{
+    if (IsActive()) {
+        jack_error("You cannot set callbacks on an active client");
+        return -1;
+    } else {
+        fPropertyChangeArg = arg;
+        fPropertyChange = callback;
+        return 0;
+    }
+}
+
 //------------------
 // Internal clients
 //------------------
 
 char* JackClient::GetInternalClientName(int ref)
 {
-    char name_res[JACK_CLIENT_NAME_SIZE + 1];
+    char name_res[JACK_CLIENT_NAME_SIZE+1];
     int result = -1;
     fChannel->GetInternalClientName(GetClientControl()->fRefNum, ref, name_res, &result);
     return (result < 0) ? NULL : strdup(name_res);
@@ -1260,7 +1307,7 @@ int JackClient::SessionReply(jack_session_event_t* ev)
 
 char* JackClient::GetUUIDForClientName(const char* client_name)
 {
-    char uuid_res[JACK_UUID_SIZE];
+    char uuid_res[JACK_UUID_STRING_SIZE];
     int result = -1;
     fChannel->GetUUIDForClientName(GetClientControl()->fRefNum, client_name, uuid_res, &result);
     return (result) ? NULL : strdup(uuid_res);
@@ -1287,6 +1334,18 @@ int JackClient::ClientHasSessionCallback(const char* client_name)
     fChannel->ClientHasSessionCallback(client_name, &result);
     return result;
 }
+
+//------------------
+// Metadata API
+//------------------
+
+int JackClient::PropertyChangeNotify(jack_uuid_t subject, const char* key, jack_property_change_t change)
+{
+    int result = -1;
+    fChannel->PropertyChangeNotify(subject, key, change, &result);
+    return result;
+}
+
 
 } // end of namespace
 

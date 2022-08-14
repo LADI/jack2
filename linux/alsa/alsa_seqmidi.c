@@ -47,6 +47,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "midiport.h"
 #include "ringbuffer.h"
@@ -95,6 +96,7 @@ typedef struct alsa_seqmidi {
 	jack_client_t *jack;
 
 	snd_seq_t *seq;
+	snd_seq_queue_timer_t* timer;
 	int client_id;
 	int port_id;
 	int queue;
@@ -275,6 +277,10 @@ int alsa_seqmidi_attach(alsa_midi_t *m)
 		error_log("failed to open alsa seq");
 		return err;
 	}
+	if ((err = snd_seq_queue_timer_malloc(&self->timer)) < 0) {
+		error_log("failed to allocate timer");
+		return err;
+	}
 	snd_seq_set_client_name(self->seq, self->alsa_name);
 	self->port_id = snd_seq_create_simple_port(self->seq, "port",
 		SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_WRITE
@@ -284,8 +290,17 @@ int alsa_seqmidi_attach(alsa_midi_t *m)
 		,SND_SEQ_PORT_TYPE_APPLICATION);
 	self->client_id = snd_seq_client_id(self->seq);
 
-  	self->queue = snd_seq_alloc_queue(self->seq);
-  	snd_seq_start_queue(self->seq, self->queue, 0);
+	self->queue = snd_seq_alloc_queue(self->seq);
+
+	// set high resolution
+	if (snd_seq_get_queue_timer(self->seq, self->queue, self->timer) == 0) {
+		snd_seq_queue_timer_set_resolution(self->timer, UINT_MAX);
+		snd_seq_set_queue_timer(self->seq, self->queue, self->timer);
+	} else {
+		error_log("failed to set alsa timer in high resolution");
+    }
+
+	snd_seq_start_queue(self->seq, self->queue, 0);
 
 	stream_attach(self, PORT_INPUT);
 	stream_attach(self, PORT_OUTPUT);
@@ -312,6 +327,8 @@ int alsa_seqmidi_detach(alsa_midi_t *m)
 
 	stream_detach(self, PORT_INPUT);
 	stream_detach(self, PORT_OUTPUT);
+
+	snd_seq_queue_timer_free(self->timer);
 
 	snd_seq_close(self->seq);
 	self->seq = NULL;
@@ -438,8 +455,9 @@ void port_setdead(port_hash_t hash, snd_seq_addr_t addr)
 	port_t *port = port_get(hash, addr);
 	if (port)
 		port->is_dead = 1; // see jack_process
-	else
+	else {
 		debug_log("port_setdead: not found (%d:%d)", addr.client, addr.port);
+	}
 }
 
 static
@@ -475,8 +493,9 @@ port_t* port_create(alsa_seqmidi_t *self, int type, snd_seq_addr_t addr, const s
 	snd_seq_client_info_alloca (&client_info);
 	snd_seq_get_any_client_info (self->seq, addr.client, client_info);
 
+	const char *device_name = snd_seq_client_info_get_name(client_info);
 	snprintf(port->name, sizeof(port->name), "alsa_pcm:%s/midi_%s_%d",
-		 snd_seq_client_info_get_name(client_info), port_type[type].name, addr.port+1);
+		 device_name, port_type[type].name, addr.port+1);
 
 	// replace all offending characters by -
 	for (c = port->name; *c; ++c)
@@ -502,6 +521,7 @@ port_t* port_create(alsa_seqmidi_t *self, int type, snd_seq_addr_t addr, const s
 		goto failed;
 
 	jack_port_set_alias (port->jack_port, port->name);
+	jack_port_set_default_metadata (port->jack_port, device_name);
 
 	/* generate an alias */
 
@@ -514,6 +534,7 @@ port_t* port_create(alsa_seqmidi_t *self, int type, snd_seq_addr_t addr, const s
 			*c = '-';
 
 	jack_port_set_alias (port->jack_port, port->name);
+	jack_port_set_default_metadata (port->jack_port, device_name);
 
 	if (type == PORT_INPUT)
 		err = alsa_connect_from(self, port->remote.client, port->remote.port);
@@ -728,7 +749,7 @@ void do_jack_input(alsa_seqmidi_t *self, port_t *port, struct process_info *info
 	alsa_midi_event_t ev;
 	while (jack_ringbuffer_read(port->early_events, (char*)&ev, sizeof(ev))) {
 		jack_midi_data_t* buf;
-		jack_nframes_t time = ev.time - info->period_start;
+		int64_t time = ev.time - info->period_start;
 		if (time < 0)
 			time = 0;
 		else if (time >= info->nframes)
@@ -848,14 +869,13 @@ void do_jack_output(alsa_seqmidi_t *self, port_t *port, struct process_info* inf
 {
 	stream_t *str = &self->stream[info->dir];
 	int nevents = jack_midi_get_event_count(port->jack_buf);
-	int i;
+	int i, err;
 	for (i=0; i<nevents; ++i) {
 		jack_midi_event_t jack_event;
 		snd_seq_event_t alsa_event;
 		int64_t frame_offset;
 		int64_t out_time;
 		snd_seq_real_time_t out_rt;
-		int err;
 
 		jack_midi_event_get(&jack_event, port->jack_buf, i);
 
@@ -898,6 +918,10 @@ void do_jack_output(alsa_seqmidi_t *self, port_t *port, struct process_info* inf
 		err = snd_seq_event_output(self->seq, &alsa_event);
 		debug_log("alsa_out: written %d bytes to %s at %+d (%lld): %d", (int)jack_event.size, port->name, (int)frame_offset, out_time, err);
 	}
+	return;
+
+	// may be unused
+	(void)err;
 }
 
 static

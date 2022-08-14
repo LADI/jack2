@@ -514,7 +514,7 @@ int JackOSSDriver::OpenAux()
     // In duplex mode, check that input and output use the same buffer size
     /*
 
-    10/02/09 : desactivated for now, needs more check (only needed when *same* device is used for input and output ??)
+    10/02/09 : deactivated for now, needs more check (only needed when *same* device is used for input and output ??)
 
     if ((fRWMode & kRead) && (fRWMode & kWrite) && (fInputBufferSize != fOutputBufferSize)) {
        jack_error("JackOSSDriver::OpenAux input and output buffer size are not the same!!");
@@ -625,7 +625,7 @@ int JackOSSDriver::Write()
         fFirstCycle = false;
         memset(fOutputBuffer, 0, fOutputBufferSize);
 
-        // Prefill ouput buffer
+        // Prefill output buffer
         for (int i = 0; i < fNperiods; i++) {
            count = ::write(fOutFD, fOutputBuffer, fOutputBufferSize);
            if (count < (int)fOutputBufferSize) {
@@ -759,7 +759,7 @@ SERVER_EXPORT jack_driver_desc_t* driver_get_descriptor()
     jack_driver_descriptor_add_parameter(desc, &filler, "outchannels", 'o', JackDriverParamUInt, &value, NULL, "Playback channels", NULL);
 
     value.i = false;
-    jack_driver_descriptor_add_parameter(desc, &filler, "excl", 'e', JackDriverParamBool, &value, NULL, "Exclusif (O_EXCL) access mode", NULL);
+    jack_driver_descriptor_add_parameter(desc, &filler, "excl", 'e', JackDriverParamBool, &value, NULL, "Exclusive and direct device access", NULL);
 
     strcpy(value.str, OSS_DRIVER_DEF_DEV);
     jack_driver_descriptor_add_parameter(desc, &filler, "capture", 'C', JackDriverParamString, &value, NULL, "Input device", NULL);

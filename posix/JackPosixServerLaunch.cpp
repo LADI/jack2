@@ -17,12 +17,19 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
+#if !defined(WIN32) || defined(__CYGWIN__)
+
+#ifdef PTHREAD_WIN32        // Added by JE - 13-02-2010
+#include <ptw32/pthread.h>  // Makes sure we #include the ptw32 version for
+#endif                      // consistency - even though we won't need it !
 
 #include "JackConstants.h"
 #include "JackChannel.h"
 #include "JackLibGlobals.h"
 #include "JackServerLaunch.h"
 #include "JackPlatformPlug.h"
+
+#include <sys/wait.h>
 
 using namespace Jack;
 
@@ -88,7 +95,7 @@ static void start_server_classic_aux(const char* server_name)
     char** argv = 0;
     int i = 0;
     int good = 0;
-    int ret;
+    int res;
 
     snprintf(filename, 255, "%s/.jackdrc", getenv("HOME"));
     fp = fopen(filename, "r");
@@ -96,18 +103,18 @@ static void start_server_classic_aux(const char* server_name)
     if (!fp) {
         fp = fopen("/etc/jackdrc", "r");
     }
-    /* if still not found, check old config name for backwards compatability */
+    /* if still not found, check old config name for backwards compatibility */
     if (!fp) {
         fp = fopen("/etc/jackd.conf", "r");
     }
 
     if (fp) {
         arguments[0] = '\0';
-        ret = fscanf(fp, "%s", buffer);
-        while (ret != 0 && ret != EOF) {
+        res = fscanf(fp, "%s", buffer);
+        while (res != 0 && res != EOF) {
             strcat(arguments, buffer);
             strcat(arguments, " ");
-            ret = fscanf(fp, "%s", buffer);
+            res = fscanf(fp, "%s", buffer);
         }
         if (strlen(arguments) > 0) {
             good = 1;
@@ -117,7 +124,7 @@ static void start_server_classic_aux(const char* server_name)
 
     if (!good) {
         command = (char*)(JACK_LOCATION "/jackd");
-        strncpy(arguments, JACK_LOCATION "/jackd -T -d "JACK_DEFAULT_DRIVER, 255);
+        strncpy(arguments, JACK_LOCATION "/jackd -T -d " JACK_DEFAULT_DRIVER, 255);
     } else {
         result = strcspn(arguments, " ");
         command = (char*)malloc(result + 1);
@@ -141,16 +148,36 @@ static void start_server_classic_aux(const char* server_name)
             }
         }
 
-        result = strcspn(arguments + pos, " ");
-        if (result == 0) {
+        /* skip whitespace */
+        while (pos < strlen(arguments) && arguments[pos] && arguments[pos] == ' ') {
+            ++pos;
+        }
+
+        if (pos >= strlen(arguments)) {
             break;
         }
+
+        if (arguments[pos] == '\"') {
+            ++pos;
+            result = strcspn(arguments + pos, "\"");
+        } else {
+            result = strcspn(arguments + pos, " ");
+        }
+
+        if (0 == result) {
+            break;
+        }
+
         argv[i] = (char*)malloc(result + 1);
         strncpy(argv[i], arguments + pos, result);
         argv[i][result] = '\0';
         pos += result + 1;
-        ++i;
+
+        if (++i > 253) {
+            break;
+        }
     }
+
     argv[i] = 0;
     execv(command, argv);
 
@@ -170,7 +197,12 @@ static int start_server_classic(const char* server_name)
      * virtual memory tricks, the overhead of the second fork() is
      * probably relatively small.
      */
-    switch (fork()) {
+     
+    int status;
+    pid_t first_child_pid;
+    
+    first_child_pid = fork();
+    switch (first_child_pid) {
         case 0:					/* child process */
             switch (fork()) {
                 case 0:			/* grandchild process */
@@ -184,6 +216,7 @@ static int start_server_classic(const char* server_name)
         case - 1:			/* fork() error */
             return 1;		/* failed to start server */
     }
+    waitpid(first_child_pid, &status, 0);
 
     /* only the original parent process goes here */
     return 0;			/* (probably) successful */
@@ -242,3 +275,4 @@ int try_start_server(jack_varargs_t* va, jack_options_t options, jack_status_t* 
     return 0;
 }
 
+#endif  // !defined(WIN32) || defined(__CYGWIN__)

@@ -22,7 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackServer.h"
 #include "JackLockedEngine.h"
 #include "JackGlobals.h"
-#include "JackServerGlobals.h"
 #include "JackClient.h"
 #include "JackTools.h"
 #include "JackNotification.h"
@@ -170,13 +169,13 @@ void JackSocketServerChannel::ClientKill(int fd)
     int refnum = elem.first;
     assert(socket);
     
+    jack_log("JackSocketServerChannel::ClientKill ref = %d fd = %d", refnum, fd);
     if (refnum == -1) {  // Should never happen... correspond to a client that started the socket but never opened...
         jack_log("Client was not opened : probably correspond to server_check");
     } else {
-        fServer->ClientKill(refnum);
+        fServer->GetEngine()->ClientKill(refnum);
     }
-
-    jack_log("JackSocketServerChannel::ClientKill ref = %d fd = %d", refnum, fd);
+   
     fSocketTable.erase(fd);
     socket->Close();
     delete socket;
@@ -230,7 +229,6 @@ bool JackSocketServerChannel::Execute()
             // Poll all clients
             for (unsigned int i = 1; i < fSocketTable.size() + 1; i++) {
                 int fd = fPollTable[i].fd;
-                jack_log("JackSocketServerChannel::Execute : fPollTable i = %ld fd = %ld", i, fd);
                 if (fPollTable[i].revents & ~POLLIN) {
                     jack_log("JackSocketServerChannel::Execute : poll client error err = %s", strerror(errno));
                     ClientKill(fd);

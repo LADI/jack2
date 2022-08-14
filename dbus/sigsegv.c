@@ -27,7 +27,9 @@
 #include <stdio.h>
 #include <signal.h>
 #include <dlfcn.h>
-#include <execinfo.h>
+#ifdef HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
 #include <errno.h>
 #ifndef NO_CPP_DEMANGLE
 char * __cxa_demangle(const char * __mangled_name, char * __output_buffer, size_t * __length, int * __status);
@@ -59,10 +61,12 @@ static void signal_segv(int signum, siginfo_t* info, void*ptr)
 static void signal_segv(int signum, siginfo_t* info, void*ptr) {
     static const char *si_codes[3] = {"", "SEGV_MAPERR", "SEGV_ACCERR"};
 
-    size_t i;
     const char *si_code_str;
     ucontext_t *ucontext = (ucontext_t*)ptr;
 
+#if (defined(HAVE_UCONTEXT) && defined(HAVE_NGREG)) || defined(HAVE_EXECINFO_H)
+    size_t i;
+#endif
 #if defined(SIGSEGV_STACK_X86) || defined(SIGSEGV_STACK_IA64)
     int f = 0;
     Dl_info dlinfo;
@@ -92,7 +96,7 @@ static void signal_segv(int signum, siginfo_t* info, void*ptr) {
     }
     else
     {
-        jack_error("Unknown bad signal catched!");
+        jack_error("Unknown bad signal caught!");
     }
 
     if (info->si_code >= 0 && info->si_code < 3) 
@@ -104,20 +108,20 @@ static void signal_segv(int signum, siginfo_t* info, void*ptr) {
     jack_error("info.si_errno = %d", info->si_errno);
     jack_error("info.si_code  = %d (%s)", info->si_code, si_code_str);
     jack_error("info.si_addr  = %p", info->si_addr);
-#if !defined(__alpha__) && !defined(__ia64__) && !defined(__FreeBSD_kernel__) && !defined(__arm__) && !defined(__hppa__) && !defined(__sh__)
+#if defined(HAVE_UCONTEXT) && defined(HAVE_NGREG)
     for(i = 0; i < NGREG; i++)
         jack_error("reg[%02d]       = 0x" REGFORMAT, i, 
-#if defined(__powerpc64__)
+#if defined(HAVE_UCONTEXT_GP_REGS)
                 ucontext->uc_mcontext.gp_regs[i]
-#elif defined(__powerpc__)
+#elif defined(HAVE_UCONTEXT_UC_REGS)
                 ucontext->uc_mcontext.uc_regs[i]
-#elif defined(__sparc__) && defined(__arch64__)
+#elif defined(HAVE_UCONTEXT_MC_GREGS)
                 ucontext->uc_mcontext.mc_gregs[i]
-#else
+#elif defined(HAVE_UCONTEXT_GREGS)
                 ucontext->uc_mcontext.gregs[i]
 #endif
                 );
-#endif /* alpha, ia64, kFreeBSD, arm, hppa */
+#endif /* defined(HAVE_UCONTEXT) && defined(HAVE_NGREG) */
 
 #if defined(SIGSEGV_STACK_X86) || defined(SIGSEGV_STACK_IA64)
 # if defined(SIGSEGV_STACK_IA64)
@@ -161,12 +165,16 @@ static void signal_segv(int signum, siginfo_t* info, void*ptr) {
         bp = (void**)bp[0];
     }
 #else
+# ifdef HAVE_EXECINFO_H
     jack_error("Stack trace (non-dedicated):");
     sz = backtrace(bt, 20);
     strings = backtrace_symbols(bt, sz);
 
     for(i = 0; i < sz; ++i)
         jack_error("%s", strings[i]);
+# else
+    jack_error("Stack trace not available");
+# endif
 #endif
     jack_error("End of stack trace");
     exit (-1);

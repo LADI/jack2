@@ -401,7 +401,7 @@ struct JackClientTiming
 <UL>
 <LI>The <B>fConnection</B> array contains the list (array line) of connected ports for a given port.
 <LI>The <B>fInputPort</B> array contains the list (array line) of input connected  ports for a given client.
-<LI>The <B>fOutputPort</B> array contains the list (array line) of ouput connected  ports for a given client.
+<LI>The <B>fOutputPort</B> array contains the list (array line) of output connected  ports for a given client.
 <LI>The <B>fConnectionRef</B> array contains the number of ports connected between two clients.
 <LI>The <B>fInputCounter</B> array contains the number of input clients connected to a given for activation purpose.
 </UL>
@@ -417,7 +417,7 @@ class SERVER_EXPORT JackConnectionManager
         JackFixedArray1<PORT_NUM_FOR_CLIENT> fInputPort[CLIENT_NUM];	/*! Table of input port per refnum : to find a refnum for a given port */
         JackFixedArray<PORT_NUM_FOR_CLIENT> fOutputPort[CLIENT_NUM];	/*! Table of output port per refnum : to find a refnum for a given port */
         JackFixedMatrix<CLIENT_NUM> fConnectionRef;						/*! Table of port connections by (refnum , refnum) */
-        JackActivationCount fInputCounter[CLIENT_NUM];					/*! Activation counter per refnum */
+        alignas(UInt32) alignas(JackActivationCount) JackActivationCount fInputCounter[CLIENT_NUM];	/*! Activation counter per refnum */
         JackLoopFeedback<CONNECTION_NUM_FOR_PORT> fLoopFeedback;		/*! Loop feedback connections */
 
         bool IsLoopPathAux(int ref1, int ref2) const;

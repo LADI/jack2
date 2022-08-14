@@ -18,7 +18,7 @@
 */
 
 #include "JackConstants.h"
-#include "JackDriverLoader.h"
+#include "driver_interface.h"
 #include "JackTools.h"
 #include "JackError.h"
 #include <stdlib.h>
@@ -28,6 +28,7 @@
 
 #ifdef WIN32
 #include <process.h>
+#include "JackPlatformPlug_os.h"
 #endif
 
 
@@ -37,12 +38,11 @@ namespace Jack {
 
     void JackTools::KillServer()
     {
+    #ifdef WIN32
         raise(SIGINT);
-    }
-
-    void JackTools::ThrowJackNetException()
-    {
-        throw JackNetException();
+    #else
+        kill(GetPID(), SIGINT);
+    #endif
     }
 
      int JackTools::MkDir(const char* path)
@@ -72,27 +72,28 @@ namespace Jack {
         return  _getpid();
         //#error "No getuid function available"
 #else
-        return getuid();
+        return geteuid();
 #endif
     }
 
     const char* JackTools::DefaultServerName()
     {
         const char* server_name;
-        if ((server_name = getenv("JACK_DEFAULT_SERVER")) == NULL)
+        if ((server_name = getenv("JACK_DEFAULT_SERVER")) == NULL) {
             server_name = JACK_DEFAULT_SERVER_NAME;
+        }
         return server_name;
     }
 
     /* returns the name of the per-user subdirectory of jack_tmpdir */
 #ifdef WIN32
 
-    char* JackTools::UserDir()
+    const char* JackTools::UserDir()
     {
         return "";
     }
 
-    char* JackTools::ServerDir(const char* server_name, char* server_dir)
+    const char* JackTools::ServerDir(const char* server_name, char* server_dir)
     {
         return "";
     }
@@ -105,7 +106,7 @@ namespace Jack {
     }
 
 #else
-    char* JackTools::UserDir()
+    const char* JackTools::UserDir()
     {
         static char user_dir[JACK_PATH_MAX + 1] = "";
 
@@ -122,7 +123,7 @@ namespace Jack {
     }
 
     /* returns the name of the per-server subdirectory of jack_user_dir() */
-    char* JackTools::ServerDir(const char* server_name, char* server_dir)
+    const char* JackTools::ServerDir(const char* server_name, char* server_dir)
     {
         /* format the path name into the suppled server_dir char array,
         * assuming that server_dir is at least as large as JACK_PATH_MAX + 1 */
@@ -226,10 +227,11 @@ namespace Jack {
     {
         size_t i;
         for (i = 0; i < strlen(name); i++) {
-            if ((name[i] == '/') || (name[i] == '\\'))
+            if ((name[i] == '/') || (name[i] == '\\')) {
                 new_name[i] = '_';
-            else
+            } else {
                 new_name[i] = name[i];
+            }
         }
         new_name[i] = '\0';
     }
@@ -262,7 +264,7 @@ void PrintLoadError(const char* so_name)
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
         (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)so_name) + 40) * sizeof(TCHAR));
     _snprintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-        TEXT("error loading %s err = %s"), so_name, lpMsgBuf);
+        TEXT("error loading %s err = %s"), so_name, (LPCTSTR)lpMsgBuf);
 
     jack_error((LPCTSTR)lpDisplayBuf);
 
@@ -293,4 +295,3 @@ void BuildClientPath(char* path_to_so, int path_len, const char* so_name)
 
 
 }  // end of namespace
-

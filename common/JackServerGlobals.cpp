@@ -31,12 +31,12 @@ namespace Jack
 
 JackServer* JackServerGlobals::fInstance;
 unsigned int JackServerGlobals::fUserCount;
-int JackServerGlobals::fRTNotificationSocket;
 std::map<std::string, JackDriverInfo*> JackServerGlobals::fSlavesList;
 std::map<std::string, int> JackServerGlobals::fInternalsList;
 
 bool (* JackServerGlobals::on_device_acquire)(const char * device_name) = NULL;
 void (* JackServerGlobals::on_device_release)(const char * device_name) = NULL;
+void (* JackServerGlobals::on_device_reservation_loop)(void) = NULL;
 
 int JackServerGlobals::Start(const char* server_name,
                              jack_driver_desc_t* driver_desc,
@@ -49,7 +49,7 @@ int JackServerGlobals::Start(const char* server_name,
                              int port_max,
                              int verbose,
                              jack_timer_type_t clock,
-                             JackSelfConnectMode self_connect_mode)
+                             char self_connect_mode)
 {
     jack_log("Jackdmp: sync = %ld timeout = %ld rt = %ld priority = %ld verbose = %ld ", sync, time_out_ms, rt, priority, verbose);
     new JackServer(sync, temporary, time_out_ms, rt, priority, port_max, verbose, clock, self_connect_mode, server_name);  // Will setup fInstance and fUserCount globals
@@ -116,7 +116,7 @@ bool JackServerGlobals::Init()
     int loopback = 0;
     int sync = 0;
     int rc, i;
-    int ret;
+    int res;
     int replace_registry = 0;
 
     FILE* fp = 0;
@@ -169,18 +169,18 @@ bool JackServerGlobals::Init()
         if (!fp) {
             fp = fopen("/etc/jackdrc", "r");
         }
-        // if still not found, check old config name for backwards compatability
+        // if still not found, check old config name for backwards compatibility
         if (!fp) {
             fp = fopen("/etc/jackd.conf", "r");
         }
 
         argc = 0;
         if (fp) {
-            ret = fscanf(fp, "%s", buffer);
-            while (ret != 0 && ret != EOF) {
+            res = fscanf(fp, "%s", buffer);
+            while (res != 0 && res != EOF) {
                 argv[argc] = (char*)malloc(64);
                 strcpy(argv[argc], buffer);
-                ret = fscanf(fp, "%s", buffer);
+                res = fscanf(fp, "%s", buffer);
                 argc++;
             }
             fclose(fp);
@@ -204,7 +204,11 @@ bool JackServerGlobals::Init()
                     if (tolower (optarg[0]) == 'h') {
                         clock_source = JACK_TIMER_HPET;
                     } else if (tolower (optarg[0]) == 'c') {
-                        clock_source = JACK_TIMER_CYCLE_COUNTER;
+                        /* For backwards compatibility with scripts, allow
+                         * the user to request the cycle clock on the
+                         * command line, but use the system clock instead
+                         */
+                        clock_source = JACK_TIMER_SYSTEM_CLOCK;
                     } else if (tolower (optarg[0]) == 's') {
                         clock_source = JACK_TIMER_SYSTEM_CLOCK;
                     } else {
@@ -230,6 +234,12 @@ bool JackServerGlobals::Init()
 
                 case 'p':
                     port_max = (unsigned int)atol(optarg);
+                    break;
+
+                case 'm':
+                    break;
+
+                case 'u':
                     break;
 
                 case 'v':
@@ -306,8 +316,9 @@ bool JackServerGlobals::Init()
         }
 
 #ifndef WIN32
-        if (server_name == NULL)
+        if (server_name == NULL) {
             server_name = (char*)JackTools::DefaultServerName();
+        }
 #endif
 
         rc = jack_register_server(server_name, false);
@@ -329,8 +340,9 @@ bool JackServerGlobals::Init()
         jack_cleanup_shm();
         JackTools::CleanupFiles(server_name);
 
-        if (!realtime && client_timeout == 0)
+        if (!realtime && client_timeout == 0) {
             client_timeout = 500; /* 0.5 sec; usable when non realtime. */
+        }
 
         for (i = 0; i < argc; i++) {
             free(argv[i]);
@@ -378,14 +390,16 @@ bool JackServerGlobals::Init()
         }
     }
 
-    if (master_driver_params)
+    if (master_driver_params) {
         jack_free_driver_params(master_driver_params);
+    }
     return true;
 
 error:
     jack_log("JackServerGlobals Init error");
-    if (master_driver_params)
+    if (master_driver_params) {
         jack_free_driver_params(master_driver_params);
+    }
     Destroy();
     return false;
 }

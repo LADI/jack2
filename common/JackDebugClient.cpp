@@ -35,6 +35,7 @@ namespace Jack
 {
 
 JackDebugClient::JackDebugClient(JackClient * client)
+  : JackClient(client->fSynchroTable)
 {
     fTotalPortNumber = 1;       // The total number of port opened and maybe closed. Historical view.
     fOpenPortNumber = 0;        // The current number of opened port.
@@ -58,7 +59,7 @@ JackDebugClient::~JackDebugClient()
     if (fOpenPortNumber != 0)
         *fStream << "!!! WARNING !!! Some ports have not been unregistered ! Incorrect exiting !" << endl;
     if (fIsDeactivated != fIsActivated)
-        *fStream << "!!! ERROR !!! Client seem to not perform symetric activation-deactivation ! (not the same number of activate and deactivate)" << endl;
+        *fStream << "!!! ERROR !!! Client seem to not perform symmetric activation-deactivation ! (not the same number of activate and deactivate)" << endl;
     if (fIsClosed == 0)
         *fStream << "!!! ERROR !!! Client have not been closed with jack_client_close() !" << endl;
 
@@ -78,7 +79,7 @@ JackDebugClient::~JackDebugClient()
     delete fClient;
 }
 
-int JackDebugClient::Open(const char* server_name, const char* name, int uuid, jack_options_t options, jack_status_t* status)
+int JackDebugClient::Open(const char* server_name, const char* name, jack_uuid_t uuid, jack_options_t options, jack_status_t* status)
 {
     int res = fClient->Open(server_name, name, uuid, options, status);
     char provstr[256];
@@ -363,10 +364,10 @@ ShutDown is called:
 (Not needed since the synch object used (Sema of Fifo will fails when server quits... see ShutDown))
 */
 
-void JackDebugClient::ShutDown()
+void JackDebugClient::ShutDown(jack_status_t code, const char* message)
 {
     CheckClient("ShutDown");
-    fClient->ShutDown();
+    fClient->ShutDown(code, message);
 }
 
 //---------------------
@@ -417,7 +418,7 @@ jack_nframes_t JackDebugClient::GetCurrentTransportFrame()
     return fClient->GetCurrentTransportFrame();
 }
 
-int JackDebugClient::TransportReposition(jack_position_t* pos)
+int JackDebugClient::TransportReposition(const jack_position_t* pos)
 {
     CheckClient("TransportReposition");
     return fClient->TransportReposition(pos);

@@ -47,7 +47,8 @@ SERVER_EXPORT int audio_reservation_init()
     dbus_error_init(&error);
 
     if (!(gConnection = dbus_bus_get(DBUS_BUS_SESSION, &error))) {
-        jack_error("Failed to connect to session bus for device reservation %s\n", error.message);
+        jack_error("Failed to connect to session bus for device reservation: %s\n", error.message);
+        jack_info("To bypass device reservation via session bus, set JACK_NO_AUDIO_RESERVATION=1 prior to starting jackd.\n");
         return -1;
     }
 
@@ -71,8 +72,11 @@ SERVER_EXPORT bool audio_acquire(const char * device_name)
     int ret;
 
     // Open DBus connection first time
-    if (gReserveCount == 0)
-       audio_reservation_init();
+    if (gReserveCount == 0) {
+        if (audio_reservation_init() != 0) {
+            return false;
+        }
+    }
 
     assert(gReserveCount < DEVICE_MAX);
 
@@ -124,8 +128,7 @@ SERVER_EXPORT void audio_release(const char * device_name)
 SERVER_EXPORT void audio_reserve_loop()
 {
     if (gConnection != NULL) {
-       while (dbus_connection_read_write_dispatch (gConnection, -1))
-         ; // empty loop body
+       dbus_connection_read_write_dispatch (gConnection, 200);
     }
 }
 
