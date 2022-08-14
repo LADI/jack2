@@ -95,11 +95,11 @@ def options(opt):
         default=False,
         help='Force enable standard JACK (jackd) even if D-Bus JACK (jackdbus) is enabled too',
     )
-    opt.add_option('--dbus', action='store_true', default=False, help='Enable D-Bus JACK (jackdbus)')
+    opt.add_option('--dbus', action='store_true', default=True, help='Enable D-Bus JACK (jackdbus)')
     opt.add_option(
         '--autostart',
         type='string',
-        default='default',
+        default='dbus',
         help='Autostart method. Possible values: "default", "classic", "dbus", "none"',
     )
     opt.add_option('--profile', action='store_true', default=False, help='Build with engine profiling')
