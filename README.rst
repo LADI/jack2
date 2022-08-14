@@ -1,8 +1,8 @@
 `JACK2 <https://jackaudio.org/>`_
 ################################
 
-.. image:: https://travis-ci.org/jackaudio/jack2.svg?branch=master
-   :target: https://travis-ci.org/jackaudio/jack2  
+.. image:: https://github.com/LADI/jack2/actions/workflows/build.yml/badge.svg
+   :target: https://github.com/LADI/jack2/actions
 .. image:: https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg
    :target: https://repology.org/metapackage/jack-audio-connection-kit/versions
    
