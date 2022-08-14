@@ -18,6 +18,7 @@ jobs:
     - name: Build ladi-jack2
       shell: bash
       run: |
+        sudo apt-get install libdbus-1-dev
         python3 ./waf configure --prefix=/usr
         python3 ./waf
         python3 ./waf install --destdir=$(pwd)/destdir
