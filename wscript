@@ -10,7 +10,7 @@ from waflib import Logs, Options, TaskGen
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 
 # see also common/JackConstants.h
-VERSION = '1.9.21'
+VERSION = '2.21'
 APPNAME = 'jack'
 JACK_API_VERSION = '0.1.0'
 
@@ -483,7 +483,7 @@ def configure(conf):
         conf.write_config_header('config.h')
 
     print()
-    print('JACK ' + VERSION)
+    print('LADI JACK ' + VERSION)
 
     conf.msg('Maximum JACK clients', Options.options.clients, color='NORMAL')
     conf.msg('Maximum ports per application', Options.options.application_ports, color='NORMAL')
