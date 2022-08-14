@@ -10,7 +10,7 @@ from waflib import Logs, Options, TaskGen
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 
 # see also common/JackConstants.h
-VERSION = '1.9.21'
+VERSION = '2.21'
 APPNAME = 'jack'
 JACK_API_VERSION = '0.1.0'
 
@@ -99,8 +99,8 @@ def options(opt):
     opt.add_option(
         '--autostart',
         type='string',
-        default='dbus',
-        help='Autostart method. Possible values: "default", "classic", "dbus", "none"',
+        default='default',
+        help='Autostart method. Possible values: "none", "dbus", "classic", "default" (none)',
     )
     opt.add_option('--profile', action='store_true', default=False, help='Build with engine profiling')
     opt.add_option('--clients', default=256, type='int', dest='clients', help='Maximum number of JACK clients')
@@ -408,10 +408,7 @@ def configure(conf):
         conf.fatal('Invalid autostart value "' + Options.options.autostart + '"')
 
     if Options.options.autostart == 'default':
-        if conf.env['BUILD_JACKD']:
-            conf.env['AUTOSTART_METHOD'] = 'classic'
-        else:
-            conf.env['AUTOSTART_METHOD'] = 'dbus'
+        conf.env['AUTOSTART_METHOD'] = 'none'
     else:
         conf.env['AUTOSTART_METHOD'] = Options.options.autostart
 
@@ -483,7 +480,7 @@ def configure(conf):
         conf.write_config_header('config.h')
 
     print()
-    print('JACK ' + VERSION)
+    print('LADI JACK ' + VERSION)
 
     conf.msg('Maximum JACK clients', Options.options.clients, color='NORMAL')
     conf.msg('Maximum ports per application', Options.options.application_ports, color='NORMAL')
