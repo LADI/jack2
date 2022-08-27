@@ -1,8 +1,34 @@
-ChangeLog
+
 #########
 
-* 1.9.21 (2022-04-15)
+* LADI jack2 2.21.0 (2022-08-27)
 
+Initial release of LADI jack2 without jackdbus.
+
+LADI jackdbus was initially modification of jack1.
+
+Later, jackdbus reincarnated as modification of jackdmp by Stephane Letz
+in form of jack2 version 1.9.0, along with a new C level control API
+provided via libjackserver.
+
+jackdbus was maintained by its author as part of jackaudio's jack2 project until 2022-08.
+As of this release, jackdbus is not part of jack2 codebase anymore,
+at least as far as LADI project is concerned.
+
+Instead, this new LADI modification of jackaudio.org jack2 codebase,
+is providing jack2 without jackdbus.
+
+This modification is based on jackaudio.org jack2 version 1.9.21.
+List of differences:
+
+  * jackdbus is removed, to be built from https://github.com/LADI/jackdbus
+  * jack server autostart default is now None
+  * jackd build is disabled by default
+  * fix for ringbuffer on arm
+    https://github.com/jackaudio/jack2/pull/886
+  * libjackserver.so pkg-config info is now also provided via dedicated file
+
+* 1.9.21 (2022-04-15)
   * Add shell mode to ``jack_control`` (executes commands from stdin until EOF)
   * The waf autooption ``--example-tools`` introduced in 1.9.20 is now off by default,
     To get the previous behavior back pass ``--example-tools`` during build.
