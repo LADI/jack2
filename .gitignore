@@ -12,7 +12,9 @@ codeBlocks
 /build/
 /man/*.1
 /.waf*
-/build
+
+# jack2 source tree for CI
+/jack2/
 
 # common release files
 /destdir/
