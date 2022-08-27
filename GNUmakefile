@@ -3,7 +3,7 @@ TOP:=$(shell pwd)
 .PHONY: jack2dbus
 jack2dbus:
 	rm -rf jack2
-	git clone -b $(shell git symbolic-ref --short HEAD) --recurse-submodules --shallow-submodules ../jack2 jack2
+	git clone -b $(shell git symbolic-ref --short HEAD) --recurse-submodules --shallow-submodules https://github.com/LADI/jack2
 	cd jack2 && python3 ./waf configure --prefix=$(TOP)/destdir/usr
 	cd jack2 && python3 ./waf
 	cd jack2 && python3 ./waf install
