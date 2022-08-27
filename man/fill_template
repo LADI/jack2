@@ -2,13 +2,7 @@
 d=""
 [ -z "$SOURCE_DATE_EPOCH" ] || d=--date=@$SOURCE_DATE_EPOCH
 
-if [ "$2" == "True" ]; then
-  FILES=$(ls *.0|grep -v 'jackd\.0')
-fi
-
-if [ "$3" == "True" ]; then
-  FILES="${FILES} jackd.0"
-fi
+FILES=$(ls *.0)
 
 test -z "${FILES}" && exit 0
 
