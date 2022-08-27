@@ -1,8 +1,29 @@
-ChangeLog
+News
 #########
 
-* 1.9.21 (2022-04-15)
+* jackdbus 2.21.0 (2022-08-27)
 
+Initial release of standalone jackdbus.
+
+LADI jackdbus was initially modification of jack1.
+
+Later, jackdbus reincarnated as modification of jackdmp by Stephane Letz
+in form of jack2 version 1.9.0, along with a new C level control API
+provided via libjackserver.
+
+jackdbus was maintained by its author as part of jackaudio's jack2 project until 2022-08.
+As of this release, jackdbus is not part of jack2 codebase anymore,
+at least as far as LADI project is concerned.
+
+Instead, this new LADI modification of jackaudio.org jack2 codebase,
+is providing jackdbus only.
+
+This modification is based on jackaudio.org jack2 version 1.9.21.
+List of differences:
+
+  * non-jackdbus related code is removed, to be built from https://github.com/LADI/jack2
+
+* 1.9.21 (2022-04-15)
   * Add shell mode to ``jack_control`` (executes commands from stdin until EOF)
   * The waf autooption ``--example-tools`` introduced in 1.9.20 is now off by default,
     To get the previous behavior back pass ``--example-tools`` during build.
