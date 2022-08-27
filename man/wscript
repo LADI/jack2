@@ -3,8 +3,9 @@
 
 
 def build(bld):
-    bld.exec_command('cd man ; sh fill_template {} {}'.format(
+    bld.exec_command('cd man ; sh fill_template {} {} {}'.format(
         bld.env['JACK_VERSION'],
-        bld.env['BUILD_JACK_EXAMPLE_TOOLS'])
+        bld.env['BUILD_JACK_EXAMPLE_TOOLS'],
+        bld.env['BUILD_CLASSIC'])
     )
     bld.install_files(bld.env['MANDIR'], bld.path.ant_glob('*.1'))
