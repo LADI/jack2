@@ -16,7 +16,6 @@ def options(opt):
 
 
 def configure(conf):
-    conf.env['BUILD_JACKDBUS'] = False
     conf.define('JACK_VERSION', conf.env['JACK_VERSION'])
 
     if not conf.check_cfg(package='dbus-1 >= 1.0.0', args='--cflags --libs', mandatory=False):
@@ -40,11 +39,6 @@ def configure(conf):
     else:
         conf.env['DBUS_SERVICES_DIR'] = os.path.normpath(conf.env['PREFIX'] + '/share/dbus-1/services')
 
-    if not conf.check_cfg(package='expat', args='--cflags --libs', mandatory=False):
-        print(Logs.colors.RED + 'ERROR !! jackdbus will not be built because of expat is missing' + Logs.colors.NORMAL)
-        return
-
-    conf.env['BUILD_JACKDBUS'] = True
 
 
 def build(bld):
@@ -57,6 +51,7 @@ def build(bld):
         sysdeps_dbus_include = ['../macosx', '../posix']
 
     obj.includes = sysdeps_dbus_include + ['.', '../', '../common', '../common/jack']
+
     obj.defines = ['HAVE_CONFIG_H', 'SERVER_SIDE']
     obj.source = [
         'jackdbus.c',
@@ -74,7 +69,7 @@ def build(bld):
         'sigsegv.c',
         'reserve.c',
         ]
-    obj.use = ['serverlib']
+    obj.use = ['JACKSERVER']
     if bld.env['IS_LINUX']:
         obj.source += [
             '../linux/uptime.c',
