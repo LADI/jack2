@@ -1,3 +1,6 @@
 [submodule "waf-autooptions"]
 	path = autooptions
 	url = ../waf-autooptions
+[submodule "jack2"]
+	path = jack2
+	url = ../jack2

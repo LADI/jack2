@@ -19,7 +19,6 @@ jobs:
       shell: bash
       run: |
         sudo apt-get install libdbus-1-dev
-	git clone --recurse-submodules --shallow-submodules ../jack2.git
         cd jack2 && python3 ./waf configure --prefix=/usr
         cd jack2 && python3 ./waf
         cd jack2 && python3 ./waf install --destdir=$(pwd)/destdir
