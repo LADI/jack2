@@ -515,3 +515,13 @@ def build(bld):
         CLIENTLIB=clientlib.target,
         SERVERLIB=serverlib.target,
     )
+    # process jackserver.pc.in -> jackserver.pc
+    bld(
+        features='subst_pc',
+        source='../jackserver.pc.in',
+        target='jackserver.pc',
+        install_path='${PKGCONFDIR}',
+        INCLUDEDIR=os.path.normpath(bld.env['PREFIX'] + '/include'),
+        CLIENTLIB=clientlib.target,
+        SERVERLIB=serverlib.target,
+    )
