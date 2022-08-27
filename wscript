@@ -51,22 +51,22 @@ def options(opt):
     )
     opt.add_option('--debug', action='store_true', default=False, dest='debug', help='Build debuggable binaries')
 
-    opt.set_auto_options_define('HAVE_%s')
-    opt.set_auto_options_style('yesno_and_hack')
+    #opt.set_auto_options_define('HAVE_%s')
+    #opt.set_auto_options_style('yesno_and_hack')
 
     # options with third party dependencies
-    doxygen = opt.add_auto_option(
-            'doxygen',
-            help='Build doxygen documentation',
-            conf_dest='BUILD_DOXYGEN_DOCS',
-            default=False)
-    doxygen.find_program('doxygen')
+    #doxygen = opt.add_auto_option(
+    #        'doxygen',
+    #        help='Build doxygen documentation',
+    #        conf_dest='BUILD_DOXYGEN_DOCS',
+    #        default=False)
+    #doxygen.find_program('doxygen')
 
     # dbus options
     opt.recurse('dbus')
 
     # this must be called before the configure phase
-    opt.apply_auto_options_hack()
+    #opt.apply_auto_options_hack()
 
 
 def detect_platform(conf):
@@ -196,7 +196,7 @@ def configure(conf):
             flags += conf.all_envs[''][var]
         conf.msg(name, repr(flags), color='NORMAL')
 
-    conf.summarize_auto_options()
+    #conf.summarize_auto_options()
 
     conf.msg('D-Bus service install directory', conf.env['DBUS_SERVICES_DIR'], color='CYAN')
 
