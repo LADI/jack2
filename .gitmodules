@@ -1,0 +1,3 @@
+[submodule "waf-autooptions"]
+	path = autooptions
+	url = ../waf-autooptions
