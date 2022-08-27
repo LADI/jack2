@@ -11,6 +11,8 @@ codeBlocks
 /android/.client/
 /build/
 /man/*.1
+/.waf*
+/build
 
 # common release files
 /destdir/

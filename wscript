@@ -31,8 +31,6 @@ def options(opt):
     opt.load('compiler_c')
     opt.load('autooptions')
 
-    opt.load('xcode6')
-
     # install directories
     opt.add_option(
         '--htmldir',
