@@ -19,4 +19,4 @@ jobs:
       shell: bash
       run: |
         sudo apt-get install libdbus-1-dev
-	make
+        make
