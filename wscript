@@ -93,9 +93,13 @@ def options(opt):
         '--classic',
         action='store_true',
         default=False,
-        help='Force enable standard JACK (jackd) even if D-Bus JACK (jackdbus) is enabled too',
+        help='Force enable standard JACK (jackd)',
     )
-    opt.add_option('--dbus', action='store_true', default=True, help='Enable D-Bus JACK (jackdbus)')
+    opt.add_auto_option(
+        'dbus',
+        help='Use device reservation over D-Bus for jackd',
+        default=True,
+        conf_dest='BUILD_DBUS_RESERVATION')
     opt.add_option(
         '--autostart',
         type='string',
@@ -220,9 +224,6 @@ def options(opt):
     zalsa.check(lib='zita-alsa-pcmi')
     zalsa.check(lib='zita-resampler')
 
-    # dbus options
-    opt.recurse('dbus')
-
     # this must be called before the configure phase
     opt.apply_auto_options_hack()
 
@@ -327,10 +328,6 @@ def configure(conf):
         mandatory=False)
 
     conf.recurse('common')
-    if Options.options.dbus:
-        conf.recurse('dbus')
-        if not conf.env['BUILD_JACKDBUS']:
-            conf.fatal('jackdbus was explicitly requested but cannot be built')
     if conf.env['IS_LINUX']:
         if Options.options.systemd_unit:
             conf.recurse('systemd')
@@ -370,10 +367,12 @@ def configure(conf):
     conf.env['BUILD_DEBUG'] = Options.options.debug
     conf.env['BUILD_STATIC'] = Options.options.static
 
-    if conf.env['BUILD_JACKDBUS']:
-        conf.env['BUILD_JACKD'] = conf.env['BUILD_CLASSIC']
-    else:
-        conf.env['BUILD_JACKD'] = True
+    conf.env['BUILD_JACKD'] = conf.env['BUILD_CLASSIC']
+
+    if conf.env['BUILD_JACKD'] and conf.env['BUILD_DBUS_RESERVATION']:
+        if not conf.check_cfg(package='dbus-1 >= 1.0.0', args='--cflags --libs', mandatory=False):
+            print(Logs.colors.RED + 'ERROR !! jackd cannot be built with D-Bus device reservation feature because libdbus-dev is missing' + Logs.colors.NORMAL)
+            return
 
     conf.env['BINDIR'] = conf.env['PREFIX'] + '/bin'
 
@@ -445,8 +444,6 @@ def configure(conf):
     if not conf.env['IS_WINDOWS']:
         conf.define('USE_POSIX_SHM', 1)
     conf.define('JACKMP', 1)
-    if conf.env['BUILD_JACKDBUS']:
-        conf.define('JACK_DBUS', 1)
     if conf.env['BUILD_WITH_PROFILE']:
         conf.define('JACK_MONITOR', 1)
     conf.write_config_header('config.h', remove=False)
@@ -511,32 +508,12 @@ def configure(conf):
     display_feature(conf, 'Build with 32/64 bits mixed mode', conf.env['BUILD_WITH_32_64'])
 
     display_feature(conf, 'Build standard JACK (jackd)', conf.env['BUILD_JACKD'])
-    display_feature(conf, 'Build D-Bus JACK (jackdbus)', conf.env['BUILD_JACKDBUS'])
+    if conf.env['BUILD_JACKD']:
+        display_feature(conf, 'D-Bus device reservation for jackd', conf.env['BUILD_DBUS_RESERVATION'])
     conf.msg('Autostart method', conf.env['AUTOSTART_METHOD'])
-
-    if conf.env['BUILD_JACKDBUS'] and conf.env['BUILD_JACKD']:
-        print(Logs.colors.RED + 'WARNING !! mixing both jackd and jackdbus may cause issues:' + Logs.colors.NORMAL)
-        print(Logs.colors.RED + 'WARNING !! jackdbus does not use .jackdrc nor qjackctl settings' + Logs.colors.NORMAL)
 
     conf.summarize_auto_options()
 
-    if conf.env['BUILD_JACKDBUS']:
-        conf.msg('D-Bus service install directory', conf.env['DBUS_SERVICES_DIR'], color='CYAN')
-
-        if conf.env['DBUS_SERVICES_DIR'] != conf.env['DBUS_SERVICES_DIR_REAL']:
-            print()
-            print(Logs.colors.RED + 'WARNING: D-Bus session services directory as reported by pkg-config is')
-            print(Logs.colors.RED + 'WARNING:', end=' ')
-            print(Logs.colors.CYAN + conf.env['DBUS_SERVICES_DIR_REAL'])
-            print(Logs.colors.RED + 'WARNING: but service file will be installed in')
-            print(Logs.colors.RED + 'WARNING:', end=' ')
-            print(Logs.colors.CYAN + conf.env['DBUS_SERVICES_DIR'])
-            print(
-                Logs.colors.RED + 'WARNING: You may need to adjust your D-Bus configuration after installing jackdbus'
-            )
-            print('WARNING: You can override dbus service install directory')
-            print('WARNING: with --enable-pkg-config-dbus-service-dir option to this script')
-            print(Logs.colors.NORMAL, end=' ')
     print()
 
 
@@ -550,9 +527,6 @@ def init(ctx):
 
 
 def obj_add_includes(bld, obj):
-    if bld.env['BUILD_JACKDBUS']:
-        obj.includes += ['dbus']
-
     if bld.env['IS_LINUX']:
         obj.includes += ['linux', 'posix']
 
@@ -580,7 +554,7 @@ def build_jackd(bld):
         use=['serverlib', 'SYSTEMD']
     )
 
-    if bld.env['BUILD_JACKDBUS']:
+    if bld.env['BUILD_DBUS_RESERVATION']:
         jackd.source += ['dbus/audio_reserve.c', 'dbus/reserve.c']
         jackd.use += ['DBUS-1']
 
@@ -859,8 +833,6 @@ def build(bld):
         bld.recurse('systemd')
     if not bld.env['IS_WINDOWS'] and bld.env['BUILD_JACK_EXAMPLE_TOOLS']:
         bld.recurse('tests')
-    if bld.env['BUILD_JACKDBUS']:
-        bld.recurse('dbus')
 
     if bld.env['BUILD_DOXYGEN_DOCS']:
         html_build_dir = bld.path.find_or_declare('html').abspath()
