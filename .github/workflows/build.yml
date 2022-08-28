@@ -8,7 +8,20 @@ on:
     branches:
       - '*'
 jobs:
-  # ubuntu-20.04
+  ubuntu_22_04:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Build ladi-jack2dbus
+      shell: bash
+      run: |
+        sudo apt-get install libdbus-1-dev
+        python3 ./waf configure --prefix=/usr
+        python3 ./waf
+        python3 ./waf install --destdir=$(pwd)/destdir
+
   ubuntu_20_04:
     runs-on: ubuntu-20.04
     steps:
@@ -16,6 +29,20 @@ jobs:
       with:
         submodules: recursive
     - name: Build ladi-jack2
+      shell: bash
+      run: |
+        sudo apt-get install libdbus-1-dev
+        python3 ./waf configure --prefix=/usr
+        python3 ./waf
+        python3 ./waf install --destdir=$(pwd)/destdir
+
+  ubuntu_18_04:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Build ladi-jack2dbus
       shell: bash
       run: |
         sudo apt-get install libdbus-1-dev
