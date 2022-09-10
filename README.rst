@@ -1,11 +1,18 @@
-`JACK2 <https://jackaudio.org/>`_
+`LADI JACK2 <https://github.com/LADI/jack2>`_
 ################################
 
 .. image:: https://github.com/LADI/jack2/actions/workflows/build.yml/badge.svg
    :target: https://github.com/LADI/jack2/actions
 .. image:: https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg
    :target: https://repology.org/metapackage/jack-audio-connection-kit/versions
-   
+
+This is a variant of jackaudio.org JACK2 <https://github.com/jackaudio/jack2/>
+codebase where LADI <https://github.com/LADI/> related stuff,
+like jackdbus <https://github.com/LADI/jackdbus> is maintained.
+
+For LADI specific issues, submit issues or pull request to LADI project.
+Do not submit LADI specific issues to jackaudio project.
+
 JACK2 aka jackdmp is a C++ version of the JACK low-latency audio server for
 multi-processor machines. It is a new implementation of the JACK server core
 features that aims at removing some limitations of the JACK1 design. The
