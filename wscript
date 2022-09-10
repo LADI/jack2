@@ -2,6 +2,7 @@
 # encoding: utf-8
 #
 # Copyright (C) 2015-2018 Karl Linden <karl.j.linden@gmail.com>
+# Copyleft (C) 2008-2022 Nedko Arnaudov
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
