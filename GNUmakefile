@@ -10,3 +10,6 @@ jack2dbus:
 	PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:$(TOP)/destdir/usr/lib/pkgconfig python3 ./waf configure --prefix=$(TOP)/destdir/usr
 	python3 ./waf
 	python3 ./waf install
+
+README.html: README.adoc GNUmakefile
+	-asciidoc README.adoc
