@@ -10,7 +10,7 @@ jackdbus was created initially for JACK1.
 In 2009, jackdbus was ported to
 `JACK2 <http://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf>`_
 along with implementation of the new control API for JACK2.
-As of 2002, jackdbus is maintained in LADI project.
+As of 2022, jackdbus is maintained in LADI project.
 The jackaudio.org version of jackdbus is considered older/alternative
 implementation.
 
