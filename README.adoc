@@ -28,12 +28,10 @@ IMPORTANT: Do not submit LADI specific issues to jackaudio project.
 
 
 == D-Bus access
-D-Bus is an object model that provides IPC
-mechanism. D-Bus supports autoactivation of
-objects, thus making it simple and reliable to
-code a "single instance" application or daemon,
-and to launch applications and daemons on de-
-mand when their services are needed.
+D-Bus is an object model that provides IPC mechanism.
+D-Bus supports autoactivation of objects,
+thus making it simple and reliable to code a "single instance" application or daemon,
+and to launch applications and daemons on demand when their services are needed.
 
 Improvements over classical "jackd" approach:
 
@@ -80,8 +78,7 @@ JACK server autostart is achieved by libjack calling "jack server start" method 
 JACK control D-Bus interface.
 
 ==== JACK settings Applications that want to manage
-JACK settings can query and set all set-
-tings that were traditionally specified as
+JACK settings can query and set all settings that were traditionally specified as
 jackd command-line parameters. Interface
 abstraction provides virtual tree of parameter
 containers with container leaves that contain
@@ -99,12 +96,10 @@ Overview of the tree of standard settings’ addresses:
  * "driver", "device"
  * "driver", ...more driver parameters
  * "drivers", "alsa", "device"
- * "drivers", "alsa", ...more alsa driver pa-
-rameters
+ * "drivers", "alsa", ...more alsa driver parameters
  * "drivers", ...more drivers
  * "internals", "netmanager", "multicast ip"
- * "internals", "netmanager", ...more net-
-manager parameters
+ * "internals", "netmanager", ...more netmanager parameters
  * "internals", ...more internals
 
 JACK settings are persisted.
