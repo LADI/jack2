@@ -11,6 +11,9 @@ codebase for use with `LADI/jackdbus <https://github.com/LADI/jackdbus>`_ and
 other `LADI <https://github.com/LADI/>`_ related stuff.
 
 For LADI specific issues, submit issues or pull request to LADI project.
+For related discussions, you are invited to join
+`Libera.Chat <https://libera.chat/>`_ channel #ladi
+
 Do not submit LADI specific issues to jackaudio project.
 
 JACK2 aka jackdmp is a C++ version of the JACK low-latency audio server for
@@ -42,6 +45,3 @@ and robust system.
     stream will still be produced (even if its partial in some way). This
     mode usually result in fewer (less audible) audio glitches in a loaded
     system.
-
-For further information, see the JACK `homepage <https://jackaudio.org/>`_ and `wiki <https://github.com/jackaudio/jackaudio.github.com/wiki>`_. There are also the #jack and #lad chat channels on `freenode IRC <https://freenode.net>`_.
-
