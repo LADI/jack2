@@ -8,7 +8,7 @@
 
 This is a variant of `jackaudio.org JACK2 <https://github.com/jackaudio/jack2/>`_
 codebase for use with `LADI/jackdbus <https://github.com/LADI/jackdbus>`_ and
-other `LADI <https://github.com/LADI/> related stuff`_.
+other `LADI <https://github.com/LADI/>`_ related stuff.
 
 For LADI specific issues, submit issues or pull request to LADI project.
 Do not submit LADI specific issues to jackaudio project.
