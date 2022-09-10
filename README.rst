@@ -6,9 +6,9 @@
 .. image:: https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg
    :target: https://repology.org/metapackage/jack-audio-connection-kit/versions
 
-This is a variant of jackaudio.org JACK2 <https://github.com/jackaudio/jack2/>
-codebase where LADI <https://github.com/LADI/> related stuff,
-like jackdbus <https://github.com/LADI/jackdbus> is maintained.
+This is a variant of `jackaudio.org JACK2 <https://github.com/jackaudio/jack2/>`
+codebase `where LADI <https://github.com/LADI/> related stuff`,
+like `jackdbus <https://github.com/LADI/jackdbus>` is maintained.
 
 For LADI specific issues, submit issues or pull request to LADI project.
 Do not submit LADI specific issues to jackaudio project.
