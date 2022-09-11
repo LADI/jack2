@@ -77,15 +77,14 @@ applications:
 JACK server autostart is achieved by libjack calling "jack server start" method of
 JACK control D-Bus interface.
 
-==== JACK settings Applications that want to manage
-JACK settings can query and set all settings that were traditionally specified as
-jackd command-line parameters. Interface
-abstraction provides virtual tree of parameter
-containers with container leaves that contain
-parameters. Parameters are accessed using
-simple addressing scheme (array of strings)
-where address defines path to parameter, like
-"drivers", "alsa", "dither".
+==== JACK settings
+Applications that want to manage JACK settings can query
+and set all settings that were traditionally specified as
+jackd command-line parameters.
+Interface abstraction provides virtual tree of parameter
+containers with container leaves that contain parameters.
+Parameters are accessed using simple addressing scheme (array of strings)
+where address defines path to parameter, like "drivers", "alsa", "dither".
 
 Overview of the tree of standard settings’ addresses:
 
