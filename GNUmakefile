@@ -13,3 +13,7 @@ jack2dbus:
 
 README.html: README.adoc GNUmakefile
 	-asciidoc README.adoc
+
+.PHONY: AUTHORS.regenerate
+AUTHORS.regenerate:
+	git shortlog -sn -- wscript ./dbus/* linux/* man/* ./doc/* | sed -E 's@^\s+\S+\s+(.+)@\1@' > AUTHORS
