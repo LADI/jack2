@@ -1,0 +1,48 @@
+# git shortlog -e -- ./wscript dbus/ | grep -v '^    ' | sort | uniq >> .mailmap
+# then modified by hand
+
+Недко Арнаудов (Nedko Arnaudov) <nedko@nedk.org> <nedko@arnaudov.name>
+Недко Арнаудов (Nedko Arnaudov) <nedko@nedk.org> Nedko Arnaudov <nedko@nedk.org>
+Недко Арнаудов (Nedko Arnaudov) <nedko@nedk.org> Nedko Arnaudov <nedko@arnaudov.name>
+Недко Арнаудов (Nedko Arnaudov) <nedko@nedk.org> nedko <nedko@0c269be4-1314-0410-8aa9-9f06e86f4224>
+
+Stéphane Letz <letz@grame.fr> Stephane Letz <letz@grame.fr>
+Stéphane Letz <letz@grame.fr> sletz <sletz@0c269be4-1314-0410-8aa9-9f06e86f4224>
+
+Karl Lindén <karl.j.linden@gmail.com> Karl Linden <karl.j.linden@gmail.com>
+
+Romain Moret <rmoret@internal> moret <moret@0c269be4-1314-0410-8aa9-9f06e86f4224>
+
+Filipe Alexandre Lopes Coelho <falktx@falktx.com> Filipe Coelho <falktx@falktx.com>
+Filipe Alexandre Lopes Coelho <falktx@falktx.com> falkTX <falktx@falktx.com>
+Filipe Alexandre Lopes Coelho <falktx@falktx.com> <falktx@gmail.com>
+
+Adrian Knoth <aknoth@google.com> <adi@drcomp.erfurt.thur.de>
+
+Nikita Zlobin <nick87720z@gmail.com> nick87720z <nick87720z@gmail.com>
+
+Alexander Graf <agraf@suse.de>
+Bernd Kuhls <bernd.kuhls@t-online.de>
+David Henningsson <david.henningsson@canonical.com>
+David Runge <dave@sleepmap.de>
+Devin Anderson <surfacepatterns (at) gmail (dot) com>
+Eliot Blennerhassett <Eliot@Blennerhassett.gen.nz>
+Florian Walpen <dev@submerge.ch>
+Goran Mekić <meka@tilda.center>
+Greg V <greg@unrelenting.technology>
+Guido Aulisi <guido.aulisi@gmail.com>
+Luciano Iam <lucianito@gmail.com>
+Martin Bruset Solberg <martin.bruset.solberg@posteo.net>
+Matt Flax <flatmax@flatmax.org>
+Robin Gareus <robin@gareus.org>
+Rui Nuno Capela <rncbc@rncbc.org>
+Samuel Martin <s.martin49@gmail.com>
+Thomas Brand <tom@trellis.ch>
+Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
+Tim Mayberry <mojofunk@gmail.com>
+Timo Wischer <twischer@de.adit-jv.com>
+Torben Hohn <torbenh@gmx.de>
+Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
+ethe <joshh@protonmail.ch>
+luz.paz <luzpaz@users.noreply.github.com>
+shura <d.cirasino1@studenti.uniba.it>
