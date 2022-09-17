@@ -20,4 +20,4 @@ AUTHORS.regenerate:
 
 .PHONY: doc/jackdbus.html
 doc/jackdbus.html:
-	asciidoc -b html5 -a badges -a icons -a data-uri --theme ladi -o doc/jackdbus.html README.adoc
+	asciidoc -b html5 -a icons -a data-uri --theme ladi -o doc/jackdbus.html README.adoc
