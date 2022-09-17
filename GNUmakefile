@@ -17,3 +17,7 @@ README.html: README.adoc GNUmakefile
 .PHONY: AUTHORS.regenerate
 AUTHORS.regenerate:
 	git shortlog -sn -- wscript ./dbus/* linux/* man/* ./doc/* | sed -E 's@^\s+\S+\s+(.+)@\1@' > AUTHORS
+
+.PHONY: doc/jackdbus.html
+doc/jackdbus.html:
+	asciidoc -b html5 -a badges -a icons -a data-uri --theme ladi -o doc/jackdbus.html README.adoc

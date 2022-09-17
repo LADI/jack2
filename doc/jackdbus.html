@@ -30,6 +30,7 @@ thead, p.table.header,
   font-family: Candara,Arial,sans-serif;
 }
 
+a.image { border-bottom: 0; }
 
 #toc a {
     border-bottom: 1px dotted #999999;
@@ -58,17 +59,42 @@ strong {
 h1, h2, h3, h4, h5, h6 {
   color: #666688;
   margin-bottom: 0.5em;
+  margin-right: 1em;
   line-height: 1.3;
   letter-spacing:+0.15em;
 }
 
-h1, h2, h3 { border-bottom: 2px solid #ccd; }
-h2 { padding-top: 0.5em; }
-h3 { float: left; }
-h3 + * { clear: left; }
+h1, h2, h3, h4, h5, h6 {
+  margin-left: 0em;
+}
+
+/* h1 { margin-left: 2em; } */
+h2 { margin-left: 2em; }
+/* h3 { margin-left: 4em; } */
+/* h4 { margin-left: 5em; } */
+/* h5 { margin-left: 6em; } */
+/* h6 { margin-left: 7em; } */
+
+h2 { border-bottom: 4px solid #ccd; }
+h3 { border-bottom: 2px dotted #ccd; }
+/* h2, h3 { border-bottom: 2px solid #ccd; } */
+/* h2 { padding-top: 0.5em; } */
+/* h3 { float: left; } */
+/* h3 + * { clear: left; } */
+
+div.banner {
+    background: #004455;
+    text-align: center;
+    color: #C6E9AF;
+    padding: 0;
+    margin: 0;
+}
 
 div.sectionbody {
-  margin-left: 0;
+  margin-top: 0;
+  margin-left: 3em;
+  margin-right: 1em;
+  margin-bottom: 1em;
 }
 
 hr {
@@ -76,6 +102,8 @@ hr {
 }
 
 p {
+  margin-left: 0.5em;
+  margin-right: 0.5em;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
 }
@@ -98,18 +126,18 @@ pre {
 #footer {
   font-size: small;
   border-top: 2px solid silver;
-  padding-top: 0.5em;
-  margin-top: 4.0em;
+  margin: 0;
 }
 
 #footer-text {
-  float: left;
-  padding-bottom: 0.5em;
+  /* float: left; */
+  padding: 1em;
+  text-align: center;
 }
 
 #footer-badges {
   float: right;
-  padding-bottom: 0.5em;
+  padding: 0.5em;
 }
 
 #preamble {
@@ -129,8 +157,8 @@ div.admonitionblock {
   margin-bottom: 2.5em;
 }
 
-div.content { /* Block element content. */
-  padding: 0;
+#content { /* Block element content. */
+  margin: 2em;
 }
 
 /* Block element titles. */
@@ -331,10 +359,8 @@ div.toclevel3 { margin-left: 4em; font-size: 0.8em; }
 div.toclevel4 { margin-left: 6em; font-size: 0.8em; }
 
 body {
-  margin: 1em 5%;
-  max-width:  55em;
-  padding-left: 0;
-
+  margin: 0;
+  padding: 0;
 }
 
 .monospaced, tt, div.listingblock > div.content {
@@ -345,12 +371,23 @@ body {
   line-height: 1.2em;
 }
 
-.paragraph p  {
-  line-height: 1.5em;
-  margin-top: 1em;
+#header {
+  text-align: center;
+  margin: 2em;
 }
 
-.paragraph p, li, dd, .content { max-width: 45em; }
+#toc {
+  text-align: left;
+  margin-left: 3em;
+  max-width: 80%;
+}
+
+.paragraph p {
+  line-height: 1.5em;
+  /* margin: 1em; */
+}
+
+.paragraph p, li, dd, .content { max-width: 80em; }
 .admonitionblock               { max-width: 35em; }
 
 div.sectionbody div.ulist > ul > li {
@@ -638,25 +675,26 @@ install: function(toclevels) {
 }
 
 }
-asciidoc.install(4);
+asciidoc.install();
 /*]]>*/
 </script>
 </head>
 <body class="article">
 <div id="header">
 <h1>(LADI) jackdbus</h1>
-<div id="toc">
-  <div id="toctitle">Table of Contents</div>
-  <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
-</div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph"><p><span class="image">
-<img src="https://github.com/LADI/jackdbus/actions/workflows/build.yml/badge.svg" alt="https://github.com/LADI/jackdbus/actions">
-</span> <span class="image">
-<img src="https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg" alt="https://repology.org/metapackage/jack-audio-connection-kit/versions">
+<a class="image" href="https://github.com/LADI/jackdbus/actions">
+<img src="https://github.com/LADI/jackdbus/actions/workflows/build.yml/badge.svg" alt="Build status badge">
+</a>
+</span>
+<span class="image">
+<a class="image" href="https://repology.org/metapackage/jack-audio-connection-kit/versions">
+<img src="https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg" alt="Repology bandge">
+</a>
 </span></p></div>
 </div>
 </div>
@@ -1019,7 +1057,18 @@ can reconnect to it, and restoring JACK connections.
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2022-09-11 04:49:15 EEST
+ 2022-09-17 20:01:09 EEST
+</div>
+<div id="footer-badges">
+<a href="http://validator.w3.org/check?uri=referer">
+  <img src="http://www.w3.org/html/logo/badge/html5-badge-h-solo.png"
+       width="30" alt="HTML5 Powered" title="HTML5 Powered">
+</a>
+<a href="http://jigsaw.w3.org/css-validator/check/referer">
+  <img style="border:0;width:88px;height:31px"
+    src="http://www.w3.org/Icons/valid-css"
+    alt="Valid CSS!">
+</a>
 </div>
 </div>
 </body>
