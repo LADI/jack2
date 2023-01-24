@@ -16,7 +16,7 @@ then via Mercural and then via Git.
 In 2008/2009, jackdbus was ported to jackdmp codebase along with an implementation
 of the newly designed for the new need control API for JACK.
 The result of this merge became known as
-link:http://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[JACK2].
+link:https://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[JACK2].
 As of 2022, jackdbus is again maintained in LADI project.
 The jackaudio.org version of jackdbus is considered older/alternative
 implementation.
