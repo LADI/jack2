@@ -173,4 +173,4 @@ can reconnect to it, and restoring JACK connections.
 
 References
 ----------
-. link:http://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[What's new in JACK2?]
+. link:https://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[What's new in JACK2?]
