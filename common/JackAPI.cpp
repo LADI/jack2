@@ -29,6 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackTime.h"
 #include "JackPortType.h"
 #include <math.h>
+#include "version.h"
 
 using namespace Jack;
 
@@ -1903,7 +1904,7 @@ LIB_EXPORT void jack_get_version(int *major_ptr,
 LIB_EXPORT const char* jack_get_version_string()
 {
     JackGlobals::CheckContext("jack_get_version_string");
-    return VERSION;
+    return VERSION " built from " GIT_VERSION;
 }
 
 LIB_EXPORT void jack_free(void* ptr)
