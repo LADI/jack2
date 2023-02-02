@@ -25,11 +25,12 @@ import shutil
 import sys
 
 from waflib import Logs, Options, TaskGen
+from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 
 # see also common/JackConstants.h
 VERSION = '2.22'
-APPNAME = 'jack'
+APPNAME = 'LADI JACK'
 JACK_API_VERSION = '0.1.0'
 
 # these variables are mandatory ('/' are converted automatically)
@@ -473,7 +474,15 @@ def configure(conf):
         conf.write_config_header('config.h')
 
     print()
-    print('LADI JACK ' + VERSION)
+    version_msg = APPNAME + "-" + VERSION
+    if os.access('version.h', os.R_OK):
+        data = open('version.h').read()
+        m = re.match(r'^#define GIT_VERSION "([^"]*)"$', data)
+        if m != None:
+            version_msg += " exported from " + m.group(1)
+    elif os.access('.git', os.R_OK):
+        version_msg += " git revision will be checked and eventually updated during build"
+    print(version_msg)
 
     conf.msg('Maximum JACK clients', Options.options.clients, color='NORMAL')
     conf.msg('Maximum ports per application', Options.options.application_ports, color='NORMAL')
@@ -802,7 +811,37 @@ def build_drivers(bld):
             source=oss_src)
 
 
+def git_ver(self):
+    bld = self.generator.bld
+    header = self.outputs[0].abspath()
+    if os.access('./version.h', os.R_OK):
+        header = os.path.join(os.getcwd(), out, "version.h")
+        shutil.copy('./version.h', header)
+        data = open(header).read()
+        m = re.match(r'^#define GIT_VERSION "([^"]*)"$', data)
+        if m != None:
+            self.ver = m.group(1)
+            Logs.pprint('BLUE', "tarball from git revision " + self.ver)
+        else:
+            self.ver = "tarball"
+        return
+
+    if bld.srcnode.find_node('.git'):
+        self.ver = bld.cmd_and_log("LANG= git rev-parse HEAD", quiet=Context.BOTH).splitlines()[0]
+        if bld.cmd_and_log("LANG= git diff-index --name-only HEAD", quiet=Context.BOTH).splitlines():
+            self.ver += "-dirty"
+
+        Logs.pprint('BLUE', "git revision " + self.ver)
+    else:
+        self.ver = "unknown"
+
+    fi = open(header, 'w')
+    fi.write('#define GIT_VERSION "%s"\n' % self.ver)
+    fi.close()
+
+
 def build(bld):
+    bld(rule=git_ver, target='version.h', update_outputs=True, always=True, ext_out=['.h'])
     if not bld.variant and bld.env['BUILD_WITH_32_64']:
         Options.commands.append(bld.cmd + '_' + lib32)
 
