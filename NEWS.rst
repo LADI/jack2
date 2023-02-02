@@ -1,6 +1,30 @@
 
 #########
 
+* LADI jack2 2.22.0 (2023-02-02)
+
+  Sync LADI jack2 codebase with jackaudio.org jack-1.9 codebase
+
+This modification is based on jackaudio.org jack2 version 1.9.22.
+List of differences:
+
+  * jackdbus is removed, to be built from https://github.com/LADI/jackdbus
+  * jack server autostart default is now None
+  * jackd build is disabled by default
+  * libjackserver.so pkg-config info is now also provided via dedicated file
+
+The fix for ringbuffer on arm https://github.com/jackaudio/jack2/pull/886
+is now the jack-1.9 variant
+
+* 1.9.22 (2023-02-02)
+
+  * The waf autooption ``--example-tools`` has been removed.
+    The example clients and tools are no longer part of the jack2 project.
+  * Drop dependencies that were only used for example clients and tools (readline, sndfile and zita libs)
+  * Fix build with python3.11+
+  * Fix compatibility with macOS 12+
+  * Fix ringbuffer thread safety on ARM
+
 * LADI jack2 2.21.0 (2022-08-27)
 
 Initial release of LADI jack2 without jackdbus.

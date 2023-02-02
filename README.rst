@@ -45,3 +45,6 @@ and robust system.
     stream will still be produced (even if its partial in some way). This
     mode usually result in fewer (less audible) audio glitches in a loaded
     system.
+
+For further information, see the JACK `homepage <https://jackaudio.org/>`_ and `wiki <https://github.com/jackaudio/jackaudio.github.com/wiki>`_. There are also the #jack and #lad chat channels on `Libera Chat IRC <https://web.libera.chat/#jack>`_.
+

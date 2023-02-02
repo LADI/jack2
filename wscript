@@ -28,7 +28,7 @@ from waflib import Logs, Options, TaskGen
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 
 # see also common/JackConstants.h
-VERSION = '2.21'
+VERSION = '2.22'
 APPNAME = 'jack'
 JACK_API_VERSION = '0.1.0'
 
@@ -191,9 +191,9 @@ def options(opt):
             help='Build with CELT')
     celt.add_function(check_for_celt)
     opt.add_auto_option(
-            'example-tools',
-            help='Build with jack-example-tools',
-            conf_dest='BUILD_JACK_EXAMPLE_TOOLS',
+            'tests',
+            help='Build tests',
+            conf_dest='BUILD_TESTS',
             default=False,
     )
 
@@ -213,19 +213,6 @@ def options(opt):
     samplerate.check_cfg(
             package='samplerate',
             args='--cflags --libs')
-    sndfile = opt.add_auto_option(
-            'sndfile',
-            help='Build with libsndfile')
-    sndfile.check_cfg(
-            package='sndfile',
-            args='--cflags --libs')
-    readline = opt.add_auto_option(
-            'readline',
-            help='Build with readline')
-    readline.check(lib='readline')
-    readline.check(
-            header_name=['stdio.h', 'readline/readline.h'],
-            msg='Checking for header readline/readline.h')
     sd = opt.add_auto_option(
             'systemd',
             help='Use systemd notify')
@@ -236,11 +223,6 @@ def options(opt):
             help='Use Berkeley DB (metadata)')
     db.check(header_name='db.h')
     db.check(lib='db')
-    zalsa = opt.add_auto_option(
-            'zalsa',
-            help='Build internal zita-a2j/j2a client')
-    zalsa.check(lib='zita-alsa-pcmi')
-    zalsa.check(lib='zita-resampler')
 
     # this must be called before the configure phase
     opt.apply_auto_options_hack()
@@ -351,10 +333,6 @@ def configure(conf):
             conf.recurse('systemd')
         else:
             conf.env['SYSTEMD_USER_UNIT_DIR'] = None
-
-    if conf.env['BUILD_JACK_EXAMPLE_TOOLS']:
-        conf.recurse('example-clients')
-        conf.recurse('tools')
 
     # test for the availability of ucontext, and how it should be used
     for t in ['gp_regs', 'uc_regs', 'mc_gregs', 'gregs']:
@@ -842,14 +820,10 @@ def build(bld):
 
     build_drivers(bld)
 
-    if bld.env['BUILD_JACK_EXAMPLE_TOOLS']:
-        bld.recurse('example-clients')
-        bld.recurse('tools')
-
     if bld.env['IS_LINUX'] or bld.env['IS_FREEBSD']:
         bld.recurse('man')
         bld.recurse('systemd')
-    if not bld.env['IS_WINDOWS'] and bld.env['BUILD_JACK_EXAMPLE_TOOLS']:
+    if not bld.env['IS_WINDOWS'] and bld.env['BUILD_TESTS']:
         bld.recurse('tests')
 
     if bld.env['BUILD_DOXYGEN_DOCS']:

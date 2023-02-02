@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2004-2008 Grame
+Copyright (C) 2016-2023 Filipe Coelho <falktx@falktx.com>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -90,11 +91,19 @@ bool JackMachSemaphore::Wait()
         return false;
     }
 
-    kern_return_t res;
-    if ((res = semaphore_wait(fSemaphore)) != KERN_SUCCESS) {
-        jack_error("JackMachSemaphore::Wait name = %s err = %s", fName, mach_error_string(res));
+    kern_return_t res = semaphore_wait(fSemaphore);
+
+    if (res == KERN_SUCCESS) {
+        return true;
     }
-    return (res == KERN_SUCCESS);
+
+    // killing a thread will abort the semaphore wait, skip the error log
+    if (res == KERN_ABORTED) {
+        return false;
+    }
+
+    jack_error("JackMachSemaphore::Wait name = %s err = %s", fName, mach_error_string(res));
+    return false;
 }
 
 bool JackMachSemaphore::TimedWait(long usec)
@@ -104,15 +113,23 @@ bool JackMachSemaphore::TimedWait(long usec)
         return false;
     }
 
-    kern_return_t res;
     mach_timespec time;
     time.tv_sec = usec / 1000000;
     time.tv_nsec = (usec % 1000000) * 1000;
 
-    if ((res = semaphore_timedwait(fSemaphore, time)) != KERN_SUCCESS) {
-        jack_error("JackMachSemaphore::TimedWait name = %s usec = %ld err = %s", fName, usec, mach_error_string(res));
+    kern_return_t res = semaphore_timedwait(fSemaphore, time);
+
+    if (res == KERN_SUCCESS) {
+        return true;
     }
-    return (res == KERN_SUCCESS);
+
+    // killing a thread will abort the semaphore wait, skip the error log
+    if (res == KERN_ABORTED) {
+        return false;
+    }
+
+    jack_error("JackMachSemaphore::TimedWait name = %s usec = %ld err = %s", fName, usec, mach_error_string(res));
+    return false;
 }
 
 /*! \brief Server side: create semaphore and publish IPC primitives to make it accessible.
