@@ -86,6 +86,7 @@
 #define EMPTY   0xFFFD
 #define FREE	0xFFFC
 
-#define JACK_DEFAULT_SELF_CONNECT_MODE ' ' /* allow all requests */
+#define JACK_DEFAULT_SELF_CONNECT_MODE 'e' /* Ignore self connect requests to
+                                              external ports only */
 
 #endif
