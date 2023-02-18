@@ -1,6 +1,12 @@
 
 #########
 
+* LADI jack2 2.22.1 (2023-02-18)
+
+  * Bring back the GIT_VERSION define
+  * jack_get_version_string() now reports GIT_VERSION
+  * Change default of self-connect-mode to 'e'
+
 * LADI jack2 2.22.0 (2023-02-02)
 
   Sync LADI jack2 codebase with jackaudio.org jack-1.9 codebase
