@@ -1,6 +1,10 @@
 News
 #########
 
+* jackdbus 2.22.1 (2023-04-18)
+
+  * Restore git revision display in the log file
+
 * jackdbus 2.22.0 (2023-02-02)
 
   * sync with jack2-1.9.22 codebase
