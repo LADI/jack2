@@ -35,6 +35,7 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "version.h"
 
 #include "jackdbus.h"
 #include "controller.h"
@@ -899,7 +900,9 @@ main (int argc, char **argv)
     setup_sigsegv();
 
     jack_info("------------------");
-    jack_info("Controller activated. Version %s (%s) built on %s", jack_get_version_string(), JACK_VERSION, timestamp_str);
+    jack_info("jackdbus version %s built from %s on %s", JACK_VERSION, GIT_VERSION, timestamp_str);
+    jack_info("JACK server version %s", jack_get_version_string());
+    jack_info("jackdbus controller activated.");
 
     if (!dbus_threads_init_default())
     {
