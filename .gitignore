@@ -1,4 +1,5 @@
 .lock*
+.waf*
 .stamp_*
 .DS_Store
 __pycache__

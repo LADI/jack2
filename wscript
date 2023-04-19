@@ -74,7 +74,7 @@ def options(opt):
     opt.load('compiler_c')
     opt.load('autooptions')
 
-    opt.load('xcode6')
+    #opt.load('xcode6')
 
     opt.recurse('compat')
 
