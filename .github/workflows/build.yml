@@ -35,17 +35,3 @@ jobs:
         python3 ./waf configure --prefix=/usr
         python3 ./waf
         python3 ./waf install --destdir=$(pwd)/destdir
-
-  ubuntu_18_04:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - name: Build ladi-jack2dbus
-      shell: bash
-      run: |
-        sudo apt-get install libdbus-1-dev
-        python3 ./waf configure --prefix=/usr
-        python3 ./waf
-        python3 ./waf install --destdir=$(pwd)/destdir
