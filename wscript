@@ -194,14 +194,15 @@ def configure(conf):
     conf.load('compiler_c')
 
     detect_platform(conf)
+    flags = WafToolchainFlags(conf)
 
     conf.check_cfg(package='jackserver', uselib_store='JACKSERVER', args=["--cflags", "--libs"])
 
     conf.check_cfg(package='expat', args='--cflags --libs')
 
-    conf.env.append_unique('CFLAGS', '-Wall')
-    conf.env.append_unique('CXXFLAGS', ['-Wall', '-Wno-invalid-offsetof'])
-    conf.env.append_unique('CXXFLAGS', '-std=gnu++11')
+    flags.add_c('-Wall')
+    flags.add_cxx(['-Wall', '-Wno-invalid-offsetof'])
+    flags.add_cxx('-std=gnu++11')
 
     if conf.env['IS_FREEBSD']:
         conf.check(lib='execinfo', uselib='EXECINFO', define_name='EXECINFO')
@@ -229,7 +230,7 @@ def configure(conf):
             mandatory=False)
 
         # TODO
-        conf.env.append_unique('CXXFLAGS', '-Wno-deprecated-register')
+        flags.add_cxx('-Wno-deprecated-register')
 
     conf.load('autooptions')
 
@@ -265,14 +266,15 @@ def configure(conf):
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
     if conf.env['BUILD_DEBUG']:
-        conf.env.append_unique('CXXFLAGS', '-g')
-        conf.env.append_unique('CFLAGS', '-g')
-        conf.env.append_unique('LINKFLAGS', '-g')
+        flags.add_candcxx('-g')
+        flags.add_link('-g')
 
     conf.define('JACK_VERSION', conf.env['JACK_VERSION'])
     conf.write_config_header('config.h', remove=False)
 
     conf.recurse('dbus')
+
+    flags.flush()
 
     print()
     version_msg = APPNAME + "-" + VERSION
