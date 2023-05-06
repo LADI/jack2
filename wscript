@@ -337,6 +337,7 @@ def configure(conf):
     conf.load('compiler_c')
 
     detect_platform(conf)
+    flags = WafToolchainFlags(conf)
 
     if conf.env['IS_WINDOWS']:
         conf.env.append_unique('CCDEFINES', '_POSIX')
@@ -349,9 +350,9 @@ def configure(conf):
                 define_name='HAVE_ASIO',
                 mandatory=False)
 
-    conf.env.append_unique('CFLAGS', '-Wall')
-    conf.env.append_unique('CXXFLAGS', ['-Wall', '-Wno-invalid-offsetof'])
-    conf.env.append_unique('CXXFLAGS', '-std=gnu++11')
+    flags.add_c('-Wall')
+    flags.add_cxx(['-Wall', '-Wno-invalid-offsetof'])
+    flags.add_cxx('-std=gnu++11')
 
     if conf.env['IS_FREEBSD']:
         conf.check(lib='execinfo', uselib='EXECINFO', define_name='EXECINFO')
@@ -379,7 +380,7 @@ def configure(conf):
             mandatory=False)
 
         # TODO
-        conf.env.append_unique('CXXFLAGS', '-Wno-deprecated-register')
+        flags.add_cxx('-Wno-deprecated-register')
 
     conf.load('autooptions')
 
@@ -475,9 +476,8 @@ def configure(conf):
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
     if conf.env['BUILD_DEBUG']:
-        conf.env.append_unique('CXXFLAGS', '-g')
-        conf.env.append_unique('CFLAGS', '-g')
-        conf.env.append_unique('LINKFLAGS', '-g')
+        flags.add_candcxx('-g')
+        flags.add_link('-g')
 
     if Options.options.autostart not in ['default', 'classic', 'dbus', 'none']:
         conf.fatal('Invalid autostart value "' + Options.options.autostart + '"')
@@ -551,6 +551,8 @@ def configure(conf):
         conf.all_envs[lib32]['LIB_OPUS'] = []
         # someone tell me where this file gets written please..
         conf.write_config_header('config.h')
+
+    flags.flush()
 
     print()
     version_msg = APPNAME + "-" + VERSION
