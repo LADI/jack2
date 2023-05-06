@@ -526,10 +526,10 @@ def configure(conf):
 
     if Options.options.mixed:
         conf.setenv(lib32, env=conf.env.derive())
-        conf.env.append_unique('CFLAGS', '-m32')
-        conf.env.append_unique('CXXFLAGS', '-m32')
-        conf.env.append_unique('CXXFLAGS', '-DBUILD_WITH_32_64')
-        conf.env.append_unique('LINKFLAGS', '-m32')
+        flags.add_c('-m32')
+        flags.add_cxx('-m32')
+        flags.add_cxx('-DBUILD_WITH_32_64')
+        flags.add_link('-m32')
         if Options.options.libdir32:
             conf.env['LIBDIR'] = Options.options.libdir32
         else:
