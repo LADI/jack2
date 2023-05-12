@@ -87,7 +87,7 @@ containers with container leaves that contain parameters.
 Parameters are accessed using simple addressing scheme (array of strings)
 where address defines path to parameter, like "drivers", "alsa", "dither".
 
-Overview of the tree of standard settings’ addresses:
+Overview of the tree of standard settings' addresses:
 
  * "engine"
  * "engine", "driver"
