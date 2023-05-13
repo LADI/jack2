@@ -12,7 +12,7 @@ jack2dbus:
 	python3 ./waf install
 
 README.html: README.adoc GNUmakefile
-	-asciidoc README.adoc
+	asciidoc -b html5 -a data-uri -a icons --theme ladi -o README.html README.adoc
 
 .PHONY: AUTHORS.regenerate
 AUTHORS.regenerate:
