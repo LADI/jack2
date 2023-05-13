@@ -173,6 +173,19 @@ Various JACK related features are implemented:
 notifying JACK applications that JACK server reappeared so they
 can reconnect to it, and restoring JACK connections.
 
+==== QjackCtl JACK Audio Connection Kit - Qt GUI Interface
+https://qjackctl.sourceforge.io/[QjackCtl] is a simple Qt application
+to control the JACK sound server daemon, is another jackdbus frontend.
+
+==== KXStudio Cadence
+https://kx.studio/Applications:Cadence[Cadence], a set of tools
+useful for audio production, is another jackdbus frontend.
+
+==== Studio Controls
+https://ovenwerks.github.io/studio-controls/[Studio Controls], a way to
+configure your Linux-based audio installation for real-time audio, is
+another jackdbus frontend.
+
 References
 ----------
 . link:https://web.archive.org/web/20170106162202/http://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[What's new in JACK2?]
