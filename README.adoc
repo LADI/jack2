@@ -137,7 +137,7 @@ D-Bus signals.
 === JACK D-Bus enabled applications
 
 ==== jack_control
-JACK contains "jack_control" executable a 300 lines of Python exposing
+JACK contains "jack_control" executable, https://gitea.ladish.org/LADI/jackdbus/src/branch/stable/dbus/jack_control[a 300 lines of Python] exposing
 JACK D-Bus functionality. It allows chained execution of several commands.
 For example "jack control ds alsa dps midi-driver raw eps realtime on
 eps relatime-priority 70 start" selects ALSA driver, enables JACK MIDI
@@ -145,7 +145,7 @@ raw backend, enables realtime mode, sets realtime priority to 70 and starts
 JACK server.
 
 ==== LADI Tools
-LADI Tools is a set of programs to configure, control and monitor JACK.
+https://gitea.ladish.org/LADI/laditools[LADI Tools] is a set of programs to configure, control and monitor JACK.
 It provides tray icon, Window Maker style dockapp,
 G15 keyboard LCD display integration application,
 configuration utility for managing JACK settings
@@ -154,13 +154,15 @@ and log file monitor application.
 All tools are written in Python.
 
 ==== Patchage
-Patchage, the ubiquitous canvas modular patch bay can be compiled to use
+https://drobilla.net/software/patchage.html[Patchage], the ubiquitous canvas modular patch bay can be compiled to use
 D-Bus instead of libjack to communicate with JACK.
 
 Doing so also enables JACK server start/stop functionality in Patchage.
 
+Various JACK related features are implemented:
+
 ==== LADI Session handler (LADISH)
-LADISH, a rewrite of LASH session handler
+https://ladish.org/[LADISH], a rewrite of LASH session handler
 uses D-Bus to communicate with JACK.
 
 Various JACK related features are implemented:
