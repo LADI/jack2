@@ -6,7 +6,7 @@ image:https://github.com/LADI/jackdbus/actions/workflows/build.yml/badge.svg["Bu
 image:https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg["Repology bandge", link="https://repology.org/metapackage/jack-audio-connection-kit/versions"]
 
 == Overview
-This software imlements D-Bus endpoint for JACK server.
+This software implements D-Bus endpoint for JACK server.
 
 == Brief History
 Initial version of link:https://github.com/LADI/jackdbus[jackdbus] was created
