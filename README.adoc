@@ -1,6 +1,6 @@
-= (LADI) jackdbus
-
 :toc:
+
+= (LADI) jackdbus
 
 image:https://github.com/LADI/jackdbus/actions/workflows/build.yml/badge.svg["Build status badge", link="https://github.com/LADI/jackdbus/actions"]
 image:https://repology.org/badge/tiny-repos/jack-audio-connection-kit.svg["Repology bandge", link="https://repology.org/metapackage/jack-audio-connection-kit/versions"]
