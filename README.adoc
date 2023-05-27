@@ -186,6 +186,9 @@ https://ovenwerks.github.io/studio-controls/[Studio Controls], a way to
 configure your Linux-based audio installation for real-time audio, is
 another jackdbus frontend.
 
+== Packaging
+https://jackdbus.ladish.org/packaging.html[Packaging HOWTO]
+
 References
 ----------
 . link:https://web.archive.org/web/20170106162202/http://lac.linuxaudio.org/2009/cdm/Thursday/01_Letz/01.pdf[What's new in JACK2?]
