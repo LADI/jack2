@@ -1,3 +1,6 @@
+:title: LADI JACK Audio Connection Kit
+:docinfo: private-header
+:keywords: LADI, JACK, jack-audio-connection-kit, jackdbus, jack2
 :toc:
 
 = (LADI) jackdbus
