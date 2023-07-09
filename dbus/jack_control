@@ -162,6 +162,8 @@ def parse_argv(argv):
                     print("started")
                 else:
                     print("stopped")
+            elif arg == "show":
+                parse_argv(["status2", "dg", "dp", "ep"])
             elif arg == 'start':
                 print("--- start")
                 control_iface.StartServer()
