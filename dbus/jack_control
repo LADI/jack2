@@ -91,6 +91,7 @@ def print_help():
         "    help                       - print this help text\n"
         "    status                     - check whether jack server is started, "
         "return value is 0 if running and 1 otherwise\n"
+        "    status2                    - check whether jack server is started, continue"
         "    start                      - start jack server if not currently started\n"
         "    stop                       - stop jack server if currently started\n"
         "    sm                         - switch master to currently selected driver\n"
@@ -116,7 +117,6 @@ def print_help():
         "    epr <param>                - reset engine parameter to its default value\n"
     )
     print(help_output)
-
 
 def maybe_print_param_constraint(iface, param):
     is_range, is_strict, is_fake, values = iface.GetParameterConstraint(param)
@@ -156,6 +156,12 @@ def parse_argv(argv):
                     return (0, "started")
                 else:
                     return (1, "stopped")
+            elif arg == "status2":
+                print("--- status")
+                if control_iface.IsStarted():
+                    print("started")
+                else:
+                    print("stopped")
             elif arg == 'start':
                 print("--- start")
                 control_iface.StartServer()
