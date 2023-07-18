@@ -2,6 +2,7 @@
  * ALSA RAWMIDI < - > JACK MIDI bridge
  *
  * Copyright (c) 2006,2007 Dmitry S. Baikov
+ * Copyright (c) 2008-2023 Nedko Arnaudov
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
