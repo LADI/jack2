@@ -415,12 +415,13 @@ void midi_port_init(const alsa_rawmidi_t *midi, midi_port_t *port, snd_rawmidi_i
 	name = snd_rawmidi_info_get_subdevice_name(info);
 	if (!strlen(name))
 		name = port->device_name;
-	snprintf(port->alias, sizeof(port->alias), "%s %s %s", port->id.id[2] ? "out":"in", port->dev, name);
+	const char prefix[] = "alsa_midi:";
+	snprintf(port->alias, sizeof(port->alias), "%shw:%s:%d,%d %s %s", prefix, cardstr, id->id[1], id->id[3], name, port->id.id[2] ? "out":"in");
 
-	// replace all offending characters with '-'
-	for (c=port->alias; *c; ++c)
+	// replace all offending characters with '_'
+	for (c=port->alias+strlen(prefix)+3+strlen(cardstr)+1; *c; ++c)
 	        if (!isalnum(*c))
-			*c = '-';
+			*c = '_';
 
 	port->state = PORT_CREATED;
 }
