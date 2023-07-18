@@ -494,7 +494,9 @@ port_t* port_create(alsa_seqmidi_t *self, int type, snd_seq_addr_t addr, const s
 	snd_seq_get_any_client_info (self->seq, addr.client, client_info);
 
 	const char *device_name = snd_seq_client_info_get_name(client_info);
-	snprintf(port->name, sizeof(port->name), "alsa_pcm:%s/midi_%s_%d",
+	// This used the alsa_pcm prefix, but that doesn't make any
+	// sense. Jack1 uses alsa_midi, so we do the same. -ag
+	snprintf(port->name, sizeof(port->name), "alsa_midi:%s/midi_%s_%d",
 		 device_name, port_type[type].name, addr.port+1);
 
 	// replace all offending characters by -
