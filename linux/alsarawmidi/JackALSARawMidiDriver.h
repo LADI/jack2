@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2011 Devin Anderson
+Copyright (c) 2011-2023 Nedko Arnaudov
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,7 +52,8 @@ namespace Jack {
 
         void
         GetDeviceInfo(snd_ctl_t *control, snd_rawmidi_info_t *info,
-                      std::vector<snd_rawmidi_info_t *> *info_list);
+                      std::vector<snd_rawmidi_info_t *> *info_list,
+                      std::vector<std::string> *cardstr_list);
 
         void
         HandleALSAError(const char *driver_func, const char *alsa_func,

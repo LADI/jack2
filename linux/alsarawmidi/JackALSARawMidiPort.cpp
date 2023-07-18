@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2011 Devin Anderson
+Copyright (c) 2011-2023 Nedko Arnaudov
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,14 +28,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 using Jack::JackALSARawMidiPort;
 
-JackALSARawMidiPort::JackALSARawMidiPort(const char *client_name, snd_rawmidi_info_t *info,
-                                         size_t index, unsigned short io_mask)
+JackALSARawMidiPort::JackALSARawMidiPort(
+    const char *client_name,
+    const char * cardname,
+    snd_rawmidi_info_t *info,
+    size_t index,
+    unsigned short io_mask)
 {
-    int card = snd_rawmidi_info_get_card(info);
+    //int card = snd_rawmidi_info_get_card(info);
     unsigned int device = snd_rawmidi_info_get_device(info);
     unsigned int subdevice = snd_rawmidi_info_get_subdevice(info);
-    char device_id[32];
-    snprintf(device_id, sizeof(device_id), "hw:%d,%d,%d", card, device,
+    char device_id[256];
+    snprintf(device_id, sizeof(device_id),
+             "hw:%s,%d,%d",
+             cardname,
+             device,
              subdevice);
     const char* driver_name = snd_rawmidi_info_get_name(info);
     const char *alias_suffix;
@@ -114,9 +122,9 @@ JackALSARawMidiPort::JackALSARawMidiPort(const char *client_name, snd_rawmidi_in
         func = "CreateNonBlockingPipe";
         goto close;
     }
-    snprintf(alias, sizeof(alias), "system:%d-%d %s %d %s", card + 1,
-             device + 1, driver_name, subdevice + 1,
-             alias_suffix);
+    snprintf(alias, sizeof(alias), "alsa_midi:hw:%s:%s_%d_%d", cardname,
+             alias_suffix,
+             device + 1, subdevice + 1);
     snprintf(name, sizeof(name), "%s:%s%zu", client_name, port_name, index + 1);
     strncpy(device_name, driver_name, sizeof(device_name) - 1);
     this->io_mask = io_mask;
