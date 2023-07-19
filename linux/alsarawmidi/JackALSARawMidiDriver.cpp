@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2011 Devin Anderson
+Copyright (c) 2011-2023 Nedko Arnaudov
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -294,7 +295,8 @@ FreeDeviceInfo(std::vector<snd_rawmidi_info_t *> *in_info_list,
 void
 JackALSARawMidiDriver::
 GetDeviceInfo(snd_ctl_t *control, snd_rawmidi_info_t *info,
-              std::vector<snd_rawmidi_info_t *> *info_list)
+              std::vector<snd_rawmidi_info_t *> *info_list,
+              std::vector<std::string> *cardstr_list)
 {
     snd_rawmidi_info_set_subdevice(info, 0);
     int code = snd_ctl_rawmidi_info(control, info);
@@ -321,6 +323,14 @@ GetDeviceInfo(snd_ctl_t *control, snd_rawmidi_info_t *info,
         snd_rawmidi_info_copy(info_copy, info);
         try {
             info_list->push_back(info_copy);
+            snd_ctl_card_info_t * info;
+            snd_ctl_card_info_alloca(&info);
+            if (snd_ctl_card_info(control, info) >= 0) {
+                cardstr_list->push_back(snd_ctl_card_info_get_id(info));
+            }
+            else {
+                cardstr_list->push_back("ERR");
+            }
         } catch (std::bad_alloc &e) {
             snd_rawmidi_info_free(info_copy);
             jack_error("JackALSARawMidiDriver::GetDeviceInfo - "
@@ -364,6 +374,8 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     }
     std::vector<snd_rawmidi_info_t *> in_info_list;
     std::vector<snd_rawmidi_info_t *> out_info_list;
+    std::vector<std::string> in_cardstr_list;
+    std::vector<std::string> out_cardstr_list;
     for (int card = -1;;) {
         int code = snd_card_next(&card);
         if (code) {
@@ -392,9 +404,9 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
             }
             snd_rawmidi_info_set_device(info, device);
             snd_rawmidi_info_set_stream(info, SND_RAWMIDI_STREAM_INPUT);
-            GetDeviceInfo(control, info, &in_info_list);
+            GetDeviceInfo(control, info, &in_info_list, &in_cardstr_list);
             snd_rawmidi_info_set_stream(info, SND_RAWMIDI_STREAM_OUTPUT);
-            GetDeviceInfo(control, info, &out_info_list);
+            GetDeviceInfo(control, info, &out_info_list, &out_cardstr_list);
         }
         snd_ctl_close(control);
     }
@@ -433,7 +445,11 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     for (size_t i = 0; i < potential_inputs; i++) {
         snd_rawmidi_info_t *info = in_info_list.at(i);
         try {
-            input_ports[num_inputs] = new JackALSARawMidiInputPort(client_name, info, i);
+            input_ports[num_inputs] = new JackALSARawMidiInputPort(
+                client_name,
+                in_cardstr_list[i].c_str(),
+                info,
+                i);
             num_inputs++;
         } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating new "
@@ -444,7 +460,11 @@ JackALSARawMidiDriver::Open(bool capturing, bool playing, int in_channels,
     for (size_t i = 0; i < potential_outputs; i++) {
         snd_rawmidi_info_t *info = out_info_list.at(i);
         try {
-            output_ports[num_outputs] = new JackALSARawMidiOutputPort(client_name, info, i);
+            output_ports[num_outputs] = new JackALSARawMidiOutputPort(
+                client_name,
+                out_cardstr_list[i].c_str(),
+                info,
+                i);
             num_outputs++;
         } catch (std::exception& e) {
             jack_error("JackALSARawMidiDriver::Open - while creating new "

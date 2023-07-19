@@ -74,7 +74,7 @@ def options(opt):
     opt.load('compiler_c')
     opt.load('autooptions')
 
-    opt.load('xcode6')
+    #opt.load('xcode6')
 
     opt.recurse('compat')
 
@@ -252,12 +252,92 @@ def detect_platform(conf):
                 conf.end_msg(name, color='CYAN')
                 break
 
+class WafToolchainFlags:
+    """
+    Waf helper class for handling set of CFLAGS
+    and related. The flush() method will
+    prepend so to allow supplied by (downstream/distro/builder) waf caller flags
+    to override the upstream flags in wscript.
+    TODO: upstream this or find alternative easy way of doing the same
+    """
+    def __init__(self, conf):
+        """
+        :param conf: Waf configuration object
+        """
+        self.conf = conf
+        self.flags = {}
+        for x in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LINKFLAGS'):
+            self.flags[x] = []
+
+    def flush(self):
+        """
+        Flush flags to the configuration object
+        Prepend is used so to allow supplied by
+        (downstream/distro/builder) waf caller flags
+        to override the upstream flags in wscript.
+        """
+        for key, val in self.flags.items():
+            self.conf.env.prepend_value(key, val)
+
+    def add(self, key, val):
+        """
+        :param key: Set to add flags to. 'CPPFLAGS', 'CFLAGS', 'CXXFLAGS' or 'LINKFLAGS'
+        :param val: string or list of strings
+        """
+        flags = self.flags[key]
+        if isinstance(val, list):
+	    #flags.extend(val)
+            for x in val:
+                if not isinstance(x, str):
+                    raise Exception("value must be string or list of strings. ", type(x))
+                flags.append(x)
+        elif isinstance(val, str):
+            flags.append(val)
+        else:
+            raise Exception("value must be string or list of strings")
+
+    def add_cpp(self, value):
+        """
+        Add flag or list of flags to CPPFLAGS
+        :param value: string or list of strings
+        """
+        self.add('CPPFLAGS', value)
+
+    def add_c(self, value):
+        """
+        Add flag or list of flags to CFLAGS
+        :param value: string or list of strings
+        """
+        self.add('CFLAGS', value)
+
+    def add_cxx(self, value):
+        """
+        Add flag or list of flags to CXXFLAGS
+        :param value: string or list of strings
+        """
+        self.add('CXXFLAGS', value)
+
+    def add_candcxx(self, value):
+        """
+        Add flag or list of flags to CFLAGS and CXXFLAGS
+        :param value: string or list of strings
+        """
+        self.add_c(value)
+        self.add_cxx(value)
+
+    def add_link(self, value):
+        """
+        Add flag or list of flags to LINKFLAGS
+        :param value: string or list of strings
+        """
+        self.add('LINKFLAGS', value)
 
 def configure(conf):
     conf.load('compiler_cxx')
     conf.load('compiler_c')
 
     detect_platform(conf)
+    flags = WafToolchainFlags(conf)
 
     if conf.env['IS_WINDOWS']:
         conf.env.append_unique('CCDEFINES', '_POSIX')
@@ -270,9 +350,9 @@ def configure(conf):
                 define_name='HAVE_ASIO',
                 mandatory=False)
 
-    conf.env.append_unique('CFLAGS', '-Wall')
-    conf.env.append_unique('CXXFLAGS', ['-Wall', '-Wno-invalid-offsetof'])
-    conf.env.append_unique('CXXFLAGS', '-std=gnu++11')
+    flags.add_c('-Wall')
+    flags.add_cxx(['-Wall', '-Wno-invalid-offsetof'])
+    flags.add_cxx('-std=gnu++11')
 
     if conf.env['IS_FREEBSD']:
         conf.check(lib='execinfo', uselib='EXECINFO', define_name='EXECINFO')
@@ -300,7 +380,7 @@ def configure(conf):
             mandatory=False)
 
         # TODO
-        conf.env.append_unique('CXXFLAGS', '-Wno-deprecated-register')
+        flags.add_cxx('-Wno-deprecated-register')
 
     conf.load('autooptions')
 
@@ -396,9 +476,8 @@ def configure(conf):
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
     if conf.env['BUILD_DEBUG']:
-        conf.env.append_unique('CXXFLAGS', '-g')
-        conf.env.append_unique('CFLAGS', '-g')
-        conf.env.append_unique('LINKFLAGS', '-g')
+        flags.add_candcxx('-g')
+        flags.add_link('-g')
 
     if Options.options.autostart not in ['default', 'classic', 'dbus', 'none']:
         conf.fatal('Invalid autostart value "' + Options.options.autostart + '"')
@@ -447,10 +526,10 @@ def configure(conf):
 
     if Options.options.mixed:
         conf.setenv(lib32, env=conf.env.derive())
-        conf.env.append_unique('CFLAGS', '-m32')
-        conf.env.append_unique('CXXFLAGS', '-m32')
-        conf.env.append_unique('CXXFLAGS', '-DBUILD_WITH_32_64')
-        conf.env.append_unique('LINKFLAGS', '-m32')
+        flags.add_c('-m32')
+        flags.add_cxx('-m32')
+        flags.add_cxx('-DBUILD_WITH_32_64')
+        flags.add_link('-m32')
         if Options.options.libdir32:
             conf.env['LIBDIR'] = Options.options.libdir32
         else:
@@ -472,6 +551,8 @@ def configure(conf):
         conf.all_envs[lib32]['LIB_OPUS'] = []
         # someone tell me where this file gets written please..
         conf.write_config_header('config.h')
+
+    flags.flush()
 
     print()
     version_msg = APPNAME + "-" + VERSION

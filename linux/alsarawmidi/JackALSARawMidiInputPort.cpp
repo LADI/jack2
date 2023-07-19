@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2011 Devin Anderson
+Copyright (c) 2023 Nedko Arnaudov
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,11 +28,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 using Jack::JackALSARawMidiInputPort;
 
 JackALSARawMidiInputPort::JackALSARawMidiInputPort(const char* client_name,
+                                                   const char * cardname,
                                                    snd_rawmidi_info_t *info,
                                                    size_t index,
                                                    size_t max_bytes,
                                                    size_t max_messages):
-    JackALSARawMidiPort(client_name, info, index, POLLIN)
+    JackALSARawMidiPort(client_name, cardname, info, index, POLLIN)
 {
     alsa_event = 0;
     jack_event = 0;

@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2011 Devin Anderson
+Copyright (c) 2023 Nedko Arnaudov
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,6 +42,7 @@ namespace Jack {
     public:
 
         JackALSARawMidiOutputPort(const char* client_name,
+                                  const char * cardname,
                                   snd_rawmidi_info_t *info,
                                   size_t index,
                                   size_t max_bytes_per_poll=3,
