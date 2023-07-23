@@ -20,7 +20,7 @@
 
 import os.path
 
-from waflib import Logs, Options
+from waflib import Logs, Options, Utils
 
 
 def options(opt):
@@ -110,5 +110,4 @@ def build(bld):
             install_path='${DBUS_SERVICES_DIR}/',
             BINDIR=bld.env['PREFIX'] + '/bin')
 
-    if not bld.env['IS_WINDOWS']:
-        bld.install_files('${PREFIX}/bin', 'jack_control', chmod=0o755)
+    bld.install_as('${PREFIX}/bin/' + "jack_control", 'jack_control/jack_control.py', chmod=Utils.O755)
