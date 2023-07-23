@@ -140,7 +140,7 @@ D-Bus signals.
 === JACK D-Bus enabled applications
 
 ==== jack_control
-JACK contains "jack_control" executable, https://gitea.ladish.org/LADI/jackdbus/src/branch/stable/dbus/jack_control[a 300 lines of Python] exposing
+JACK contains "jack_control" executable, https://gitea.ladish.org/LADI/jack_control/src/branch/main/jack_control.py[a 300 lines of Python] exposing
 JACK D-Bus functionality. It allows chained execution of several commands.
 For example "jack control ds alsa dps midi-driver raw eps realtime on
 eps relatime-priority 70 start" selects ALSA driver, enables JACK MIDI
