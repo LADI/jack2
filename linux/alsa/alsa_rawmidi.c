@@ -407,20 +407,20 @@ int can_pass(size_t sz, jack_ringbuffer_t *in, jack_ringbuffer_t *out)
 static
 void midi_port_init(const alsa_rawmidi_t *midi, midi_port_t *port, snd_rawmidi_info_t *info, const alsa_id_t *id, const char * cardstr)
 {
-	const char *name;
 	char *c;
+
+	unsigned int device = snd_rawmidi_info_get_device(info);
+	unsigned int subdevice = snd_rawmidi_info_get_subdevice(info);
 
 	port->id = *id;
 	snprintf(port->dev, sizeof(port->dev), "hw:%s,%d,%d", cardstr, id->id[1], id->id[3]);
 	strncpy(port->device_name, snd_rawmidi_info_get_name(info), sizeof(port->device_name));
-	name = snd_rawmidi_info_get_subdevice_name(info);
-	if (!strlen(name))
-		name = port->device_name;
-	const char prefix[] = "alsa_midi:";
-	snprintf(port->alias, sizeof(port->alias), "%shw:%s:%d,%d %s %s", prefix, cardstr, id->id[1], id->id[3], name, port->id.id[2] ? "out":"in");
+    snprintf(port->alias, sizeof(port->alias), "alsa_midi:hw:%s:%s_%d_%d", cardstr,
+             port->id.id[2] ? "out":"in",
+             device + 1, subdevice + 1);
 
 	// replace all offending characters with '_'
-	for (c=port->alias+strlen(prefix)+3+strlen(cardstr)+1; *c; ++c)
+	for (c=port->alias+13+strlen(cardstr)+1; *c; ++c)
 	        if (!isalnum(*c))
 			*c = '_';
 
