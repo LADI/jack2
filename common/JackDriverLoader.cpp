@@ -589,7 +589,7 @@ JSList* jack_drivers_load (JSList * drivers)
             continue;
         }
         ptr++;
-        if (strncmp ("so", ptr, 2) != 0) {
+        if (strcmp ("so", ptr) != 0) {
             continue;
         }
 
