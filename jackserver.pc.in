@@ -2,7 +2,7 @@ prefix=@PREFIX@
 exec_prefix=@PREFIX@
 libdir=@LIBDIR@
 includedir=@INCLUDEDIR@
-jack_implementation=jack2
+jack_implementation=ladi-jack2
 
 Name: jackserver
 Description: the Jack Audio Connection Kit: a low-latency synchronous callback-based media server (libjackserver)
