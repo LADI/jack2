@@ -1,10 +1,11 @@
+/* -*- Mode: C ; c-basic-offset: 4 -*- */
 /* JACK server control API */
 /* SPDX-FileCopyrightText: Copyright © 2008-2023 Nedko Arnaudov */
 /* SPDX-FileCopyrightText: Copyright © 2008-2023 Grame */
 /* SPDX-License-Identifier: ( GPL-2.0-or-later OR LGPL-2.1-or-later OR MIT OR AFL-2.1 ) */
 
-#ifndef __JackControlAPI__
-#define __JackControlAPI__
+#ifndef JACKCTL_H__2EEDAD78_DF4C_4B26_83B7_4FF1A446A47E__INCLUDED
+#define JACKCTL_H__2EEDAD78_DF4C_4B26_83B7_4FF1A446A47E__INCLUDED
 
 #include "jslist.h"
 #include "JackCompilerDeps.h"
@@ -206,6 +207,40 @@ SERVER_EXPORT bool
 jackctl_parameter_constraint_is_fake_value(
 	jackctl_parameter_t * parameter_ptr);
 
+/** 
+ * Call this function to log an error message.
+ * 
+ * @param format string
+ */
+SERVER_EXPORT
+void
+jack_error(
+	const char *format,
+	...);
+
+/** 
+ * Call this function to log an information message.
+ * 
+ * @param format string
+ */
+SERVER_EXPORT
+void
+jack_info(
+	const char *format,
+	...);
+
+/** 
+ * Call this function to log an information message but only when
+ * verbose mode is enabled.
+ * 
+ * @param format string
+ */
+SERVER_EXPORT
+void
+jack_log(
+	const char *format,
+	...);
+
 SERVER_EXPORT const JSList *
 jackctl_server_get_internals_list(
     jackctl_server *server_ptr);
@@ -250,5 +285,4 @@ jackctl_parse_driver_params(jackctl_driver * driver_ptr, int argc, char* argv[])
 } /* extern "C" */
 #endif
 
-#endif
-
+#endif /* #ifndef JACKCTL_H__2EEDAD78_DF4C_4B26_83B7_4FF1A446A47E__INCLUDED */

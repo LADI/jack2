@@ -1,7 +1,9 @@
 /* -*- Mode: C ; c-basic-offset: 4 -*- */
 /* JACK server control API */
-/* SPDX-FileCopyrightText:  2008-2023 Nedko Arnaudov */
-/* SPDX-License-Identifier: ( GPL-2.0-or-later OR LGPL-2.1-or-later OR MIT OR AFL-2.1 ) *//**
+/* SPDX-FileCopyrightText: Copyright © 2008-2023 Nedko Arnaudov */
+/* SPDX-FileCopyrightText: Copyright © 2008-2023 Grame */
+/* SPDX-License-Identifier: ( GPL-2.0-or-later OR LGPL-2.1-or-later OR MIT OR AFL-2.1 ) */
+/**
  * @file   jack/control.h
  * @ingroup publicheader
  * @brief  JACK control API
