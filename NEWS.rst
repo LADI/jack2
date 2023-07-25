@@ -1,6 +1,24 @@
 
 #########
 
+* LADI jack2 2.23.0 (20XX-XX-XX)
+
+  * Upgrade waf to 2.0.25
+    xcode support was dropped.
+  * Proper handling of supplied flags (WafToolchainFlags)
+    Downstream packager supplied flags are now handled correctly.
+  * Relicense control.h more cleanly freely (for where it applies)
+    (JackControlAPI.h and control.h) to
+    ( GPL-2.0-or-later OR LGPL-2.1-or-later OR MIT OR AFL-2.1 )
+  * Expose parameter constraints in control API
+  * Improved MIDI port aliases
+    ALSA raw and seq MIDI ports are now created with aliases
+    naming scheme matching the one of alsa_pcm. In particular,
+    ALSA symbolic string ID is used instead of the less stable
+    card index which can change from boot to boot.
+  * JackControlAPI: Replace sigwait with signalfd and poll
+  * JackControlAPI: Jack threads to notify failure to jackd by posting an event
+
 * LADI jack2 2.22.1 (2023-02-18)
 
   * Bring back the GIT_VERSION define

@@ -31,7 +31,7 @@ from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallCo
 # see also common/JackConstants.h
 VERSION = '2.22.1'
 APPNAME = 'LADI JACK'
-JACK_API_VERSION = '2.22.0'
+JACK_API_VERSION = '2.23.0'
 
 # these variables are mandatory ('/' are converted automatically)
 top = '.'
