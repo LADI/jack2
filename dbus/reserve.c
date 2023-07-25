@@ -31,7 +31,6 @@
 #include <stdint.h>
 
 #include "reserve.h"
-#include "jack/control.h"
 
 #define RESERVE_ERROR_NO_MEMORY            "org.freedesktop.ReserveDevice1.Error.NoMemory"
 #define RESERVE_ERROR_PROTOCOL_VIOLATION   "org.freedesktop.ReserveDevice1.Error.Protocol"

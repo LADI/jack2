@@ -22,7 +22,7 @@
 #define CONTROLLER_INTERNAL_H__04D54D51_3D79_49A2_A1DA_F8587E9E7F42__INCLUDED
 
 #include <stdbool.h>
-#include <jslist.h>
+#include <jack/jslist.h>
 #include <jack/control.h>
 #include <jack/jack.h>
 #include <jack/session.h>
