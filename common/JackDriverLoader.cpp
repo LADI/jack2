@@ -694,7 +694,7 @@ JSList* jack_internals_load(JSList * internals)
     jack_driver_desc_t* desc;
 
     const char* driver_dir;
-    if ((driver_dir = getenv("JACK_DRIVER_DIR")) == 0) {
+    if ((driver_dir = getenv("JACK_INTERNAL_DIR")) == 0) {
         driver_dir = ADDON_DIR;
     }
 
