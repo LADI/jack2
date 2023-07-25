@@ -15,10 +15,6 @@
 
 #include <jack/jslist.h>
 
-#ifdef WIN32
-typedef unsigned long sigset_t;
-#endif
-
 /** Parameter types, intentionally similar to jack_driver_param_type_t */
 typedef enum
 {
@@ -71,7 +67,7 @@ extern "C" {
  *
  * @return the configurated signal set.
  */
-sigset_t
+jackctl_sigmask_t *
 jackctl_setup_signals(
     unsigned int flags);
 
@@ -83,7 +79,7 @@ jackctl_setup_signals(
 
 void
 jackctl_wait_signals(
-    sigset_t signals);
+    jackctl_sigmask_t * signals);
 
 /**
  * Call this function to create server object.
