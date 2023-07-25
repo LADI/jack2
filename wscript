@@ -29,7 +29,7 @@ from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 
 # see also common/JackConstants.h
-VERSION = '2.22.1'
+VERSION = '2.23.0'
 APPNAME = 'LADI JACK'
 JACK_API_VERSION = '2.23.0'
 
