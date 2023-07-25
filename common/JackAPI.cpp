@@ -1904,7 +1904,7 @@ LIB_EXPORT void jack_get_version(int *major_ptr,
 LIB_EXPORT const char* jack_get_version_string()
 {
     JackGlobals::CheckContext("jack_get_version_string");
-    return VERSION " built from " GIT_VERSION;
+    return JACK_VERSION " built from " GIT_VERSION;
 }
 
 LIB_EXPORT void jack_free(void* ptr)

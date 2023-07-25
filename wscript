@@ -436,6 +436,8 @@ def configure(conf):
     else:
         conf.env['AUTOSTART_METHOD'] = Options.options.autostart
 
+    conf.define('JACK_VERSION', VERSION)
+
     if conf.env['AUTOSTART_METHOD'] == 'dbus':
         conf.define('USE_LIBDBUS_AUTOLAUNCH', 1)
     elif conf.env['AUTOSTART_METHOD'] == 'classic':

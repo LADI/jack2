@@ -24,8 +24,6 @@
 #include "config.h"
 #endif
 
-#define VERSION "2.22.1"
-
 #define BUFFER_SIZE_MAX 8192
 
 #define JACK_PORT_NAME_SIZE 256
