@@ -570,7 +570,7 @@ JSList* jack_drivers_load (JSList * drivers)
 
     const char* driver_dir;
     if ((driver_dir = getenv("JACK_DRIVER_DIR")) == 0) {
-        driver_dir = ADDON_DIR;
+        driver_dir = JACK_DRIVER_DIR;
     }
 
     /* search through the driver_dir and add get descriptors
@@ -583,11 +583,6 @@ JSList* jack_drivers_load (JSList * drivers)
     }
 
     while ((dir_entry = readdir(dir_stream))) {
-
-        /* check the filename is of the right format */
-        if (strncmp ("jack_", dir_entry->d_name, 5) != 0) {
-            continue;
-        }
 
         ptr = strrchr (dir_entry->d_name, '.');
         if (!ptr) {
@@ -695,7 +690,7 @@ JSList* jack_internals_load(JSList * internals)
 
     const char* driver_dir;
     if ((driver_dir = getenv("JACK_INTERNAL_DIR")) == 0) {
-        driver_dir = ADDON_DIR;
+        driver_dir = JACK_INTERNAL_DIR;
     }
 
     /* search through the driver_dir and add get descriptors

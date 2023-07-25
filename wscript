@@ -478,8 +478,16 @@ def configure(conf):
             # defined in windows/JackPlatformPlug_os.h
             pass
     else:
-        conf.env['ADDON_DIR'] = os.path.normpath(os.path.join(conf.env['LIBDIR'], 'jack'))
-        conf.define('ADDON_DIR', conf.env['ADDON_DIR'])
+        conf.env['JACK_DRIVER_DIR'] = os.path.normpath(
+            os.path.join(conf.env['PREFIX'],
+                         'libexec',
+                         'jack-driver'))
+        conf.env['JACK_INTERNAL_DIR'] = os.path.normpath(
+            os.path.join(conf.env['PREFIX'],
+                         'libexec',
+                         'jack-internal'))
+        conf.define('JACK_DRIVER_DIR', conf.env['JACK_DRIVER_DIR'])
+        conf.define('JACK_INTERNAL_DIR', conf.env['JACK_INTERNAL_DIR'])
         conf.define('JACK_LOCATION', os.path.normpath(os.path.join(conf.env['PREFIX'], 'bin')))
 
     if not conf.env['IS_WINDOWS']:
@@ -537,7 +545,8 @@ def configure(conf):
     conf.msg('Library directory', conf.all_envs['']['LIBDIR'], color='CYAN')
     if conf.env['BUILD_WITH_32_64']:
         conf.msg('32-bit library directory', conf.all_envs[lib32]['LIBDIR'], color='CYAN')
-    conf.msg('Drivers directory', conf.env['ADDON_DIR'], color='CYAN')
+    conf.msg('Drivers directory', conf.env['JACK_DRIVER_DIR'], color='CYAN')
+    conf.msg('Internal clients directory', conf.env['JACK_INTERNAL_DIR'], color='CYAN')
     display_feature(conf, 'Build debuggable binaries', conf.env['BUILD_DEBUG'])
 
     tool_flags = [
@@ -602,13 +611,13 @@ def create_driver_obj(bld, **kw):
         features=['c', 'cxx', 'cshlib', 'cxxshlib'],
         defines=['HAVE_CONFIG_H', 'SERVER_SIDE'],
         includes=['.', 'common', 'common/jack'],
-        install_path='${ADDON_DIR}/',
+        install_path='${JACK_DRIVER_DIR}/',
         **kw)
 
     if bld.env['IS_WINDOWS']:
         driver.env['cxxshlib_PATTERN'] = 'jack_%s.dll'
     else:
-        driver.env['cxxshlib_PATTERN'] = 'jack_%s.so'
+        driver.env['cxxshlib_PATTERN'] = '%s.so'
 
     obj_add_includes(bld, driver)
 

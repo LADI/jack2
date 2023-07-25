@@ -60,7 +60,7 @@ def create_jack_process_obj(bld, target, sources, uselib=None, framework=None):
     process.source = sources
     if bld.env['IS_LINUX'] or bld.env['IS_MACOSX'] or bld.env['IS_FREEBSD']:
         process.env.append_value('CPPFLAGS', '-fvisibility=hidden')
-    process.install_path = '${ADDON_DIR}/'
+    process.install_path = '${JACK_INTERNAL_DIR}/'
     process.use = [uselib.name]
     return process
 

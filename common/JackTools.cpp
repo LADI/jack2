@@ -284,7 +284,7 @@ void BuildClientPath(char* path_to_so, int path_len, const char* so_name)
     const char* internal_dir;
     if ((internal_dir = getenv("JACK_INTERNAL_DIR")) == 0) {
         if ((internal_dir = getenv("JACK_DRIVER_DIR")) == 0) {
-            internal_dir = ADDON_DIR;
+            internal_dir = JACK_INTERNAL_DIR;
         }
     }
 
