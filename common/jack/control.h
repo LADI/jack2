@@ -81,6 +81,16 @@ void
 jackctl_wait_signals(
     jackctl_sigmask_t * signals);
 
+/** 
+ * Call this function after waiting on a signal set.
+ * 
+ * @param signals signals set to finalize
+ */
+
+void
+jackctl_finish_signals(
+    jackctl_sigmask_t * signals);
+
 /**
  * Call this function to create server object.
  *

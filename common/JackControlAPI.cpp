@@ -2,7 +2,7 @@
 /*
   JACK control API implementation
 
-  Copyright (C) 2008 Nedko Arnaudov
+  Copyright (C) 2008-2023 Nedko Arnaudov
   Copyright (C) 2008 Grame
 
   This program is free software; you can redistribute it and/or modify
@@ -148,6 +148,13 @@ struct jackctl_parameter
     jack_driver_param_constraint_desc_t * constraint_ptr;
 };
 
+#ifdef WIN32
+struct jackctl_sigmask
+{
+    HANDLE wait_event;
+};
+#else  // #ifdef WIN32
+
 #ifdef __linux__
 /** Jack file descriptors */
 typedef enum
@@ -156,9 +163,19 @@ typedef enum
     JackEventFD,			/**< @brief File descriptor to accept the events from threads */
     JackFDCount				/**< @brief FD count, ensure this is the last element */
 } jackctl_fd;
-
-static int eventFD;
 #endif
+
+struct jackctl_sigmask
+{
+    sigset_t signals;
+#ifdef __linux__
+    struct pollfd pfd[JackFDCount];
+    int eventFD;
+#endif
+};
+#endif  // #ifdef WIN32
+
+static jackctl_sigmask g_signals;
 
 static
 void
@@ -168,7 +185,7 @@ on_failure()
     int ret = 0;
     const uint64_t ev = 1;
 
-    ret = write(eventFD, &ev, sizeof(ev));
+    ret = write(g_signals.eventFD, &ev, sizeof(ev));
     if (ret < 0) {
         fprintf(stderr, "JackServerGlobals::on_failure : write() failed with errno %d\n", -errno);
     }
@@ -569,27 +586,31 @@ jackctl_server_free_parameters(
     }
 }
 
-#ifdef WIN32
-
-struct jackctl_sigmask
+SERVER_EXPORT void jackctl_finish_signals(jackctl_sigmask_t * signals)
 {
-    HANDLE wait_event;
-};
+#ifdef __linux__
+    for(int i = 0; i < JackFDCount; i++) {
+        if(g_signals.pfd[i].fd != 0) {
+            close(g_signals.pfd[i].fd);
+        }
+    }
+#endif
+}
 
-static jackctl_sigmask sigmask;
+#ifdef WIN32
 
 static void signal_handler(int signum)
 {
     printf("Jack main caught signal %d\n", signum);
     (void) signal(SIGINT, SIG_DFL);
-    SetEvent(sigmask.wait_event);
+    SetEvent(g_signals.wait_event);
 }
 
 jackctl_sigmask_t *
 jackctl_setup_signals(
     unsigned int flags)
 {
-    if ((sigmask.wait_event = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL) {
+    if ((g_signals.wait_event = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL) {
         jack_error("CreateEvent fails err = %ld", GetLastError());
         return 0;
     }
@@ -598,24 +619,18 @@ jackctl_setup_signals(
     (void) signal(SIGABRT, signal_handler);
     (void) signal(SIGTERM, signal_handler);
 
-    return &sigmask;
+    return &g_signals;
 }
 
 void jackctl_wait_signals(jackctl_sigmask_t * signals)
 {
-    if (WaitForSingleObject(signals->wait_event, INFINITE) != WAIT_OBJECT_0) {
+    assert(signals == &g_signals); // singleton
+    if (WaitForSingleObject(g_signals.signals->wait_event, INFINITE) != WAIT_OBJECT_0) {
         jack_error("WaitForSingleObject fails err = %ld", GetLastError());
     }
 }
 
 #else
-
-struct jackctl_sigmask
-{
-    sigset_t signals;
-};
-
-static jackctl_sigmask sigmask;
 
 static
 void
@@ -671,25 +686,25 @@ jackctl_setup_signals(
        after a return from sigwait().
     */
 
-    sigemptyset(&sigmask.signals);
-    sigaddset(&sigmask.signals, SIGHUP);
-    sigaddset(&sigmask.signals, SIGINT);
-    sigaddset(&sigmask.signals, SIGQUIT);
-    sigaddset(&sigmask.signals, SIGPIPE);
-    sigaddset(&sigmask.signals, SIGTERM);
+    sigemptyset(&g_signals.signals);
+    sigaddset(&g_signals.signals, SIGHUP);
+    sigaddset(&g_signals.signals, SIGINT);
+    sigaddset(&g_signals.signals, SIGQUIT);
+    sigaddset(&g_signals.signals, SIGPIPE);
+    sigaddset(&g_signals.signals, SIGTERM);
 #ifndef __ANDROID__
     /* android's bionic c doesn't provide pthread_cancel() and related functions.
      * to solve this issue, use pthread_kill() & SIGUSR1 instead.
      */
-    sigaddset(&sigmask.signals, SIGUSR1);
+    sigaddset(&g_signals.signals, SIGUSR1);
 #endif
-    sigaddset(&sigmask.signals, SIGUSR2);
+    sigaddset(&g_signals.signals, SIGUSR2);
 
     /* all child threads will inherit this mask unless they
      * explicitly reset it
      */
 
-    pthread_sigmask(SIG_BLOCK, &sigmask.signals, 0);
+    pthread_sigmask(SIG_BLOCK, &g_signals.signals, 0);
 
     /* install a do-nothing handler because otherwise pthreads
        behaviour is undefined when we enter sigwait.
@@ -702,13 +717,33 @@ jackctl_setup_signals(
 
     for (i = 1; i < NSIG; i++)
     {
-        if (sigismember (&sigmask.signals, i))
+        if (sigismember (&g_signals.signals, i))
         {
             sigaction(i, &action, 0);
         }
     }
 
-    return &sigmask;
+    memset(g_signals.pfd, 0, sizeof(g_signals.pfd));
+
+    /* Block the signals in order for signalfd to receive them */
+    sigprocmask(SIG_BLOCK, &g_signals.signals, NULL);
+
+    g_signals.pfd[JackSignalFD].fd = signalfd(-1, &g_signals.signals, 0);
+    if(g_signals.pfd[JackSignalFD].fd == -1) {
+        fprintf(stderr, "signalfd() failed with errno %d\n", -errno);
+        return NULL;
+    }
+    g_signals.pfd[JackSignalFD].events = POLLIN;
+
+    g_signals.pfd[JackEventFD].fd = eventfd(0, EFD_NONBLOCK);
+    if(g_signals.pfd[JackEventFD].fd == -1) {
+        jackctl_finish_signals(&g_signals);
+        return NULL;
+    }
+    g_signals.eventFD = g_signals.pfd[JackEventFD].fd;
+    g_signals.pfd[JackEventFD].events = POLLIN;
+
+    return &g_signals;
 }
 
 SERVER_EXPORT void
@@ -718,35 +753,17 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
     bool waiting = true;
 #ifdef __linux__
     int err;
-    struct pollfd pfd[JackFDCount];
     struct signalfd_siginfo si;
-    memset(pfd, 0, sizeof(pfd));
-
-    /* Block the signals in order for signalfd to receive them */
-    sigprocmask(SIG_BLOCK, &sigmask->signals, NULL);
-
-    pfd[JackSignalFD].fd = signalfd(-1, &sigmask->signals, 0);
-    if(pfd[JackSignalFD].fd == -1) {
-        fprintf(stderr, "signalfd() failed with errno %d\n", -errno);
-        return;
-    }
-    pfd[JackSignalFD].events = POLLIN;
-
-    pfd[JackEventFD].fd = eventfd(0, EFD_NONBLOCK);
-    if(pfd[JackEventFD].fd == -1) {
-        goto fail;
-    }
-    eventFD = pfd[JackEventFD].fd;
-    pfd[JackEventFD].events = POLLIN;
-
 #endif
+
+    assert(sigmask == &g_signals); // singleton
 
     while (waiting) {
     #if defined(sun) && !defined(__sun__) // SUN compiler only, to check
-        sigwait(&sigmask->signals);
+        sigwait(&g_signals->signals);
         fprintf(stderr, "Jack main caught signal\n");
     #elif defined(__linux__)
-        err = poll(pfd, JackFDCount, -1);
+        err = poll(g_signals.pfd, JackFDCount, -1);
         if (err < 0) {
             if (errno == EINTR) {
                 continue;
@@ -755,19 +772,19 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
                 break;
             }
         } else {
-            if ((pfd[JackSignalFD].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
-                 pfd[JackEventFD].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            if ((g_signals.pfd[JackSignalFD].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
+                 g_signals.pfd[JackEventFD].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 fprintf(stderr, "Jack : poll() exited with errno %d\n", -errno);
                 break;
-            } else if ((pfd[JackSignalFD].revents & POLLIN) != 0) {
-                err = read (pfd[JackSignalFD].fd, &si, sizeof(si));
+            } else if ((g_signals.pfd[JackSignalFD].revents & POLLIN) != 0) {
+                err = read (g_signals.pfd[JackSignalFD].fd, &si, sizeof(si));
                 if (err < 0) {
                     fprintf(stderr, "Jack : read() on signalfd failed with errno %d\n", -errno);
                     break;
                 }
                 sig = si.ssi_signo;
                 fprintf(stderr, "Jack main caught signal %d\n", sig);
-            } else if ((pfd[JackEventFD].revents & POLLIN) != 0) {
+            } else if ((g_signals.pfd[JackEventFD].revents & POLLIN) != 0) {
                 sig = 0; /* Received an event from one of the Jack thread */
                 fprintf(stderr, "Jack main received event from child thread, Exiting\n");
             } else {
@@ -775,7 +792,7 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
             }
         }
     #else
-        sigwait(&sigmask->signals, &sig);
+        sigwait(&g_signals->signals, &sig);
         fprintf(stderr, "Jack main caught signal %d\n", sig);
     #endif
 
@@ -799,17 +816,8 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
         // unblock signals so we can see them during shutdown.
         // this will help prod developers not to lose sight of
         // bugs that cause segfaults etc. during shutdown.
-        sigprocmask(SIG_UNBLOCK, &sigmask->signals, 0);
+        sigprocmask(SIG_UNBLOCK, &g_signals.signals, 0);
     }
-
-#ifdef __linux__
-fail:
-    for(int i = 0; i < JackFDCount; i++) {
-        if(pfd[i].fd != 0) {
-            close(pfd[i].fd);
-        }
-    }
-#endif
 
 }
 #endif

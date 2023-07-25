@@ -74,6 +74,10 @@ SERVER_EXPORT void
 jackctl_wait_signals(
     jackctl_sigmask_t * signals);
 
+SERVER_EXPORT void
+jackctl_finish_signals(
+    void);
+
 SERVER_EXPORT jackctl_server_t *
 jackctl_server_create(
     bool (* on_device_acquire)(const char * device_name),
