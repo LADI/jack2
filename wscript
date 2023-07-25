@@ -123,7 +123,6 @@ def options(opt):
         dest='application_ports',
         help='Maximum number of ports per application',
     )
-    opt.add_option('--systemd-unit', action='store_true', default=False, help='Install systemd units.')
 
     opt.set_auto_options_define('HAVE_%s')
     opt.set_auto_options_style('yesno_and_hack')
@@ -203,11 +202,6 @@ def options(opt):
     samplerate.check_cfg(
             package='samplerate',
             args='--cflags --libs')
-    sd = opt.add_auto_option(
-            'systemd',
-            help='Use systemd notify')
-    sd.check(header_name='systemd/sd-daemon.h')
-    sd.check(lib='systemd')
     db = opt.add_auto_option(
             'db',
             help='Use Berkeley DB (metadata)')
@@ -398,11 +392,6 @@ def configure(conf):
         mandatory=False)
 
     conf.recurse('common')
-    if conf.env['IS_LINUX']:
-        if Options.options.systemd_unit:
-            conf.recurse('systemd')
-        else:
-            conf.env['SYSTEMD_USER_UNIT_DIR'] = None
 
     # test for the availability of ucontext, and how it should be used
     for t in ['gp_regs', 'uc_regs', 'mc_gregs', 'gregs']:
@@ -879,7 +868,6 @@ def build(bld):
 
     if bld.env['IS_LINUX'] or bld.env['IS_FREEBSD']:
         bld.recurse('man')
-        bld.recurse('systemd')
     if not bld.env['IS_WINDOWS'] and bld.env['BUILD_TESTS']:
         bld.recurse('tests')
 
