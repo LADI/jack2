@@ -109,17 +109,6 @@ def options(opt):
 
     # options affecting general jack functionality
     opt.add_option(
-        '--classic',
-        action='store_true',
-        default=False,
-        help='Force enable standard JACK (jackd)',
-    )
-    opt.add_auto_option(
-        'dbus',
-        help='Use device reservation over D-Bus for jackd',
-        default=True,
-        conf_dest='BUILD_DBUS_RESERVATION')
-    opt.add_option(
         '--autostart',
         type='string',
         default='default',
@@ -440,16 +429,8 @@ def configure(conf):
 
     conf.env['BUILD_WITH_PROFILE'] = Options.options.profile
     conf.env['BUILD_WITH_32_64'] = Options.options.mixed
-    conf.env['BUILD_CLASSIC'] = Options.options.classic
     conf.env['BUILD_DEBUG'] = Options.options.debug
     conf.env['BUILD_STATIC'] = Options.options.static
-
-    conf.env['BUILD_JACKD'] = conf.env['BUILD_CLASSIC']
-
-    if conf.env['BUILD_JACKD'] and conf.env['BUILD_DBUS_RESERVATION']:
-        if not conf.check_cfg(package='dbus-1 >= 1.0.0', args='--cflags --libs', mandatory=False):
-            print(Logs.colors.RED + 'ERROR !! jackd cannot be built with D-Bus device reservation feature because libdbus-dev is missing' + Logs.colors.NORMAL)
-            return
 
     conf.env['BINDIR'] = conf.env['PREFIX'] + '/bin'
 
@@ -486,11 +467,6 @@ def configure(conf):
         conf.env['AUTOSTART_METHOD'] = 'none'
     else:
         conf.env['AUTOSTART_METHOD'] = Options.options.autostart
-
-    if conf.env['AUTOSTART_METHOD'] == 'dbus' and not conf.env['BUILD_JACKDBUS']:
-        conf.fatal('D-Bus autostart mode was specified but jackdbus will not be built')
-    if conf.env['AUTOSTART_METHOD'] == 'classic' and not conf.env['BUILD_JACKD']:
-        conf.fatal('Classic autostart mode was specified but jackd will not be built')
 
     if conf.env['AUTOSTART_METHOD'] == 'dbus':
         conf.define('USE_LIBDBUS_AUTOLAUNCH', 1)
@@ -593,9 +569,6 @@ def configure(conf):
     display_feature(conf, 'Build with engine profiling', conf.env['BUILD_WITH_PROFILE'])
     display_feature(conf, 'Build with 32/64 bits mixed mode', conf.env['BUILD_WITH_32_64'])
 
-    display_feature(conf, 'Build standard JACK (jackd)', conf.env['BUILD_JACKD'])
-    if conf.env['BUILD_JACKD']:
-        display_feature(conf, 'D-Bus device reservation for jackd', conf.env['BUILD_DBUS_RESERVATION'])
     conf.msg('Autostart method', conf.env['AUTOSTART_METHOD'])
 
     conf.summarize_auto_options()
@@ -627,39 +600,6 @@ def obj_add_includes(bld, obj):
 
     if bld.env['IS_WINDOWS']:
         obj.includes += ['windows']
-
-
-# FIXME: Is SERVER_SIDE needed?
-def build_jackd(bld):
-    jackd = bld(
-        features=['cxx', 'cxxprogram'],
-        defines=['HAVE_CONFIG_H', 'SERVER_SIDE'],
-        includes=['.', 'common', 'common/jack'],
-        target='jackd',
-        source=['common/Jackdmp.cpp'],
-        use=['serverlib', 'SYSTEMD']
-    )
-
-    if bld.env['BUILD_DBUS_RESERVATION']:
-        jackd.source += ['dbus/audio_reserve.c', 'dbus/reserve.c']
-        jackd.use += ['DBUS-1']
-
-    if bld.env['IS_LINUX']:
-        jackd.use += ['DL', 'M', 'PTHREAD', 'RT', 'STDC++']
-
-    if bld.env['IS_FREEBSD']:
-        jackd.use += ['M', 'PTHREAD']
-
-    if bld.env['IS_MACOSX']:
-        jackd.use += ['DL', 'PTHREAD']
-        jackd.framework = ['CoreFoundation']
-
-    if bld.env['IS_SUN']:
-        jackd.use += ['DL', 'PTHREAD']
-
-    obj_add_includes(bld, jackd)
-
-    return jackd
 
 
 # FIXME: Is SERVER_SIDE needed?
@@ -934,9 +874,6 @@ def build(bld):
         return
 
     bld.recurse('compat')
-
-    if bld.env['BUILD_JACKD']:
-        build_jackd(bld)
 
     build_drivers(bld)
 
