@@ -88,7 +88,7 @@ def options(opt):
     opt.add_option('--libdir', type='string', help='Library directory [Default: <prefix>/lib]')
     opt.add_option('--libdir32', type='string', help='32bit Library directory [Default: <prefix>/lib32]')
     opt.add_option('--pkgconfigdir', type='string', help='pkg-config file directory [Default: <libdir>/pkgconfig]')
-    opt.add_option('--mandir', type='string', help='Manpage directory [Default: <prefix>/share/man/man1]')
+    #opt.add_option('--mandir', type='string', help='Manpage directory [Default: <prefix>/share/man/man1]')
 
     # options affecting binaries
     opt.add_option(
@@ -339,10 +339,10 @@ def configure(conf):
     else:
         conf.env['PKGCONFDIR'] = conf.env['LIBDIR'] + '/pkgconfig'
 
-    if Options.options.mandir:
-        conf.env['MANDIR'] = Options.options.mandir
-    else:
-        conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
+#    if Options.options.mandir:
+#        conf.env['MANDIR'] = Options.options.mandir
+#    else:
+#        conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
     if conf.env['BUILD_DEBUG']:
         flags.add_candcxx('-g')
@@ -776,8 +776,8 @@ def build(bld):
 
     build_drivers(bld)
 
-    if bld.env['IS_LINUX'] or bld.env['IS_FREEBSD']:
-        bld.recurse('man')
+#    if bld.env['IS_LINUX'] or bld.env['IS_FREEBSD']:
+#        bld.recurse('man')
     if not bld.env['IS_WINDOWS'] and bld.env['BUILD_TESTS']:
         bld.recurse('tests')
 
