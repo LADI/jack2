@@ -29,7 +29,6 @@ from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 from waftoolchainflags import WafToolchainFlags
 
-# see also common/JackConstants.h
 VERSION = '2.23.0'
 APPNAME = 'LADI JACK'
 JACK_API_VERSION = VERSION
