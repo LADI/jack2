@@ -76,7 +76,7 @@ jackctl_wait_signals(
 
 SERVER_EXPORT void
 jackctl_finish_signals(
-    void);
+    jackctl_sigmask_t * signals);
 
 SERVER_EXPORT jackctl_server_t *
 jackctl_server_create(
