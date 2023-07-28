@@ -186,6 +186,19 @@ jackctl_server_close(
 	jackctl_server_t * server);
 
 /**
+ * Call this function to get list of available drivers. List node data
+ * pointers is a driver object handle (::jackctl_driver_t).
+ *
+ * @param server server object handle to get drivers for
+ *
+ * @return Single linked list of driver object handles. Must not be
+ * modified. Always same for same server object.
+ */
+const JSList *
+jackctl_server_get_drivers_list(
+	jackctl_server_t * server);
+
+/**
  * Call this function to get list of server parameters. List node data
  * pointers is a parameter object handle (::jackctl_parameter_t).
  *
