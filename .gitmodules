@@ -1,3 +1,6 @@
 [submodule "waf-toolchain-flags"]
 	path = waftoolchainflags
 	url = ../waf-toolchain-flags
+[submodule "jack-tools"]
+	path = tools
+	url = ../jack-tools
