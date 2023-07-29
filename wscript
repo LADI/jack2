@@ -29,9 +29,23 @@ from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 from waftoolchainflags import WafToolchainFlags
 
-VERSION = '2.23.0'
 APPNAME = 'LADI JACK'
-JACK_API_VERSION = VERSION
+JACK_VERSION_MAJOR = 2
+JACK_VERSION_MINOR = 23
+JACK_VERSION_PATCH = 0
+
+VERSION = str(JACK_VERSION_MAJOR) + '.' + str(JACK_VERSION_MINOR) + '.' + str(JACK_VERSION_PATCH)
+
+# (LADI) shlib versions
+#
+#      LADI/jack-1.121.4 : 0.1.28 (jack-major=1, api-revision=28)
+#      LADI/jack-2.23.0  : 0.2.23 (jack-major=2, jack-minor=23)
+# jackaudio/jack1-0.121  : 0.0.28 (JACK_API_CURRENT=0:JACK_API_REVISION=28:JACK_API_AGE=0)
+# jackaudio/jack2-1.9.22 : 0.1.0
+#  PipeWire/PipeWire     : ??.??.??
+#
+# Keep major at 0, as the shlib major is part of standard ld.so loading magic
+JACK_API_VERSION = '0.' + str(JACK_VERSION_MAJOR) + '.' + str(JACK_VERSION_MINOR)
 
 # these variables are mandatory ('/' are converted automatically)
 top = '.'
