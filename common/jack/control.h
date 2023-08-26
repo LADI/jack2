@@ -634,6 +634,61 @@ int jack_port_tie (jack_port_t *src, jack_port_t *dst);
  */
 int jack_port_untie (jack_port_t *port);
 
+/** opaque type for subgraph object */
+typedef struct jackctl_subgraph jackctl_subgraph_t;
+
+/**
+ * Call this function to create subgraph object
+ * along with virtual device for the subgraph.
+ * For clients that are associated with a subgraph,
+ * virtual device will be seen as JACK client named "system" and the
+ * name provided through @c name parameter may be used as client alias.
+ * For JACK clients that are not associated with any subgraph,
+ * the provided through @c name parameter name will be used for
+ * jack client name and may be used as client alias.
+ *
+ * @param name Name of the subgraph and virtual device.
+ *
+ * @return NULL on error, handle to subgraph object on success
+ */
+jackctl_subgraph_t *
+jackctl_subgraph_create(
+    const char * client_name);
+
+/**
+ * Call this function to create port pair on virtual device associated
+ * with subgraph.
+ *
+ * @param subgraph subgraph handle
+ * @param subgraph_capture whether the port created on the subgraph
+ * side will appear as capture,source,read,output (true) or as
+ * playback,sink,write,input (false). The non-subraph side port will
+ * have the other port direction.
+ * @param port_type port type, i.e. JACK_DEFAULT_AUDIO_TYPE,
+ * JACK_DEFAULT_MIDI_TYPE, etc
+ * @param port_name_base Optional base name of the port.
+ * If not NULL, the string will be used for name of the non-subgraph
+ * side port and may be used as port alias for the subgraph side port.
+ *
+ * @return success status: true - success, false - fail
+ */
+bool
+jackctl_subgraph_vdev_add_port_pair(
+    jackctl_subgraph_t * subgraph,
+    bool subgraph_capture,
+    const char * port_type,
+    const char * port_name_base);
+
+/**
+ * Call this function to destroy subgraph object
+ * along with virtual device for the subgraph.
+ *
+ * @param subgraph subgraph handle
+ */
+void
+jackctl_subgraph_destroy(
+    jackctl_subgraph_t * subgraph);
+
 /**@}*/
 
 #if 0
