@@ -615,6 +615,25 @@ jack_log(
 	const char *format,
 	...);
 
+/**
+ * Tie two ports. This will make anything appearing on the playback port (input, sink)
+ * to appear as if sent from the capture port (output, source)
+ *
+ * @param port jack port to untie
+ *
+ * @return 0 on success, otherwise a non-zero error code
+ */
+int jack_port_tie (jack_port_t *src, jack_port_t *dst);
+
+/**
+ * Untie two ports previously tied by call to ::jack_port_tie().
+ *
+ * @param port jack port to untie
+ *
+ * @return 0 on success, otherwise a non-zero error code
+ */
+int jack_port_untie (jack_port_t *port);
+
 /**@}*/
 
 #if 0

@@ -138,8 +138,8 @@ extern "C"
     LIB_EXPORT const char* * jack_port_get_connections(const jack_port_t *port);
     LIB_EXPORT const char* * jack_port_get_all_connections(const jack_client_t *client,
             const jack_port_t *port);
-    LIB_EXPORT int jack_port_tie(jack_port_t *src, jack_port_t *dst);
-    LIB_EXPORT int jack_port_untie(jack_port_t *port);
+    int jack_port_tie(jack_port_t *src, jack_port_t *dst);
+    int jack_port_untie(jack_port_t *port);
 
     // Old latency API
     LIB_EXPORT jack_nframes_t jack_port_get_latency(jack_port_t *port);
@@ -490,7 +490,7 @@ LIB_EXPORT int jack_port_connected_to(const jack_port_t* port, const char* port_
     }
 }
 
-LIB_EXPORT int jack_port_tie(jack_port_t* src, jack_port_t* dst)
+SERVER_EXPORT int jack_port_tie(jack_port_t* src, jack_port_t* dst)
 {
     JackGlobals::CheckContext("jack_port_tie");
 
@@ -515,7 +515,7 @@ LIB_EXPORT int jack_port_tie(jack_port_t* src, jack_port_t* dst)
     }
 }
 
-LIB_EXPORT int jack_port_untie(jack_port_t* port)
+SERVER_EXPORT int jack_port_untie(jack_port_t* port)
 {
     JackGlobals::CheckContext("jack_port_untie");
 

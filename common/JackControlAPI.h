@@ -7,6 +7,7 @@
 #ifndef JACKCTL_H__2EEDAD78_DF4C_4B26_83B7_4FF1A446A47E__INCLUDED
 #define JACKCTL_H__2EEDAD78_DF4C_4B26_83B7_4FF1A446A47E__INCLUDED
 
+#include "jack/types.h"
 #include "jslist.h"
 #include "JackCompilerDeps.h"
 
@@ -244,6 +245,27 @@ void
 jack_log(
 	const char *format,
 	...);
+
+/**
+ * Tie two ports. This will make anything appearing on the playback port (input, sink)
+ * to appear as if sent from the capture port (output, source)
+ *
+ * @param port jack port to untie
+ *
+ * @return 0 on success, otherwise a non-zero error code
+ */
+SERVER_EXPORT
+int jack_port_tie (jack_port_t *src, jack_port_t *dst);
+
+/**
+ * Untie two ports previously tied by call to ::jack_port_tie().
+ *
+ * @param port jack port to untie
+ *
+ * @return 0 on success, otherwise a non-zero error code
+ */
+SERVER_EXPORT
+int jack_port_untie (jack_port_t *port);
 
 SERVER_EXPORT const JSList *
 jackctl_server_get_internals_list(

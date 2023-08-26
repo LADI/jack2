@@ -871,24 +871,6 @@ const char ** jack_port_get_all_connections (const jack_client_t *client,
                                              const jack_port_t *port) JACK_OPTIONAL_WEAK_EXPORT;
 
 /**
- *
- * @deprecated This function will be removed from a future version
- * of JACK. Do not use it. There is no replacement. It has
- * turned out to serve essentially no purpose in real-life
- * JACK clients.
- */
-int jack_port_tie (jack_port_t *src, jack_port_t *dst) JACK_OPTIONAL_WEAK_DEPRECATED_EXPORT;
-
-/**
- *
- * @deprecated This function will be removed from a future version
- * of JACK. Do not use it. There is no replacement. It has
- * turned out to serve essentially no purpose in real-life
- * JACK clients.
- */
-int jack_port_untie (jack_port_t *port) JACK_OPTIONAL_WEAK_DEPRECATED_EXPORT;
-
-/**
  * \bold THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
  *  NEW JACK CLIENTS
  *
