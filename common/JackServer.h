@@ -87,9 +87,6 @@ class SERVER_EXPORT JackServer
         int InternalClientLoad1(const char* client_name, const char* so_name, const char* objet_data, int options, int* int_ref, jack_uuid_t uuid, int* status);
         int InternalClientLoad2(const char* client_name, const char* so_name, const JSList * parameters, int options, int* int_ref, jack_uuid_t uuid, int* status);
 
-        // Internal session file
-        int LoadInternalSessionFile(const char* file);
-
         // Transport management
         int ReleaseTimebase(int refnum);
         int SetTimebaseCallback(int refnum, int conditional);
