@@ -802,7 +802,7 @@ def build(bld):
 
         bld(
             features='subst',
-            source='doxyfile.in',
+            source='doc/doxyfile.in',
             target='doxyfile',
             HTML_BUILD_DIR=html_build_dir,
             SRCDIR=bld.srcnode.abspath(),
