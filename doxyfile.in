@@ -25,7 +25,7 @@ DOXYFILE_ENCODING      = UTF-8
 # The PROJECT_NAME tag is a single word (or a sequence of words surrounded
 # by quotes) that should identify the project.
 
-PROJECT_NAME           = "LADI-JACK-@VERSION@"
+PROJECT_NAME           = "LADI-JACK-@VERSION@ API Reference"
 
 PROJECT_BRIEF = "Jack Audio Connection Kit"
 
@@ -576,7 +576,9 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = @SRCDIR@/common/jack/
+INPUT                  = @SRCDIR@/common/jack/ \
+                         @SRCDIR@/doc/mainpage.dox \
+                         @SRCDIR@/doc/transport.dox
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
