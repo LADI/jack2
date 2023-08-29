@@ -460,7 +460,7 @@ int midi_port_open(alsa_rawmidi_t *midi, midi_port_t *port)
 {
 	int err;
 	int type;
-	char alias[4096];
+	char alias[5000];
 	snd_rawmidi_t **in = NULL;
 	snd_rawmidi_t **out = NULL;
 
