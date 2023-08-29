@@ -38,6 +38,12 @@
 #include "midi_unpack.h"
 #include "JackError.h"
 
+#define JACK_ALSA_MIDI_STR "alsa_midi:"
+#define JACK_ALSA_MIDI_STRLEN 10
+#define JACK_ALSA_MIDI_HW_STR "alsa_midi:hw:"
+#define JACK_ALSA_MIDI_HW_STRLEN 13
+#define JACK_ALSA_MIDI_PREFIX_STRLEN JACK_ALSA_MIDI_STRLEN
+
 extern int clock_nanosleep(clockid_t clock_id, int flags, const struct timespec *req, struct timespec *rem);
 
 enum {
@@ -415,12 +421,12 @@ void midi_port_init(const alsa_rawmidi_t *midi, midi_port_t *port, snd_rawmidi_i
 	port->id = *id;
 	snprintf(port->dev, sizeof(port->dev), "hw:%s,%d,%d", cardstr, id->id[1], id->id[3]);
 	strncpy(port->device_name, snd_rawmidi_info_get_name(info), sizeof(port->device_name));
-    snprintf(port->alias, sizeof(port->alias), "alsa_midi:hw:%s:%s_%d_%d", cardstr,
+    snprintf(port->alias, sizeof(port->alias), JACK_ALSA_MIDI_HW_STR "%s:%s_%d_%d", cardstr,
              port->id.id[2] ? "out":"in",
              device + 1, subdevice + 1);
 
 	// replace all offending characters with '_'
-	for (c=port->alias+13+strlen(cardstr)+1; *c; ++c)
+	for (c=port->alias+JACK_ALSA_MIDI_HW_STRLEN+strlen(cardstr)+1; *c; ++c)
 	        if (!isalnum(*c))
 			*c = '_';
 
@@ -442,7 +448,8 @@ inline int midi_port_open_jack(alsa_rawmidi_t *midi, midi_port_t *port, int type
 
 	if (port->jack) {
 		jack_port_set_alias(port->jack, alias);
-		jack_port_set_default_metadata(port->jack, port->device_name);
+		// Pretty-name metadata is the same as first alias without the prefix.
+		jack_port_set_default_metadata (port->jack, port->alias+JACK_ALSA_MIDI_PREFIX_STRLEN);
 	}
 
 	return port->jack == NULL;
