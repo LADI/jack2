@@ -373,6 +373,7 @@ def configure(conf):
         conf.env['AUTOSTART_METHOD'] = Options.options.autostart
 
     conf.define('JACK_VERSION', VERSION)
+    conf.define('LIBDIR', conf.env['LIBDIR'])
 
     if conf.env['AUTOSTART_METHOD'] == 'dbus':
         conf.define('USE_LIBDBUS_AUTOLAUNCH', 1)

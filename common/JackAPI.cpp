@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "JackPortType.h"
 #include <math.h>
 #include "version.h"
+#include <sys/stat.h>           // stat()
 
 using namespace Jack;
 
@@ -1901,10 +1902,27 @@ LIB_EXPORT void jack_get_version(int *major_ptr,
     *proto_ptr = 0;
 }
 
+#define JACK_VERSION_STR JACK_VERSION " built from " GIT_VERSION " built on "
+#define JACK_VERSION_FULL_STR JACK_VERSION_STR "0123456789" "0123456789" "012345"
+
 LIB_EXPORT const char* jack_get_version_string()
 {
+    struct stat st;
+    static char version_str[] = JACK_VERSION_FULL_STR;
+    static char * timestamp_str = NULL;
+
+    if (timestamp_str == NULL)
+    {
+        timestamp_str = version_str + sizeof(JACK_VERSION_STR) - 1;
+
+        st.st_mtime = 0;
+        stat(LIBDIR "/libjackserver.so.0", &st);
+        ctime_r(&st.st_mtime, timestamp_str);
+        timestamp_str[24] = 0;
+    }
+
     JackGlobals::CheckContext("jack_get_version_string");
-    return JACK_VERSION " built from " GIT_VERSION;
+    return version_str;
 }
 
 LIB_EXPORT void jack_free(void* ptr)
