@@ -187,10 +187,10 @@ on_failure()
 
     ret = write(g_signals.eventFD, &ev, sizeof(ev));
     if (ret < 0) {
-        fprintf(stderr, "JackServerGlobals::on_failure : write() failed with errno %d\n", -errno);
+        jack_error("JackServerGlobals::on_failure : write() failed with errno %d", -errno);
     }
 #else
-    fprintf(stderr, "JackServerGlobals::on_failure callback called from thread\n");
+    jack_error("JackServerGlobals::on_failure callback called from thread");
 #endif
 }
 
@@ -730,7 +730,7 @@ jackctl_setup_signals(
 
     g_signals.pfd[JackSignalFD].fd = signalfd(-1, &g_signals.signals, 0);
     if(g_signals.pfd[JackSignalFD].fd == -1) {
-        fprintf(stderr, "signalfd() failed with errno %d\n", -errno);
+        jack_error("signalfd() failed with errno %d", -errno);
         return NULL;
     }
     g_signals.pfd[JackSignalFD].events = POLLIN;
@@ -761,39 +761,39 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
     while (waiting) {
     #if defined(sun) && !defined(__sun__) // SUN compiler only, to check
         sigwait(&g_signals->signals);
-        fprintf(stderr, "Jack main caught signal\n");
+        jack_error("Jack main caught signal");
     #elif defined(__linux__)
         err = poll(g_signals.pfd, JackFDCount, -1);
         if (err < 0) {
             if (errno == EINTR) {
                 continue;
             } else {
-                fprintf(stderr, "Jack : poll() failed with errno %d\n", -errno);
+                jack_error("Jack : poll() failed with errno %d", -errno);
                 break;
             }
         } else {
             if ((g_signals.pfd[JackSignalFD].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
                  g_signals.pfd[JackEventFD].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                fprintf(stderr, "Jack : poll() exited with errno %d\n", -errno);
+                jack_error("Jack : poll() exited with errno %d", -errno);
                 break;
             } else if ((g_signals.pfd[JackSignalFD].revents & POLLIN) != 0) {
                 err = read (g_signals.pfd[JackSignalFD].fd, &si, sizeof(si));
                 if (err < 0) {
-                    fprintf(stderr, "Jack : read() on signalfd failed with errno %d\n", -errno);
+                    jack_error("Jack : read() on signalfd failed with errno %d", -errno);
                     break;
                 }
                 sig = si.ssi_signo;
-                fprintf(stderr, "Jack main caught signal %d\n", sig);
+                jack_error("Jack main caught signal %d", sig);
             } else if ((g_signals.pfd[JackEventFD].revents & POLLIN) != 0) {
                 sig = 0; /* Received an event from one of the Jack thread */
-                fprintf(stderr, "Jack main received event from child thread, Exiting\n");
+                jack_error("Jack main received event from child thread, Exiting");
             } else {
                 continue;
             }
         }
     #else
         sigwait(&g_signals->signals, &sig);
-        fprintf(stderr, "Jack main caught signal %d\n", sig);
+        jack_error("Jack main caught signal %d", sig);
     #endif
 
         switch (sig) {
