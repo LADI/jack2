@@ -187,7 +187,7 @@ on_failure()
 
     ret = write(g_signals.eventFD, &ev, sizeof(ev));
     if (ret < 0) {
-        jack_error("JackServerGlobals::on_failure : write() failed with errno %d", -errno);
+        jack_error("JackServerGlobals::on_failure : write() failed with errno %d", errno);
     }
 #else
     jack_error("JackServerGlobals::on_failure callback called from thread");
@@ -730,7 +730,7 @@ jackctl_setup_signals(
 
     g_signals.pfd[JackSignalFD].fd = signalfd(-1, &g_signals.signals, 0);
     if(g_signals.pfd[JackSignalFD].fd == -1) {
-        jack_error("signalfd() failed with errno %d", -errno);
+        jack_error("signalfd() failed with errno %d", errno);
         return NULL;
     }
     g_signals.pfd[JackSignalFD].events = POLLIN;
@@ -768,18 +768,18 @@ jackctl_wait_signals(jackctl_sigmask_t * sigmask)
             if (errno == EINTR) {
                 continue;
             } else {
-                jack_error("Jack : poll() failed with errno %d", -errno);
+                jack_error("Jack : poll() failed with errno %d", errno);
                 break;
             }
         } else {
             if ((g_signals.pfd[JackSignalFD].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
                  g_signals.pfd[JackEventFD].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                jack_error("Jack : poll() exited with errno %d", -errno);
+                jack_error("Jack : poll() exited with errno %d", errno);
                 break;
             } else if ((g_signals.pfd[JackSignalFD].revents & POLLIN) != 0) {
                 err = read (g_signals.pfd[JackSignalFD].fd, &si, sizeof(si));
                 if (err < 0) {
-                    jack_error("Jack : read() on signalfd failed with errno %d", -errno);
+                    jack_error("Jack : read() on signalfd failed with errno %d", errno);
                     break;
                 }
                 sig = si.ssi_signo;
