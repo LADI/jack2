@@ -590,7 +590,7 @@ SERVER_EXPORT void jackctl_finish_signals(jackctl_sigmask_t * signals)
 {
 #ifdef __linux__
     for(int i = 0; i < JackFDCount; i++) {
-        if(g_signals.pfd[i].fd != 0) {
+        if(g_signals.pfd[i].fd != -1) {
             close(g_signals.pfd[i].fd);
         }
     }
@@ -723,7 +723,7 @@ jackctl_setup_signals(
         }
     }
 
-    memset(g_signals.pfd, 0, sizeof(g_signals.pfd));
+    memset(g_signals.pfd, -1, sizeof(g_signals.pfd));
 
     /* Block the signals in order for signalfd to receive them */
     sigprocmask(SIG_BLOCK, &g_signals.signals, NULL);
