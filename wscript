@@ -66,6 +66,12 @@ def options(opt):
         default=sys.platform,
         help='Target platform for cross-compiling, e.g. cygwin or win32',
     )
+    opt.add_auto_option(
+        'devmode',
+        help='Enable devmode', # enable warnings and treat them as errors
+        conf_dest='BUILD_DEVMODE',
+        default=False,
+    )
     opt.add_option('--debug', action='store_true', default=False, dest='debug', help='Build debuggable binaries')
     opt.add_option('--siginfo', action='store_true', default=False, dest='siginfo', help="Log backtrace on fatal signal")
 
@@ -156,8 +162,30 @@ def configure(conf):
     else:
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
+    flags.add_c('-std=gnu99')
+    if conf.env['BUILD_DEVMODE']:
+        flags.add_c(['-Wall', '-Wextra'])
+        #flags.add_c('-Wpedantic')
+        flags.add_c('-Werror')
+        flags.add_c(['-Wno-variadic-macros', '-Wno-gnu-zero-variadic-macro-arguments'])
+
+        # https://wiki.gentoo.org/wiki/Modern_C_porting
+        if conf.env['CC'] == 'clang':
+            flags.add_c('-Wno-unknown-argumemt')
+            flags.add_c('-Werror=implicit-function-declaration')
+            flags.add_c('-Werror=incompatible-function-pointer-types')
+            flags.add_c('-Werror=deprecated-non-prototype')
+            flags.add_c('-Werror=strict-prototypes')
+            if int(conf.env['CC_VERSION'][0]) < 16:
+                flags.add_c('-Werror=implicit-int')
+        else:
+            flags.add_c('-Wno-unknown-warning-option')
+            flags.add_c('-Werror=implicit-function-declaration')
+            flags.add_c('-Werror=implicit-int')
+            flags.add_c('-Werror=incompatible-pointer-types')
+            flags.add_c('-Werror=strict-prototypes')
     if conf.env['BUILD_DEBUG']:
-        flags.add_c(['-g'])
+        flags.add_c(['-O0', '-g', '-fno-omit-frame-pointer'])
         flags.add_link('-g')
 
     conf.env['BUILD_SIGINFO'] =  Options.options.siginfo
