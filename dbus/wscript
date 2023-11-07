@@ -88,7 +88,7 @@ def build(bld):
         obj.source += [
             '../linux/uptime.c',
         ]
-        obj.use += ['PTHREAD', 'DL', 'RT', 'DBUS-1', 'EXPAT', 'STDC++']
+        obj.use += ['PTHREAD', 'DL', 'RT', 'DBUS-1', 'EXPAT']
     if bld.env['IS_FREEBSD']:
         obj.source += [
             '../linux/uptime.c',

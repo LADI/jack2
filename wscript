@@ -45,7 +45,6 @@ def display_feature(conf, msg, build):
 
 def options(opt):
     # options provided by the modules
-    opt.load('compiler_cxx')
     opt.load('compiler_c')
     opt.load('autooptions')
 
@@ -112,7 +111,6 @@ def detect_platform(conf):
                 break
 
 def configure(conf):
-    conf.load('compiler_cxx')
     conf.load('compiler_c')
 
     detect_platform(conf)
@@ -123,36 +121,10 @@ def configure(conf):
     conf.check_cfg(package='expat', args='--cflags --libs')
 
     flags.add_c('-Wall')
-    flags.add_cxx(['-Wall', '-Wno-invalid-offsetof'])
-    flags.add_cxx('-std=gnu++11')
 
     if conf.env['IS_FREEBSD']:
         conf.check(lib='execinfo', uselib='EXECINFO', define_name='EXECINFO')
         conf.check_cfg(package='libsysinfo', args='--cflags --libs')
-
-    if not conf.env['IS_MACOSX']:
-        conf.env.append_unique('LDFLAGS', '-Wl,--no-undefined')
-    else:
-        conf.check(lib='aften', uselib='AFTEN', define_name='AFTEN')
-        conf.check_cxx(
-            fragment=''
-            + '#include <aften/aften.h>\n'
-            + 'int\n'
-            + 'main(void)\n'
-            + '{\n'
-            + 'AftenContext fAftenContext;\n'
-            + 'aften_set_defaults(&fAftenContext);\n'
-            + 'unsigned char *fb;\n'
-            + 'float *buf=new float[10];\n'
-            + 'int res = aften_encode_frame(&fAftenContext, fb, buf, 1);\n'
-            + '}\n',
-            lib='aften',
-            msg='Checking for aften_encode_frame()',
-            define_name='HAVE_AFTEN_NEW_API',
-            mandatory=False)
-
-        # TODO
-        flags.add_cxx('-Wno-deprecated-register')
 
     conf.load('autooptions')
 
@@ -160,7 +132,6 @@ def configure(conf):
     conf.env['LIB_DL'] = ['dl']
     conf.env['LIB_RT'] = ['rt']
     conf.env['LIB_M'] = ['m']
-    conf.env['LIB_STDC++'] = ['stdc++']
     conf.env['JACK_VERSION'] = VERSION
 
     conf.env['BINDIR'] = conf.env['PREFIX'] + '/bin'
@@ -188,7 +159,7 @@ def configure(conf):
         conf.env['MANDIR'] = conf.env['PREFIX'] + '/share/man/man1'
 
     if conf.env['BUILD_DEBUG']:
-        flags.add_candcxx('-g')
+        flags.add_c(['-g'])
         flags.add_link('-g')
 
     conf.env['BUILD_SIGINFO'] =  Options.options.siginfo
@@ -219,7 +190,6 @@ def configure(conf):
 
     tool_flags = [
         ('C compiler flags',   ['CFLAGS', 'CPPFLAGS']),
-        ('C++ compiler flags', ['CXXFLAGS', 'CPPFLAGS']),
         ('Linker flags',       ['LINKFLAGS', 'LDFLAGS'])
     ]
     for name, vars in tool_flags:
@@ -344,9 +314,3 @@ def build(bld):
                 Logs.pprint('CYAN', 'Removing doxygen generated documentation...')
                 shutil.rmtree(html_build_dir)
                 Logs.pprint('CYAN', 'Removing doxygen generated documentation done.')
-
-
-@TaskGen.extension('.mm')
-def mm_hook(self, node):
-    """Alias .mm files to be compiled the same as .cpp files, gcc will do the right thing."""
-    return self.create_compiled_task('cxx', node)
