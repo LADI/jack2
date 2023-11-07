@@ -35,7 +35,7 @@
 #define JACK_DBUS_IFACE_NAME "org.jackaudio.JackControl"
 
 void
-jack_controller_control_send_signal_server_started()
+jack_controller_control_send_signal_server_started(void)
 {
 
     jack_dbus_send_signal(
@@ -46,7 +46,7 @@ jack_controller_control_send_signal_server_started()
 }
 
 void
-jack_controller_control_send_signal_server_stopped()
+jack_controller_control_send_signal_server_stopped(void)
 {
 
     jack_dbus_send_signal(

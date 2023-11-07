@@ -695,7 +695,7 @@ pathname_cat(const char *pathname_a, const char *pathname_b)
 }
 
 bool
-paths_init()
+paths_init(void)
 {
 	const char *home_dir, *xdg_config_home, *xdg_log_home;
     
@@ -748,7 +748,7 @@ fail:
 }
 
 void
-paths_uninit()
+paths_uninit(void)
 {
     free(g_jackdbus_config_dir);
     free(g_jackdbus_log_dir);

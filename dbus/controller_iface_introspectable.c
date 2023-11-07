@@ -75,10 +75,10 @@ write_line(const char * line)
     write_line_format("%s\n", line);
 }
 
-void jack_controller_introspect_init() __attribute__((constructor));
+void jack_controller_introspect_init(void) __attribute__((constructor));
 
 void
-jack_controller_introspect_init()
+jack_controller_introspect_init(void)
 {
     struct jack_dbus_interface_descriptor ** interface_ptr_ptr;
     const struct jack_dbus_interface_method_descriptor * method_ptr;

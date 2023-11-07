@@ -39,10 +39,10 @@ extern size_t g_jackdbus_config_dir_len; /* without terminating '\0' char */
 extern int g_exit_command;
 
 bool
-jack_controller_settings_init();
+jack_controller_settings_init(void);
 
 void
-jack_controller_settings_uninit();
+jack_controller_settings_uninit(void);
 
 #define JACK_DBUS_ERROR_UNKNOWN_METHOD              "org.jackaudio.Error.UnknownMethod"
 #define JACK_DBUS_ERROR_SERVER_NOT_RUNNING          "org.jackaudio.Error.ServerNotRunning"

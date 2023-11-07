@@ -42,7 +42,7 @@ jack_controller_settings_write_string(int fd, const char * string, void *dbus_ca
 
     len = strlen(string);
 
-    if (write(fd, string, len) != len)
+    if (write(fd, string, len) != (ssize_t)len)
     {
         jack_dbus_error(dbus_call_context_ptr, JACK_DBUS_ERROR_GENERIC, "write() failed to write config file.");
         return false;

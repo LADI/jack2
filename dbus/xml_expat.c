@@ -37,13 +37,13 @@
 #include "jackdbus.h"
 
 bool
-jack_controller_settings_init()
+jack_controller_settings_init(void)
 {
     return true;
 }
 
 void
-jack_controller_settings_uninit()
+jack_controller_settings_uninit(void)
 {
 }
 
