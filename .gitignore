@@ -18,14 +18,3 @@ codeBlocks
 
 # common release files
 /destdir/
-
-# macos release files
-/macos/package.xml
-/macos/package-welcome.txt
-
-# windows release files
-/innosetup/
-/is.exe
-/windows/inno/version.iss
-/windows/inno/win32
-/windows/inno/win64

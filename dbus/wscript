@@ -62,8 +62,6 @@ def build(bld):
         sysdeps_dbus_include = ['../linux', '../posix']
     if bld.env['IS_FREEBSD']:
         sysdeps_dbus_include = ['../freebsd', '../posix']
-    if bld.env['IS_MACOSX']:
-        sysdeps_dbus_include = ['../macosx', '../posix']
 
     obj.includes = sysdeps_dbus_include + ['.', '../', '../common', '../common/jack']
 
@@ -94,11 +92,6 @@ def build(bld):
             '../linux/uptime.c',
         ]
         obj.use += ['PTHREAD', 'EXECINFO', 'LIBSYSINFO', 'DBUS-1', 'EXPAT']
-    if bld.env['IS_MACOSX']:
-        obj.source += [
-            '../macosx/uptime.c',
-        ]
-        obj.use += ['PTHREAD', 'DL', 'DBUS-1', 'EXPAT']
     if bld.env['BUILD_SIGINFO']:
         obj.source += [
             'siginfo.c',

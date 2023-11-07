@@ -93,9 +93,7 @@ def detect_platform(conf):
         # ('KEY, 'Human readable name', ['strings', 'to', 'check', 'for'])
         ('IS_LINUX',   'Linux',   ['gnu0', 'gnukfreebsd', 'linux', 'posix']),
         ('IS_FREEBSD', 'FreeBSD', ['freebsd']),
-        ('IS_MACOSX',  'MacOS X', ['darwin']),
         ('IS_SUN',     'SunOS',   ['sunos']),
-        ('IS_WINDOWS', 'Windows', ['cygwin', 'msys', 'win32'])
     ]
 
     for key, name, strings in platforms:
