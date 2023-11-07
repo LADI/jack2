@@ -29,7 +29,7 @@ from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 from waftoolchainflags import WafToolchainFlags
 
-VERSION = "2.22.1"
+VERSION = "2.23.0"
 APPNAME = 'jackdbus'
 
 # these variables are mandatory ('/' are converted automatically)
