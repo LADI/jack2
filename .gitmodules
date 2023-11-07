@@ -4,3 +4,6 @@
 [submodule "dbus/jack_control"]
 	path = dbus/jack_control
 	url = ../jack_control
+[submodule "siginfo"]
+	path = siginfo
+	url = ../siginfo

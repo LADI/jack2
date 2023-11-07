@@ -42,7 +42,9 @@
 #include "jack/jack.h"
 #include "jack/jslist.h"
 #include "jack/control.h"
-#include "sigsegv.h"
+#if SIGINFO_ENABLED
+#include "../siginfo/siginfo.h"
+#endif
 
 static char * g_log_filename;
 static ino_t g_log_file_ino;
@@ -896,8 +898,10 @@ main (int argc, char **argv)
     jack_set_error_function(jack_dbus_error_callback);
     jack_set_info_function(jack_dbus_info_callback);
 
-    /* setup our SIGSEGV magic that prints nice stack in our logfile */
-    setup_sigsegv();
+#if SIGINFO_ENABLED
+    /* setup our SIGSEGV magic that prints nice stack in our logfile */ 
+    setup_siginfo();
+#endif
 
     jack_info("------------------");
     jack_info("jackdbus version %s built from %s on %s", JACK_VERSION, GIT_VERSION, timestamp_str);

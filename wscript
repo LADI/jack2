@@ -67,6 +67,7 @@ def options(opt):
         help='Target platform for cross-compiling, e.g. cygwin or win32',
     )
     opt.add_option('--debug', action='store_true', default=False, dest='debug', help='Build debuggable binaries')
+    opt.add_option('--siginfo', action='store_true', default=False, dest='siginfo', help="Log backtrace on fatal signal")
 
     #opt.set_auto_options_define('HAVE_%s')
     #opt.set_auto_options_style('yesno_and_hack')
@@ -269,7 +270,10 @@ def configure(conf):
         flags.add_candcxx('-g')
         flags.add_link('-g')
 
+    conf.env['BUILD_SIGINFO'] =  Options.options.siginfo
+
     conf.define('JACK_VERSION', conf.env['JACK_VERSION'])
+    conf.define('SIGINFO_ENABLED', conf.env['BUILD_SIGINFO'])
     conf.write_config_header('config.h', remove=False)
 
     conf.recurse('dbus')
@@ -290,6 +294,7 @@ def configure(conf):
     conf.msg('Install prefix', conf.env['PREFIX'], color='CYAN')
     conf.msg('Library directory', conf.all_envs['']['LIBDIR'], color='CYAN')
     display_feature(conf, 'Build debuggable binaries', conf.env['BUILD_DEBUG'])
+    display_feature(conf, 'Build with siginfo', conf.env['BUILD_SIGINFO'])
 
     tool_flags = [
         ('C compiler flags',   ['CFLAGS', 'CPPFLAGS']),

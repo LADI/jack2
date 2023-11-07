@@ -81,7 +81,6 @@ def build(bld):
         'xml.c',
         'xml_expat.c',
         'xml_write_raw.c',
-        'sigsegv.c',
         'reserve.c',
         ]
     obj.use = ['JACKSERVER']
@@ -100,6 +99,10 @@ def build(bld):
             '../macosx/uptime.c',
         ]
         obj.use += ['PTHREAD', 'DL', 'DBUS-1', 'EXPAT']
+    if bld.env['BUILD_SIGINFO']:
+        obj.source += [
+            'siginfo.c',
+        ]
     obj.target = 'jackdbus'
 
     # process org.jackaudio.service.in -> org.jackaudio.service
