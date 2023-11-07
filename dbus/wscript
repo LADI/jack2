@@ -58,10 +58,7 @@ def configure(conf):
 
 def build(bld):
     obj = bld(features=['c', 'cprogram'], idx=17)
-    if bld.env['IS_LINUX']:
-        sysdeps_dbus_include = ['../linux', '../posix']
-    if bld.env['IS_FREEBSD']:
-        sysdeps_dbus_include = ['../freebsd', '../posix']
+    sysdeps_dbus_include = ['../linux']
 
     obj.includes = sysdeps_dbus_include + ['.', '../', '../common', '../common/jack']
 
@@ -82,15 +79,12 @@ def build(bld):
         'reserve.c',
         ]
     obj.use = ['JACKSERVER']
+    obj.source += [
+        '../linux/uptime.c',
+    ]
     if bld.env['IS_LINUX']:
-        obj.source += [
-            '../linux/uptime.c',
-        ]
         obj.use += ['PTHREAD', 'DL', 'RT', 'DBUS-1', 'EXPAT']
     if bld.env['IS_FREEBSD']:
-        obj.source += [
-            '../linux/uptime.c',
-        ]
         obj.use += ['PTHREAD', 'EXECINFO', 'LIBSYSINFO', 'DBUS-1', 'EXPAT']
     if bld.env['BUILD_SIGINFO']:
         obj.source += [
