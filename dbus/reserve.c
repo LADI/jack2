@@ -49,10 +49,10 @@ struct rd_device {
 
 	DBusConnection *connection;
 
-	int owning:1;
-	int registered:1;
-	int filtering:1;
-	int gave_up:1;
+	unsigned int owning:1;
+	unsigned int registered:1;
+	unsigned int filtering:1;
+	unsigned int gave_up:1;
 
 	rd_request_cb_t request_cb;
 	void *userdata;
