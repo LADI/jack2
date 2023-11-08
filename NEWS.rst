@@ -3,7 +3,7 @@
 
 * LADI jack2 2.23.0 (20XX-XX-XX)
 
-  * Upgrade waf to 2.0.25
+  * Upgrade waf to 2.0.26
     xcode support was dropped.
   * Proper handling of supplied flags (WafToolchainFlags)
     Downstream packager supplied flags are now handled correctly.
@@ -18,6 +18,23 @@
     card index which can change from boot to boot.
   * JackControlAPI: Replace sigwait with signalfd and poll
   * JackControlAPI: Jack threads to notify failure to jackd by posting an event
+  * Remove jackd+systemd scenario stuff. jackd is not supported in LADI project.
+  * Load drivers from JACK_DRIVER_DIR
+  * Load internal clients from JACK_INTERNAL_DIR
+  * Deprecate ADDON_DIR
+  * JackDriverLoader: Load .so suffixed drivers
+    Loading of drivers with non-standard extensions like mydriver.something
+    is not allowed anymore. Such drivers are ignored.
+  * Remove jack_port_tie() and jack_port_untie() from libjack.so
+    Undeprecate them in libjackserver.so
+  * Use use so version of 0.2.23 (jack-major=2, jack-minor=23)
+  * Use doxygen-awesome-css theme for docs
+  * libjackserver.so: Add jackctl_subgraph_XXX() functions (not usable yet)
+  * libjackserver.so: Remove session management API
+  * libjackserver.so: Define metadata APIs on libjackserver too (by falktx)
+  * The string returned by jack_get_version_string()
+    now contains libjackserver.so.0 mtime
+  * Make jack_get_descriptor internal client message a verbose log
 
 * LADI jack2 2.22.1 (2023-02-18)
 
