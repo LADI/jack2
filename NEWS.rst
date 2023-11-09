@@ -27,7 +27,7 @@
     is not allowed anymore. Such drivers are ignored.
   * Remove jack_port_tie() and jack_port_untie() from libjack.so
     Undeprecate them in libjackserver.so
-  * Use use so version of 0.2.23 (jack-major=2, jack-minor=23)
+  * Use .so version of 0.2.23 (jack-major=2, jack-minor=23)
   * Use doxygen-awesome-css theme for docs
   * libjackserver.so: Add jackctl_subgraph_XXX() functions (not usable yet)
   * libjackserver.so: Remove session management API
