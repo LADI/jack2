@@ -29,7 +29,7 @@ from waflib import Context
 from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
 from waftoolchainflags import WafToolchainFlags
 
-APPNAME = 'LADI JACK'
+APPNAME = 'ladi-jack'
 JACK_VERSION_MAJOR = 2
 JACK_VERSION_MINOR = 23
 JACK_VERSION_PATCH = 0
