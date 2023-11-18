@@ -7,7 +7,7 @@
 
 @page transport-design JACK Transport Design
 
-The @ref index provides simple transport interfaces for starting,
+The JACK Audio Connection Kit provides simple transport interfaces for starting,
 stopping and repositioning a set of clients.  This document describes
 the overall design of these interfaces, their detailed specifications
 are in <jack/transport.h>
