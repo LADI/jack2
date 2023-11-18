@@ -10,7 +10,6 @@
   * Relicense control.h more cleanly freely (for where it applies)
     (JackControlAPI.h and control.h) to
     ( GPL-2.0-or-later OR LGPL-2.1-or-later OR MIT OR AFL-2.1 )
-  * Expose parameter constraints in control API
   * Improved MIDI port aliases
     ALSA raw and seq MIDI ports are now created with aliases
     naming scheme matching the one of alsa_pcm. In particular,
@@ -18,6 +17,8 @@
     card index which can change from boot to boot.
   * JackControlAPI: Replace sigwait with signalfd and poll
   * JackControlAPI: Jack threads to notify failure to jackd by posting an event
+  * Update the public version of control.h
+    (Expose parameter constraints in control API and more)
   * Remove jackd+systemd scenario stuff. jackd is not supported in LADI project.
   * Load drivers from JACK_DRIVER_DIR
   * Load internal clients from JACK_INTERNAL_DIR
@@ -29,8 +30,9 @@
     Undeprecate them in libjackserver.so
   * Use .so version of 0.2.23 (jack-major=2, jack-minor=23)
   * Use doxygen-awesome-css theme for docs
+  * Improved doxygen docs (Adopt mainpage.dox and transport.dox from JACK1)
   * libjackserver.so: Add jackctl_subgraph_XXX() functions (not usable yet)
-  * libjackserver.so: Remove session management API
+  * libjackserver.so: Remove internal client session management API
   * libjackserver.so: Define metadata APIs on libjackserver too (by falktx)
   * The string returned by jack_get_version_string()
     now contains libjackserver.so.0 mtime
