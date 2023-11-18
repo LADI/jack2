@@ -79,9 +79,6 @@ def build(bld):
         'reserve.c',
         ]
     obj.use = ['JACKSERVER']
-    obj.source += [
-        '../linux/uptime.c',
-    ]
     if bld.env['IS_LINUX']:
         obj.use += ['PTHREAD', 'DL', 'RT', 'DBUS-1', 'EXPAT']
     if bld.env['IS_FREEBSD']:
