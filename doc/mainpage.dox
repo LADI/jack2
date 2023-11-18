@@ -121,8 +121,6 @@ The full API is described in:
   creation for JACK and its clients.
   - @ref midiport.h "<jack/midiport.h>" functions to handle reading
   and writing of MIDI data to a port
-  - @ref session.h "<jack/session.h>" functions that form the JACK
-  session API
   - @ref control.h "<jack/control.h>" the API for starting and
 controlling a JACK server
   - @ref metadata.h "<jack/metadata.h>" the API for managing metadata

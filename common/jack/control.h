@@ -619,7 +619,8 @@ jack_log(
  * Tie two ports. This will make anything appearing on the playback port (input, sink)
  * to appear as if sent from the capture port (output, source)
  *
- * @param port jack port to untie
+ * @param src jack port to tie
+ * @param dst jack port to tie
  *
  * @return 0 on success, otherwise a non-zero error code
  */
@@ -642,12 +643,12 @@ typedef struct jackctl_subgraph jackctl_subgraph_t;
  * along with virtual device for the subgraph.
  * For clients that are associated with a subgraph,
  * virtual device will be seen as JACK client named "system" and the
- * name provided through @c name parameter may be used as client alias.
+ * name provided through @c client_name parameter may be used as client alias.
  * For JACK clients that are not associated with any subgraph,
- * the provided through @c name parameter name will be used for
+ * the provided through @c client_name parameter name will be used for
  * jack client name and may be used as client alias.
  *
- * @param name Name of the subgraph and virtual device.
+ * @param client_name Name of the subgraph and virtual device.
  *
  * @return NULL on error, handle to subgraph object on success
  */

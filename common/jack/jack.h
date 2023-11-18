@@ -18,6 +18,11 @@
 
 */
 
+/**
+ * @file   jack/jack.h
+ * @brief  The main JACK interface header
+ */
+
 #ifndef __jack_h__
 #define __jack_h__
 
@@ -55,9 +60,9 @@ extern "C"
  *
  * @param minor_ptr pointer to variable receiving minor version of JACK.
  *
- * @param major_ptr pointer to variable receiving micro version of JACK.
+ * @param micro_ptr pointer to variable receiving micro version of JACK.
  *
- * @param major_ptr pointer to variable receiving protocol version of JACK.
+ * @param proto_ptr pointer to variable receiving protocol version of JACK.
  *
  */
 void
@@ -119,8 +124,8 @@ jack_client_t * jack_client_open (const char *client_name,
                                   jack_status_t *status, ...) JACK_OPTIONAL_WEAK_EXPORT;
 
 /**
-* \bold THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
-*  NEW JACK CLIENTS
+* <b> THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
+*  NEW JACK CLIENTS</b>
 *
 * @deprecated Please use jack_client_open().
 */
@@ -247,8 +252,8 @@ int jack_is_realtime (jack_client_t *client) JACK_OPTIONAL_WEAK_EXPORT;
  */
 
 /**
- * \bold THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
- *  NEW JACK CLIENTS.
+ * <b> THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
+ *  NEW JACK CLIENTS. </b>
  *
  * @deprecated Please use jack_cycle_wait() and jack_cycle_signal() functions.
  */
@@ -316,7 +321,7 @@ int jack_set_thread_init_callback (jack_client_t *client,
 
 /**
  * @param client pointer to JACK client structure.
- * @param function The jack_shutdown function pointer.
+ * @param shutdown_callback The jack_shutdown function pointer.
  * @param arg The arguments for the jack_shutdown function.
  *
  * Register a function (and argument) to be called if and when the
@@ -347,7 +352,7 @@ void jack_on_shutdown (jack_client_t *client,
 
 /**
  * @param client pointer to JACK client structure.
- * @param function The jack_info_shutdown function pointer.
+ * @param shutdown_callback The jack_info_shutdown function pointer.
  * @param arg The arguments for the jack_info_shutdown function.
  *
  * Register a function (and argument) to be called if and when the
@@ -871,8 +876,8 @@ const char ** jack_port_get_all_connections (const jack_client_t *client,
                                              const jack_port_t *port) JACK_OPTIONAL_WEAK_EXPORT;
 
 /**
- * \bold THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
- *  NEW JACK CLIENTS
+ * <b>THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED IN
+ *  NEW JACK CLIENTS</b>
  *
  * Modify a port's short name.  May be called at any time.  If the
  * resulting full name (including the @a "client_name:" prefix) is
@@ -899,7 +904,7 @@ int jack_port_rename (jack_client_t* client, jack_port_t *port, const char *port
  * If the alias is longer than jack_port_name_size(), it will be truncated.
  *
  * After a successful call, and until JACK exits or
- * @function jack_port_unset_alias() is called, @alias may be
+ * jack_port_unset_alias() is called, @a alias may be
  * used as a alternate name for the port.
  *
  * Ports can have up to two aliases - if both are already
@@ -920,7 +925,7 @@ int jack_port_set_alias (jack_port_t *port, const char *alias) JACK_OPTIONAL_WEA
 int jack_port_unset_alias (jack_port_t *port, const char *alias) JACK_OPTIONAL_WEAK_EXPORT;
 
 /**
- * Get any aliases known for @port.
+ * Get any aliases known for @a port.
  *
  * @return the number of aliases discovered for the port
  */
@@ -1251,6 +1256,7 @@ int jack_recompute_total_latency (jack_client_t*, jack_port_t* port) JACK_OPTION
  */
 
 /**
+ * @param client pointer to JACK client structure.
  * @param port_name_pattern A regular expression used to select
  * ports by name.  If NULL or of zero length, no selection based
  * on name will be carried out.

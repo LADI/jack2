@@ -17,6 +17,10 @@
 
 */
 
+/**
+ * @file   jack/midiport.h
+ * @brief  Read and write MIDI data
+ */
 
 #ifndef __JACK_MIDIPORT_H
 #define __JACK_MIDIPORT_H

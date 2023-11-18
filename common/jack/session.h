@@ -18,6 +18,11 @@
     Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
+/**
+ * @file   jack/session.h
+ * @brief  The @b deprecated jack-session API
+ */
+
 #ifndef __jack_session_h__
 #define __jack_session_h__
 

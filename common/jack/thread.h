@@ -32,7 +32,8 @@ extern "C"
  * with mlockall() on many systems */
 #define THREAD_STACK 524288
 
-/** @file thread.h
+/** @file jack/thread.h
+ * @brief Custom JACK client threads
  *
  * Library functions to standardize thread creation for JACK and its
  * clients.  These interfaces hide some system variations in the
@@ -107,6 +108,7 @@ int jack_drop_real_time_scheduling (jack_native_thread_t thread) JACK_OPTIONAL_W
 /**
  * Stop the thread, waiting for the thread handler to terminate.
  *
+ * @param client the JACK client.
  * @param thread POSIX thread ID.
  *
  * @returns 0, if successful; otherwise an error number.
@@ -116,6 +118,7 @@ int jack_client_stop_thread(jack_client_t* client, jack_native_thread_t thread) 
 /**
  * Kill the thread.
  *
+ * @param client the JACK client.
  * @param thread POSIX thread ID.
  *
  * @returns 0, if successful; otherwise an error number.

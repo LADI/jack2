@@ -17,6 +17,11 @@
 *
 */
 
+/**
+ * @file   jack/intclient.h
+ * @brief  load and unload JACK internal clients
+ */
+
 #ifndef __jack_intclient_h__
 #define __jack_intclient_h__
 

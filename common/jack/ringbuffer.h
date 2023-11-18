@@ -28,7 +28,8 @@ extern "C"
 
 #include <sys/types.h>
 
-/** @file ringbuffer.h
+/** @file jack/ringbuffer.h
+ * @brief lock-free ringbuffer
  *
  * A set of library functions to make lock-free ringbuffers available
  * to JACK clients.  The `capture_client.c' (in the example_clients

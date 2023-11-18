@@ -18,6 +18,11 @@
 
 */
 
+/**
+ * @file   jack/transport.h
+ * @brief  JACK Transport API
+ */
+
 #ifndef __jack_transport_h__
 #define __jack_transport_h__
 

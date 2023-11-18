@@ -18,6 +18,11 @@
 *
 */
 
+/**
+ * @file   jack/statistics.h
+ * @brief  monitor the performance of a running JACK server
+ */
+
 #ifndef __statistics_h__
 #define __statistics_h__
 
@@ -38,7 +43,7 @@ float jack_get_max_delayed_usecs (jack_client_t *client);
 /**
  * @return the delay in microseconds due to the most recent XRUN
  * occurrence.  This probably only makes sense when called from a @ref
- * JackXRunCallback defined using jack_set_xrun_callback().
+ * ::JackXRunCallback defined using jack_set_xrun_callback().
  */
 float jack_get_xrun_delayed_usecs (jack_client_t *client);
 
