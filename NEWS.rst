@@ -1,7 +1,7 @@
 
 #########
 
-* LADI jack2 2.23.0 (20XX-XX-XX)
+* LADI jack2 2.23.1 (2023-12-20)
 
   * Upgrade waf to 2.0.26
     xcode support was dropped.
@@ -37,6 +37,7 @@
   * The string returned by jack_get_version_string()
     now contains libjackserver.so.0 mtime
   * Make jack_get_descriptor internal client message a verbose log
+  * Fix deadlock with pthread_cond_timedwait() (by Florian Walpen)
 
 * LADI jack2 2.22.1 (2023-02-18)
 
