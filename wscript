@@ -34,7 +34,7 @@ from waftoolchainflags import WafToolchainFlags
 APPNAME = 'ladi-jack'
 JACK_VERSION_MAJOR = 2
 JACK_VERSION_MINOR = 23
-JACK_VERSION_PATCH = 0
+JACK_VERSION_PATCH = 1
 
 VERSION = str(JACK_VERSION_MAJOR) + '.' + str(JACK_VERSION_MINOR) + '.' + str(JACK_VERSION_PATCH)
 
