@@ -13,7 +13,7 @@ This software implements D-Bus endpoint for JACK server.
 
 == Brief History
 Initial version of link:https://github.com/LADI/jackdbus[jackdbus] was created
-as part of LADI project and was ad-hoc modification of JACK1 codebase.
+as part of LADI project and was ad-hoc modification of link:https://jackdbus.ladish.org/jack1-design.html[JACK1] link:https://github.com/jackaudio/jack1/[codebase].
 jackdbus for JACK1 was maintained first as a setup of ad-hoc patches,
 then via Mercural and then via Git.
 In 2008/2009, jackdbus was ported to jackdmp codebase along with an implementation
