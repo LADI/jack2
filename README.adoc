@@ -190,8 +190,16 @@ configure your Linux-based audio installation for real-time audio, is
 another jackdbus frontend.
 
 == Source
- * https://gitea.ladish.org/[via Git]
- * https://dl.ladish.org/jackdbus/[as [signed] tarball]
+Tarballs:
+
+ * link:https://dl.ladish.org/jackdbus/[(signed) tarballs]
+
+GIT repositories:
+
+ * https://gitea.ladish.org/LADI/jackdbus[Upstream development GIT repository] +
+   Self-hosted upstream
+ * https://repo.or.cz/jackdbus.git[Primary backup GIT repository at repo.or.cz] +
+   Cloud hosted
 
 == Packaging
 https://jackdbus.ladish.org/packaging.html[Packaging HOWTO]
