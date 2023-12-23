@@ -192,7 +192,7 @@ another jackdbus frontend.
 == Source
 Tarballs:
 
- * link:https://dl.ladish.org/jackdbus/[(signed) tarballs]
+ * link:https://dl.ladish.org/jackdbus/[https://dl.ladish.org/jackdbus/ (signed) tarballs]
 
 GIT repositories:
 
