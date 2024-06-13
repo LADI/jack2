@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2009 Grame
+    Copyright (C) 2024 Nedko Arnaudov
     
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,22 +17,21 @@
 
 */
 
-#ifndef __audio_reserve__
-#define __audio_reserve__
+#ifndef __device_reservation__
+#define __device_reservation__
 
-#include "JackCompilerDeps.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-SERVER_EXPORT int audio_reservation_init();
-SERVER_EXPORT int audio_reservation_finish();
+int device_reservation_init(void);
+int device_reservation_finish(void);
 
-SERVER_EXPORT bool audio_acquire(const char * device_name);
-SERVER_EXPORT void audio_release(const char * device_name);
-SERVER_EXPORT void audio_reserve_loop();
+bool device_reservation_acquire(const char * device_name);
+void device_reservation_release(const char * device_name);
+void device_reservation_loop(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

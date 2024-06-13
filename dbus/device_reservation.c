@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2009 Grame
+    Copyright (C) 2024 Nedko Arnaudov
     
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 #include <stdint.h>
 
 #include "reserve.h"
-#include "audio_reserve.h"
+#include "device_reservation.h"
 #include "jack/control.h"
 
 #define DEVICE_MAX 2
@@ -41,14 +42,13 @@ static DBusConnection* gConnection = NULL;
 static reserved_audio_device gReservedDevice[DEVICE_MAX];
 static int gReserveCount = 0;
 
-SERVER_EXPORT int audio_reservation_init()
+int device_reservation_init(void)
 {
     DBusError error;
     dbus_error_init(&error);
 
     if (!(gConnection = dbus_bus_get(DBUS_BUS_SESSION, &error))) {
         jack_error("Failed to connect to session bus for device reservation: %s\n", error.message);
-        jack_info("To bypass device reservation via session bus, set JACK_NO_AUDIO_RESERVATION=1 prior to starting jackd.\n");
         return -1;
     }
 
@@ -56,7 +56,7 @@ SERVER_EXPORT int audio_reservation_init()
     return 0;
 }
 
-SERVER_EXPORT int audio_reservation_finish()
+int device_reservation_finish(void)
 {
     if (gConnection) {
         dbus_connection_unref(gConnection);
@@ -66,14 +66,14 @@ SERVER_EXPORT int audio_reservation_finish()
     return 0;
 }
 
-SERVER_EXPORT bool audio_acquire(const char * device_name)
+bool device_reservation_acquire(const char * device_name)
 {
     DBusError error;   
     int ret;
 
     // Open DBus connection first time
     if (gReserveCount == 0) {
-        if (audio_reservation_init() != 0) {
+        if (device_reservation_init() != 0) {
             return false;
         }
     }
@@ -102,7 +102,7 @@ SERVER_EXPORT bool audio_acquire(const char * device_name)
     return true;
 }
 
-SERVER_EXPORT void audio_release(const char * device_name)
+void device_reservation_release(const char * device_name)
 {
     int i;
 
@@ -122,10 +122,10 @@ SERVER_EXPORT void audio_release(const char * device_name)
     // Close DBus connection last time
     gReserveCount--;
     if (gReserveCount == 0)
-        audio_reservation_finish();
+        device_reservation_finish();
 }
 
-SERVER_EXPORT void audio_reserve_loop()
+void device_reservation_loop(void)
 {
     if (gConnection != NULL) {
        dbus_connection_read_write_dispatch (gConnection, 200);
