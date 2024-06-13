@@ -31,9 +31,12 @@
 
 #define DEVICE_MAX 2
 
+/* string like "Audio2", "Midi5" or "Video3" */
+#define MAX_DEVICE_NAME 63
+
 typedef struct reserved_audio_device {
 
-     char device_name[64];
+     char device_name[MAX_DEVICE_NAME+1];
      rd_device * reserved_device;
 
 } reserved_audio_device;
@@ -80,6 +83,18 @@ bool device_reservation_acquire(const char * device_name)
 
     assert(gReserveCount < DEVICE_MAX);
 
+    if (gReserveCount != 0) {
+        jack_error("Ignoring reservation for more than one device (acquire)");
+        return false;
+    }
+
+    strncpy(gReservedDevice[gReserveCount].device_name, device_name, MAX_DEVICE_NAME);
+    if (strcmp(gReservedDevice[gReserveCount].device_name, device_name) != 0)
+    {
+        jack_error("Ignoring reservation for device with too long name");
+        return false;
+    }
+
     dbus_error_init(&error);
 
     if ((ret= rd_acquire(
@@ -96,7 +111,6 @@ bool device_reservation_acquire(const char * device_name)
         return false;
     }
 
-    strcpy(gReservedDevice[gReserveCount].device_name, device_name);
     gReserveCount++;
     jack_info("Acquire audio card %s", device_name);
     return true;
