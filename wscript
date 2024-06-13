@@ -2,7 +2,7 @@
 # encoding: utf-8
 #
 # Copyright (C) 2015-2018 Karl Linden <karl.j.linden@gmail.com>
-# Copyleft (C) 2008-2022 Nedko Arnaudov
+# Copyleft (C) 2008-2024 Nedko Arnaudov
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,6 +76,9 @@ def options(opt):
     )
     opt.add_option('--debug', action='store_true', default=False, dest='debug', help='Build debuggable binaries')
     opt.add_option('--siginfo', action='store_true', default=False, dest='siginfo', help="Log backtrace on fatal signal")
+    opt.add_option('--distname', type='string', default=None, help="Name for the distribution tarball")
+    opt.add_option('--distsuffix', type='string', default="", help="String to append to the distribution tarball name")
+#    opt.add_option('--tagdist', action='store_true', default=False, help='Create of git tag for distname')
 
     #opt.set_auto_options_define('HAVE_%s')
     #opt.set_auto_options_style('yesno_and_hack')
@@ -247,25 +250,21 @@ def configure(conf):
     print()
 
 def git_ver(self):
-    if type(self) == Scripting.Dist:
-        header = "./version.h"
-        bld = self
-    else:
-        bld = self.generator.bld
-        header = self.outputs[0].abspath()
-        if os.access('./version.h', os.R_OK):
-            #header = os.path.join(os.getcwd(), out, "version.h")
-            shutil.copy('./version.h', header)
-            data = open(header).read()
-            m = re.match(r'^#define GIT_VERSION "([^"]*)"$', data)
-            if m != None:
-                self.ver = m.group(1)
-                Logs.pprint('BLUE', "tarball from git revision " + self.ver)
-            else:
-                self.ver = "tarball"
-            return
+    bld = self.generator.bld
+    header = self.outputs[0].abspath()
+    if os.access('./version.h', os.R_OK):
+        header = os.path.join(os.getcwd(), out, "version.h")
+        shutil.copy('./version.h', header)
+        data = open(header).read()
+        m = re.match(r'^#define GIT_VERSION "([^"]*)"$', data)
+        if m != None:
+            self.ver = m.group(1)
+            Logs.pprint('BLUE', "tarball from git revision " + self.ver)
+        else:
+            self.ver = "tarball"
+        return
 
-    if os.access('./.git', os.R_OK):
+    if bld.srcnode.find_node('.git'):
         self.ver = bld.cmd_and_log("LANG= git rev-parse HEAD", quiet=Context.BOTH).splitlines()[0]
         if bld.cmd_and_log("LANG= git diff-index --name-only HEAD", quiet=Context.BOTH).splitlines():
             self.ver += "-dirty"
@@ -347,5 +346,60 @@ def build(bld):
                 shutil.rmtree(html_build_dir)
                 Logs.pprint('CYAN', 'Removing doxygen generated documentation done.')
 
-def dist(ctx):
-    git_ver(ctx)
+class jackdbus_dist(Scripting.Dist):
+    cmd = 'dist'
+    fun = 'dist'
+
+    def __init__(self):
+        Scripting.Dist.__init__(self)
+        if Options.options.distname:
+            self.base_name = Options.options.distname
+            self.tag_name = Options.options.distname
+        else:
+            self.tag_name = VERSION
+            try:
+                sha = self.cmd_and_log("LANG= git rev-parse --short HEAD", quiet=Context.BOTH).splitlines()[0]
+                self.base_name = APPNAME + '-' + VERSION + "-g" + sha
+            except:
+                self.base_name = APPNAME + '-' + VERSION
+        self.base_name += Options.options.distsuffix
+
+        #print self.base_name
+
+#        if Options.options.tagdist:
+        ret = self.exec_command("LANG= git tag " + self.tag_name)
+        if ret != 0:
+            raise waflib.Errors.WafError('git tag creation failed')
+
+    def get_base_name(self):
+        return self.base_name
+
+    def get_excl(self):
+        excl = Scripting.Dist.get_excl(self)
+
+        excl += ' .gitmodules'
+
+        excl += ' .github'
+        excl += ' .flake8'
+        excl += ' .cirrus.yml'
+        excl += ' .wafupdaterc'
+
+        excl += ' README-docinfo-header.html'
+        excl += ' README-docinfo.html'
+
+        excl += ' GTAGS'
+        excl += ' GRTAGS'
+        excl += ' GPATH'
+        excl += ' GSYMS'
+
+        excl += ' jack2'
+
+        #print repr(excl)
+        return excl
+
+    def execute(self):
+        shutil.copy('./build/version.h', "./")
+        try:
+            super(jackdbus_dist, self).execute()
+        finally:
+            os.remove("version.h")

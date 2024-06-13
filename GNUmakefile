@@ -21,3 +21,10 @@ AUTHORS.regenerate:
 .PHONY: doc/jackdbus.html
 doc/jackdbus.html:
 	asciidoc -b html5 -a icons -a data-uri --theme ladi -o doc/jackdbus.html README.adoc
+
+.PHONY: dist
+dist:
+	git submodule update --init
+	python3 ./waf configure --prefix=/usr/local
+	python3 ./waf
+	python3 ./waf dist
