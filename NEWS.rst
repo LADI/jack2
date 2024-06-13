@@ -1,6 +1,59 @@
 News
 #########
 
+* jackdbus 2.23.1 (2024-06-13)
+
+  * update waftoolchainflags submodule
+  * gitignore *.pyc
+  * wscript: fix git version generation for tarballs
+  * doxyfile.in: update the mention of the current doxygen version
+  * remove the jack2 leftover file jack.pc.in
+  * Revert "Solving problems while compiling jack2 on macOS X with dbus support"
+    Reduce code bloat by removing support of non-libre operating system
+    This reverts commit bb3f5cb2963dc74ba045a1553e05f755af8623cc.
+  * improved README.adoc
+    add links to jack1 design document and jackaudio git repo
+    README.adoc: Add Source section
+  * Restore dbus/audio_reserve.[hc]
+
+    The code was duplicated in dbus/controller.c
+
+    controller.c is to start invoking the reservation functions from
+    audio_reserve.c file (when needed).
+
+    Keeping reservation logic out of controller.c is good for setups
+    where it is not needed (e.g. pipewire+wireplumber already does this),
+    but jackdbus itself is still needed.
+
+  * Fix [theoretically possible] memory corruption. (dbus reservation)
+
+    Acquiring more than two devices via D-Bus reservation protocol
+    helper code could lead memory corruption.
+
+    Also using device identifiers longer than 64 will not cause memory
+    corruption anymore. strncpy() is now used instead of strcpy().
+
+    In jackdbus PipeWire setups, currently (pipewire-1.1.82),
+    this code should not run at all, as libjackserver.so jack control API
+    implementation is dummy.
+    Also, the presumption in PipeWire setups that WirePlumber will do the
+    device reservation, means that this [jackdbus] device reservation code
+    must not be called at all.
+
+    In JACK2, traditionally MIDI devices are not handled via reservation protocol,
+    and only one device can be reserved (the audio device used by JACK
+    server). One could argue whether jack2 "slave" devices-drivers should
+    involve reservation protocol too. No less for MIDI devices (via alsa raw,
+    alsa seq or some other MIDI back-end for jack).
+
+    This commit fixes memory corruption in [JACK] setups where more than
+    one device is reserved.
+
+    The possibility for buffer with long device identification string, e.g.
+    "Midi716491294619269518659286591827391287391827391827391826419825941256948191981723",
+    is also fixed. So big index numbers are unlikely to be observed in the
+    wild unless in malicious actor scenario.
+
 * jackdbus 2.23.0 (2023-10-26)
 
   * wscript: WafToolchainFlags (via git submodule)
