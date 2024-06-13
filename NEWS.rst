@@ -1,6 +1,62 @@
 News
 #########
 
+* jackdbus 2.23.0 (2023-10-26)
+
+  * wscript: WafToolchainFlags (via git submodule)
+  * improved README.adoc, packaging section and more.
+  * jack_control: add status2 command
+
+    While status command returns always, status2 command
+    allows followup chained commands.
+
+  * jack_control: new command - "show"
+
+    show command behaves a bit like last parts of (current) adevices.sh script,
+    but chains the involved commands status2, dg, dp and ep internally.
+
+    The adevices.sh script uses status command and does not display
+    JACK settings unless jack is started. The show command uses
+    status2, so the settings will be displayed always.
+
+  * Use jackctl_server_create() instead of jackctl_server_create2()
+
+    This is more portable across jack1 and jack2.
+    jackctl_server_create2() is jackd.exe specific and has no purpose for jackdbus.
+
+  * Move jack_control to its own repository and use it via git submodule
+
+    Primary repo: https://gitea.ladish.org/LADI/jack_control
+    Backup repo: https://github.com/LADI/jack_control
+
+    jack_control is now always installed as part of jackdbus.
+    With dedicated repos for jackdbus and jack_control,
+    there is no point in having jack_control installation conditional.
+
+  * Build against system-wide jack headers
+
+  *  Replace sigsegv.c with siginfo.c and build it only when explicitly enabled
+
+    siginfo is disabled by default so building on new CPU
+    architectures does not require adjusting of siginfo.c anymore.
+
+    When needed, --siginfo can be used as option to ./waf configure
+    to enable the functionality
+
+  * dbus/reserve.c: Fix -Wsingle-bit-bitfield-constant-conversion by using unsigned int
+
+  ``
+    ../dbus/reserve.c:154:16: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+      154 |                                 d->gave_up = 1;
+          |                                            ^ ~
+  ``
+
+  * wsript: C++ compiler is not used, drop checks and options
+  * Remove traces of jackaudio/jack2 macos and windows support in jackdbus codebase
+  * Fix warnings
+  * wscript: add --devmode option; use -std=gnu99 by default; adjust --debug
+  * As same uptime() is shared between linux and freebsd, adjust the wscript
+
 * jackdbus 2.22.1 (2023-04-18)
 
   * Restore git revision display in the log file
