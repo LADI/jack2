@@ -356,10 +356,7 @@ def configure(conf):
     conf.env['BUILD_DEBUG'] = Options.options.debug
     conf.env['BUILD_STATIC'] = Options.options.static
 
-    if conf.env['BUILD_JACKDBUS']:
-        conf.env['BUILD_JACKD'] = conf.env['BUILD_CLASSIC']
-    else:
-        conf.env['BUILD_JACKD'] = True
+    conf.env['BUILD_JACKD'] = conf.env['BUILD_CLASSIC']
 
     conf.env['BINDIR'] = conf.env['PREFIX'] + '/bin'
 
@@ -396,8 +393,10 @@ def configure(conf):
     if Options.options.autostart == 'default':
         if conf.env['BUILD_JACKD']:
             conf.env['AUTOSTART_METHOD'] = 'classic'
-        else:
+        elif conf.env['BUILD_JACKDBUS']:
             conf.env['AUTOSTART_METHOD'] = 'dbus'
+        else:
+            conf.env['AUTOSTART_METHOD'] = 'none'
     else:
         conf.env['AUTOSTART_METHOD'] = Options.options.autostart
 
