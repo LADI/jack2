@@ -1,6 +1,10 @@
 
 #########
 
+* LADI jack2 2.23.2 (2024-MM-DD)
+
+  * Upgrade waf to 2.1.2
+
 * LADI jack2 2.23.1 (2023-12-20)
 
   * Upgrade waf to 2.0.26
