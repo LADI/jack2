@@ -99,19 +99,17 @@ def options(opt):
     # install directories
     opt.add_option(
         '--htmldir',
-        type='string',
         default=None,
         help='HTML documentation directory [Default: <prefix>/share/jack-audio-connection-kit/reference/html/',
     )
-    opt.add_option('--libdir', type='string', help='Library directory [Default: <prefix>/lib]')
-    opt.add_option('--libdir32', type='string', help='32bit Library directory [Default: <prefix>/lib32]')
-    opt.add_option('--pkgconfigdir', type='string', help='pkg-config file directory [Default: <libdir>/pkgconfig]')
-    #opt.add_option('--mandir', type='string', help='Manpage directory [Default: <prefix>/share/man/man1]')
+    opt.add_option('--libdir', help='Library directory [Default: <prefix>/lib]')
+    opt.add_option('--libdir32', help='32bit Library directory [Default: <prefix>/lib32]')
+    opt.add_option('--pkgconfigdir', help='pkg-config file directory [Default: <libdir>/pkgconfig]')
+    #opt.add_option('--mandir', help='Manpage directory [Default: <prefix>/share/man/man1]')
 
     # options affecting binaries
     opt.add_option(
         '--platform',
-        type='string',
         default=sys.platform,
         help='Target platform for cross-compiling, e.g. cygwin or win32',
     )
@@ -128,16 +126,15 @@ def options(opt):
     # options affecting general jack functionality
     opt.add_option(
         '--autostart',
-        type='string',
         default='default',
         help='Autostart method. Possible values: "none", "dbus", "classic", "default" (none)',
     )
     opt.add_option('--profile', action='store_true', default=False, help='Build with engine profiling')
-    opt.add_option('--clients', default=256, type='int', dest='clients', help='Maximum number of JACK clients')
+    opt.add_option('--clients', default=256, type=int, dest='clients', help='Maximum number of JACK clients')
     opt.add_option(
         '--ports-per-application',
         default=2048,
-        type='int',
+        type=int,
         dest='application_ports',
         help='Maximum number of ports per application',
     )
