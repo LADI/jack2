@@ -147,7 +147,7 @@ class JackShmReadWritePtr
         ~JackShmReadWritePtr()
         {
             if (!fInitDone) {
-               jack_error("JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for %d, skipping unlock", fInfo.index);
+               jack_log("JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for %d, skipping unlock", fInfo.index);
                return;
             }
             if (fInfo.index >= 0) {
