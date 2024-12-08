@@ -513,10 +513,10 @@ int JackFFADODriver::Attach()
         snprintf(
             jack_portname, sizeof(jack_portname),
             "%s:capture_%d", fClientControl.fName, (int)chn + 1);
+        // capture port aliases (jackd1 style port names)
+        snprintf(alias, sizeof(alias), ALIAS_NAME ":%s_in", fw_portname);
 
         if (driver->capture_channels[chn].stream_type == ffado_stream_type_audio) {
-            // capture port aliases (jackd1 style port names)
-            snprintf(alias, sizeof(alias), ALIAS_NAME ":%s_in", fw_portname);
             printMessage ("Registering audio capture port %s (%s)", jack_portname, alias);
             if (fEngine->PortRegister(fClientControl.fRefNum, jack_portname,
                               JACK_DEFAULT_AUDIO_TYPE,
@@ -541,7 +541,7 @@ int JackFFADODriver::Attach()
             jack_log("JackFFADODriver::Attach fCapturePortList[i] %ld ", port_index);
             fCaptureChannels++;
         } else if (driver->capture_channels[chn].stream_type == ffado_stream_type_midi) {
-            printMessage ("Registering midi capture port %s", jack_portname);
+            printMessage ("Registering midi capture port %s (%s)", jack_portname, alias);
             if (fEngine->PortRegister(fClientControl.fRefNum, jack_portname,
                               JACK_DEFAULT_MIDI_TYPE,
                               CaptureDriverFlags,
@@ -561,6 +561,11 @@ int JackFFADODriver::Attach()
             driver->capture_channels[chn].midi_input = new JackFFADOMidiInputPort();
             // setup the midi buffer
             driver->capture_channels[chn].midi_buffer = (uint32_t *)calloc(driver->period_size, sizeof(uint32_t));
+
+            port = fGraphManager->GetPort(port_index);
+
+            // capture port aliases (jackd1 style port names)
+            port->SetAlias(alias);
 
             fCapturePortList[chn] = port_index;
             jack_log("JackFFADODriver::Attach fCapturePortList[i] %ld ", port_index);
@@ -587,11 +592,10 @@ int JackFFADODriver::Attach()
         snprintf(
             jack_portname, sizeof(jack_portname),
             "%s:playback_%d", fClientControl.fName, (int)chn + 1);
+        // playback port aliases (jackd1 style port names)
+        snprintf(alias, sizeof(alias), ALIAS_NAME ":%s_out", fw_portname);
 
         if (driver->playback_channels[chn].stream_type == ffado_stream_type_audio) {
-            // playback port aliases (jackd1 style port names)
-            snprintf(alias, sizeof(alias), ALIAS_NAME ":%s_out", fw_portname);
-
             printMessage ("Registering audio playback port %s (%s)", jack_portname, alias);
             if (fEngine->PortRegister(fClientControl.fRefNum, jack_portname,
                               JACK_DEFAULT_AUDIO_TYPE,
@@ -617,7 +621,7 @@ int JackFFADODriver::Attach()
             jack_log("JackFFADODriver::Attach fPlaybackPortList[i] %ld ", port_index);
             fPlaybackChannels++;
         } else if (driver->playback_channels[chn].stream_type == ffado_stream_type_midi) {
-            printMessage ("Registering midi playback port %s", jack_portname);
+            printMessage ("Registering midi playback port %s (%s)", jack_portname, alias);
 
             if (fEngine->PortRegister(fClientControl.fRefNum, jack_portname,
                               JACK_DEFAULT_MIDI_TYPE,
@@ -642,6 +646,11 @@ int JackFFADODriver::Attach()
             driver->playback_channels[chn].midi_output = new JackFFADOMidiOutputPort();
 
             driver->playback_channels[chn].midi_buffer = (uint32_t *)calloc(driver->period_size, sizeof(uint32_t));
+
+            port = fGraphManager->GetPort(port_index);
+
+            // capture port aliases (jackd1 style port names)
+            port->SetAlias(alias);
 
             fPlaybackPortList[chn] = port_index;
             jack_log("JackFFADODriver::Attach fPlaybackPortList[i] %ld ", port_index);
