@@ -26,14 +26,14 @@
 #ifndef __jack_h__
 #define __jack_h__
 
+#include <jack/systemdeps.h>
+#include <jack/types.h>
+#include <jack/transport.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-#include <jack/systemdeps.h>
-#include <jack/types.h>
-#include <jack/transport.h>
 
 /**
  * Note: More documentation can be found in jack/types.h.

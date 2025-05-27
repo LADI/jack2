@@ -21,12 +21,12 @@
 #ifndef _RINGBUFFER_H
 #define _RINGBUFFER_H
 
+#include <sys/types.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-#include <sys/types.h>
 
 /** @file jack/ringbuffer.h
  * @brief lock-free ringbuffer

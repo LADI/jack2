@@ -25,13 +25,14 @@
 #ifndef __JACK_MIDIPORT_H
 #define __JACK_MIDIPORT_H
 
+#include <jack/weakmacros.h>
+#include <jack/types.h>
+#include <stdlib.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <jack/weakmacros.h>
-#include <jack/types.h>
-#include <stdlib.h>
 
 
 /** Type for raw event data contained in @ref jack_midi_event_t. */
