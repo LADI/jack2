@@ -1,0 +1,181 @@
+jack-audio-connection-kit (1.9.0-0ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3070 (jack2 1.9.0)
+  * Make libjackserver-bin depend on same version of libjackserv0 and
+    libjack0
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 23 Dec 2008 05:10:37 +0200
+
+jack-audio-connection-kit (1.8+svn3036ubuntu3) hardy; urgency=low
+
+  * Make server library package depend on client library package. This
+    is needed ensure IPC protocol version coupling
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 27 Nov 2008 00:05:56 +0200
+
+jack-audio-connection-kit (1.8+svn3036ubuntu2) hardy; urgency=low
+
+  * Adjust packaging
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 18 Nov 2008 00:09:32 +0200
+
+jack-audio-connection-kit (1.8+svn3036ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3036; this fixes crash with Tascam US428
+  * Add Vcs-Bzr field to debian/control
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Fri, 24 Oct 2008 00:27:43 +0300
+
+jack-audio-connection-kit (1.8+svn3028ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3028
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 23 Oct 2008 20:57:47 +0300
+
+jack-audio-connection-kit (1.8+svn3024ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3024
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Mon, 20 Oct 2008 19:57:35 +0300
+
+jack-audio-connection-kit (1.8+svn3020ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3020
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Mon, 20 Oct 2008 03:33:27 +0300
+
+jack-audio-connection-kit (1.8+svn3012ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 3012
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 18 Oct 2008 17:11:17 +0300
+
+jack-audio-connection-kit (1.8+svn2887ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 2887
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 06 Sep 2008 14:52:08 +0300
+
+jack-audio-connection-kit (1.8+svn2885ubuntu2) hardy; urgency=low
+
+  * New version because source package for the previous one was uploaded
+    before bzr commit and thus tarball contained files in
+    pending remove state
+  * Compile FreeBoB driver (new try)
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 06 Sep 2008 13:46:15 +0300
+
+jack-audio-connection-kit (1.8+svn2885ubuntu1) hardy; urgency=low
+
+  * Update to upstream svn revision 2885
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 06 Sep 2008 04:11:17 +0300
+
+jack-audio-connection-kit (1.8+svn2871ubuntu4) hardy; urgency=low
+
+  * Fix svnversion stamp
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 06 Sep 2008 03:22:58 +0300
+
+jack-audio-connection-kit (1.8+svn2871ubuntu3) hardy; urgency=low
+
+  * Fix dependency problems caused by 1.9 -> 1.8+svnNNN switch
+  * Compile FreeBoB driver
+  * Add explicit dependency on libffado because dpkg-shlibdeps ignores
+    NEEDED, probably because libffado symbols are not versioned
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Sat, 06 Sep 2008 00:07:11 +0300
+
+jack-audio-connection-kit (1.8+svn2871ubuntu2) hardy; urgency=low
+
+  * Compile FFADO driver
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Fri, 05 Sep 2008 02:11:29 +0300
+
+jack-audio-connection-kit (1.8+svn2871ubuntu1) hardy; urgency=low
+
+  * Change distribution back to hard so dput can upload to launchpad
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Fri, 05 Sep 2008 01:46:04 +0300
+
+jack-audio-connection-kit (1.8+svn2871) UNRELEASED; urgency=low
+
+  * Fix version (again)
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Fri, 05 Sep 2008 01:35:08 +0300
+
+jack-audio-connection-kit (1.8.2871) UNRELEASED; urgency=low
+
+  * Update to upstream svn revision 2871
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Fri, 05 Sep 2008 01:06:33 +0300
+
+jack-audio-connection-kit (1.9.2853-ladi1) hardy; urgency=low
+
+  * Update to upstream svn revision 2853
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 01 Sep 2008 02:11:00 +0300
+
+jack-audio-connection-kit (1.9.2683-ladi1) hardy; urgency=low
+
+  * Update to upstream svn revision 2683
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 14 Jul 2008 20:41:00 +0300
+
+jack-audio-connection-kit (1.9.2679-ladi4) hardy; urgency=low
+
+  * Fix jackdbus binary package description
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 13 Jul 2008 22:58:00 +0300
+
+jack-audio-connection-kit (1.9.2679-ladi3) hardy; urgency=critical
+
+  * Fix libjack0.100.0-0 to create the compatibility
+		/usr/lib/libjack-0.100.0.so.0 symlink
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 13 Jul 2008 19:19:00 +0300
+
+jack-audio-connection-kit (1.9.2679-ladi2) hardy; urgency=critical
+
+  * Mark that jack-audio-connection-kit conficts with all jack1 packages.
+		In particular, libjack0 contents is now part of
+		jack-audio-connection-kit itself
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 13 Jul 2008 19:19:00 +0300
+
+jack-audio-connection-kit (1.9.2679-ladi1) hardy; urgency=low
+
+  * New upstream revision 2679 (2759 was probably 2659)
+  * Generate doxygen generated reference documentation and include it in
+		the libjack-dev binary package
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Thu, 10 Jul 2008 03:01:00 +0300
+
+jack-audio-connection-kit (1.9.2759-4) hardy; urgency=low
+
+  * Add some library -dev packages to Build-Depends
+  * Remove -p option of waf build (progress bar looks ugly in PPA build log)
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 10 Jul 2008 00:47:00 +0300
+
+jack-audio-connection-kit (1.9.2759-3) hardy; urgency=low
+
+  * Add python to Build-Depends
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 10 Jul 2008 00:29:00 +0300
+
+jack-audio-connection-kit (1.9.2759-2) hardy; urgency=low
+
+  * Remove debian/README.Debian that does not contain any useful information
+  * Remove useless debian/dirs
+  * Fix previous changelog entry to match reality
+  * Remove duplicated Readme_NetJack2.txt in debian/docs
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 10 Jul 2008 00:03:00 +0300
+
+jack-audio-connection-kit (1.9.2759-1) hardy; urgency=low
+
+  * Initial release (Closes: #246409)
+
+ -- Nedko Arnaudov <nedko@arnaudov.name>  Tue, 08 Jul 2008 01:15:52 +0300
+

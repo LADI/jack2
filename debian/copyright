@@ -1,0 +1,30 @@
+This package was debianized by Nedko Arnaudov <nedko@arnaudov.name> on
+Tue, 08 Jul 2008 01:15:52 +0300.
+
+It was downloaded through SVN
+
+Upstream Authors: 
+
+    * Paul Davis
+    * Kai Vehmanen
+    * Jack O'Quin
+    * Bob Ham
+    * Steve Harris
+    * Stephane Letz
+    * Taybin Rutkin
+    * Ian Esten 
+    * Stephane Letz
+    * Nedko Arnaudov
+
+Copyright: 
+
+    Copyright 2001-2005 Paul Davis and others.
+    Copyright 2004-2008 Grame.
+
+License:
+
+GPL version 2 or later, see /usr/share/common-licenses/GPL-2
+LGPL version 2.1 or later (libjack), see /usr/share/common-licenses/LGPL-2.1
+
+The Debian packaging is (C) 2008, Nedko Arnaudov <nedko@arnaudov.name> and
+is licensed under the GPL, see `/usr/share/common-licenses/GPL'.

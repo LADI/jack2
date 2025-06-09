@@ -1,0 +1,3 @@
+debian/tmp/usr/bin/jackdbus
+debian/tmp/usr/share/dbus-1
+debian/tmp/usr/bin/jack_control

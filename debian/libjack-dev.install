@@ -1,0 +1,11 @@
+debian/tmp/usr/include/jack/intclient.h
+debian/tmp/usr/include/jack/jack.h
+debian/tmp/usr/include/jack/midiport.h
+debian/tmp/usr/include/jack/ringbuffer.h
+debian/tmp/usr/include/jack/statistics.h
+debian/tmp/usr/include/jack/systemdeps.h
+debian/tmp/usr/include/jack/thread.h
+debian/tmp/usr/include/jack/transport.h
+debian/tmp/usr/include/jack/types.h
+debian/tmp/usr/lib/pkgconfig
+debian/tmp/usr/share/jack-audio-connection-kit/reference

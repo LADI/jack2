@@ -1,0 +1,140 @@
+Source: jack-audio-connection-kit
+Section: sound
+Priority: optional
+Maintainer: Nedko Arnaudov <nedko@arnaudov.name>
+Vcs-Bzr: https://code.launchpad.net/~ubuntustudio-dev/jackit/jack2-debian
+Build-Depends: debhelper (>= 5), python, doxygen, libsamplerate0-dev,
+ libasound2-dev, libdbus-1-dev, libexpat1-dev, libsndfile1-dev,
+ libncurses5-dev, libreadline5-dev, libffado-dev, libfreebob0-dev
+Standards-Version: 3.7.3
+
+Package: libjackserver0
+Architecture: any
+Section: sound
+Depends: ${shlibs:Depends}, libjack0 (= ${binary:Version})
+Conflicts: jackd (<< 1.8), libjack0.100.0-0 (<< 0.102.20-2), libjack0.80.0-0,
+ libjack0 (<< 1.8), libjack-dev (<< 1.8), libjack0.100.0-0 (<< 1.8),
+ libjack0.100.0-dev (<< 1.8), jack-audio-connection-kit
+Replaces: jack-audio-connection-kit
+Description: JACK Audio Connection Kit (server library)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains the server library.
+
+Package: libjackserver-dev
+Architecture: any
+Section: libdevel
+Depends: libjack-dev (= ${binary:Version}), libjackserver0 (= ${binary:Version}), pkg-config
+Description: JACK Audio Connection Kit (server library development files)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains files needed for the development of applications that implement
+ a JACK server.
+
+Package: libjackserver-bin
+Architecture: any
+Section: sound
+Depends: ${shlibs:Depends}, libffado, libjack0 (= ${binary:Version}), libjackserver0 (= ${binary:Version})
+Conflicts: jackd (<< 1.8), libjack0.100.0-0 (<< 0.102.20-2), libjack0.80.0-0,
+ libjack0 (<< 1.8), libjack-dev (<< 1.8), libjack0.100.0-0 (<< 1.8),
+ libjack0.100.0-dev (<< 1.8)
+Description: JACK Audio Connection Kit (drivers, inprocess clients and essential tools)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains the essential tools (like jack_connect and jack_lsp),
+ drivers (ALSA, FireWire, etc.) and inprocess clients (like netjack ones)
+
+Package: jackd
+Architecture: any
+Depends: libjackserver0 (= ${binary:Version})
+Section: sound
+Provides: jack-server
+Description: JACK Audio Connection Kit (jackd server binary)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains the classic "jackd" server binary.
+
+Package: jackdbus
+Architecture: any
+Depends: ${shlibs:Depends}, libjackserver0 (= ${binary:Version}), python
+Provides: jack-server
+Description: D-Bus integration for JACK Audio Connection Kit
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains the D-Bus JACK.
+
+Package: libjack0
+Architecture: any
+Section: libs
+Description: JACK Audio Connection Kit (client library)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains the client library.
+
+Package: libjack-dev
+Architecture: any
+Section: libdevel
+Depends: libjack0 (= ${binary:Version}), pkg-config
+Conflicts: libjack0.100.0-dev (<< 0.102.20-2)
+Replaces: libjack0.71.2-0 (<< 0.75.0-1)
+Description: JACK Audio Connection Kit (client development files)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package contains files needed for the development of JACK applications
+ and an API reference.
+
+Package: libjack0.100.0-0
+Architecture: all
+Section: libs
+Depends: libjack0 (>= ${binary:Version})
+Description: JACK Audio Connection Kit (client library)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package is a dummy package provided as an upgrade path to the
+ libjack0 package.
+
+Package: libjack0.100.0-dev
+Architecture: all
+Section: libdevel
+Depends: libjack-dev (>= ${binary:Version})
+Description: JACK Audio Connection Kit (client development files)
+ Low-latency sound server. JACK allows the connection of multiple applications
+ to an audio device, as well as allowing them to share audio between
+ themselves.
+ .
+ See <http://jackaudio.org/> for more info.
+ .
+ This package is a dummy package provided as an upgrade path to the
+ libjack-dev package.

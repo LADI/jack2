@@ -1,0 +1,3 @@
+#!/bin/sh
+
+rm -v /usr/lib/libjack-0.100.0.so.0
